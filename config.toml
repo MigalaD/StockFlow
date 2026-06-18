@@ -1,0 +1,16 @@
+# Konfiguracja Streamlit
+# Zmień base = "dark" na base = "light" dla trybu jasnego
+
+[theme]
+base                  = "dark"
+primaryColor          = "#2563eb"
+backgroundColor       = "#0e1117"
+secondaryBackgroundColor = "#161b25"
+textColor             = "#e8eaf0"
+font                  = "sans serif"
+
+[client]
+showErrorDetails      = false
+
+[server]
+headless              = true

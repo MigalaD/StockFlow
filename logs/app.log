@@ -1,0 +1,4 @@
+2026-06-18 15:31:40 | INFO    | stockapp.scanner | Skan rozpoczęty: 110 instrumentów, max 8 wątków
+2026-06-18 15:32:16 | INFO    | stockapp.scanner | Skan zakończony w 35.7s: 108 OK, 2 błędów
+2026-06-18 18:45:46 | INFO    | stockapp.scanner | Skan rozpoczęty: 110 instrumentów, max 8 wątków
+2026-06-18 18:46:35 | INFO    | stockapp.scanner | Skan zakończony w 49.4s: 108 OK, 2 błędów

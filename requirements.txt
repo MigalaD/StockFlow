@@ -1,0 +1,24 @@
+# Analizator Spółek - wymagane pakiety
+# Instalacja: pip install -r requirements.txt
+#
+# Wersje przypięte do zakresów testowanych przed releasem. yfinance bywa
+# breaking między wersjami (Yahoo zmienia API), więc ograniczamy górny zakres.
+
+streamlit>=1.37,<2.0
+yfinance>=0.2.40,<0.3
+pandas>=2.0,<3.0
+numpy>=1.24,<3.0
+plotly>=5.18,<6.0
+
+# Raporty PDF
+reportlab>=4.0,<5.0
+matplotlib>=3.7,<4.0
+
+# Eksport do Excela (.xlsx)
+openpyxl>=3.1,<4.0
+
+# Szyfrowanie sekretów (tokeny, hasła SMTP)
+cryptography>=42.0
+
+# Testy (niewymagane w produkcji)
+pytest>=8.0
