@@ -3,11 +3,13 @@
 Wielostronicowy dashboard do analizy technicznej i fundamentalnej spółek,
 ETF-ów, kryptowalut i surowców. Narzędzie edukacyjne, **nie porada inwestycyjna**.
 
+Aktualna wersja: **1.1.0** — pełna lista zmian w [CHANGELOG.md](CHANGELOG.md).
+
 ## Szybki start
 
 ```bash
 pip install -r requirements.txt
-streamlit run App.py
+streamlit run app.py
 ```
 
 ## Struktura projektu
@@ -15,25 +17,29 @@ streamlit run App.py
 ```
 app.py                  ← punkt startowy (streamlit run app.py)
 common.py               ← współdzielone helpery, wykresy, cache
+external_data.py        ← klienci Binance / CoinGecko / Alpaca (dane live)
+intraday_signals.py     ← ATR, Stochastik, OBV, wsparcie/opór (swing-trading)
 pages/
-  1_📈_Analiza.py       ← analiza jednej spółki (score, wykresy, PDF, prognozy)
+  1_📈_Analiza.py       ← analiza jednej spółki (score, wykresy, sygnały krótkoterminowe, PDF, prognozy)
   2_🔀_Porownanie.py    ← porównanie wielu spółek + znormalizowane zwroty
   3_⭐_Watchlist.py     ← obserwowane spółki + alerty
   4_💼_Portfolio.py     ← P&L, alokacja sektorowa, korelacja pozycji
   5_🚀_Wzrostowe.py     ← spółki po niedawnym IPO / wysokiego wzrostu
   6_📦_ETF.py           ← ETF-y i surowce (wagi score dopasowane do typu)
-  6_₿_Krypto.py        ← kryptowaluty (BTC, ETH, SOL, …)
+  6b_₿_Krypto.py        ← kryptowaluty (BTC, ETH, SOL, …) + ceny live z Binance
   7_📓_Dziennik.py      ← dziennik decyzji inwestycyjnych
   8_🔍_Skaner.py        ← równoległy skaner rynku (USA/GPW/Europa/Krypto)
   9_🧪_Backtest.py      ← backtest reguły score, walk-forward, heatmapa progów
-  10_⚙️_Ustawienia.py  ← Telegram, e-mail, cache, motyw
+  10_⚙️_Ustawienia.py  ← Telegram, e-mail, cache, motyw, status źródeł danych
 ```
 
 ### Moduły logiki
 
 | Plik | Opis |
 |---|---|
-| `stock_analyzer.py` | Score 0–100 (10 wskaźników), wykrywanie typu aktywa (akcja/ETF/krypto/surowiec), cache cen |
+| `stock_analyzer.py` | Score 0–100 (10+ wskaźników), typy aktywa (akcja/ETF/**krypto**/**surowiec** – osobne od v1.1), cache cen |
+| `external_data.py` | Darmowe API live: Binance (ceny krypto), CoinGecko (dominacja BTC), Alpaca (akcje USA, opcjonalnie) |
+| `intraday_signals.py` | ATR, Stochastik %K/%D, OBV + dywergencja, poziomy wsparcia/oporu (swing-trading) |
 | `forecasting.py` | Scenariusze cenowe: Monte Carlo (GBM), trend liniowy, wygładzanie Holta |
 | `backtest.py` | Backtest, Sharpe/Sortino, walk-forward, heatmapa progów |
 | `portfolio.py` | P&L, alokacja sektorowa, macierz korelacji |
@@ -70,6 +76,40 @@ pages/
 - **Pojedynek 1 vs 1** – porównanie dwóch spółek obok siebie, wskaźnik po wskaźniku.
 - **Siła sektorów** – heatmapa średniego wyniku per sektor na podstawie skanu rynku.
 
+### Scoring krypto i surowców (od v1.1)
+
+Kryptowaluty i surowce mają **osobny typ aktywa** (wcześniej traktowane
+identycznie) z dedykowanymi składowymi score:
+
+- **Krypto** (`asset_type="crypto"`): `volatility_crypto` zastępuje zwykłą
+  zmienność (progi kalibrowane pod realia rynku krypto, gdzie 60-120%
+  rocznej zmienności to norma, nie anomalia) + `btc_dominance` – siła
+  altcoina względem BTC w ostatnich 30 dniach (BTC sam jest punktem
+  odniesienia, dostaje neutralne 50).
+- **Surowce** (`asset_type="commodity"` / `etf_commodity`): dochodzi
+  `seasonality` – modyfikator na bazie historycznych wzorców sezonowych
+  (np. złoto silne Q4/Q1, gaz ziemny silny zimą).
+
+### Sygnały krótkoterminowe (zakładka „⚡” w Analizie, od v1.1)
+
+ATR (zasięg dziennych ruchów, pomocny przy stop-lossach), Stochastik %K/%D
+(czulszy na krótkie odwrócenia niż RSI), OBV z wykrywaniem dywergencji
+ceny/wolumenu, oraz automatyczne poziomy wsparcia/oporu. **Uwaga:** liczone
+na danych dziennych z Yahoo (~15 min opóźnienia) – narzędzie dla
+swing-tradingu (dni/tygodnie), nie prawdziwego intraday day-tradingu.
+
+### Źródła danych live (od v1.1)
+
+| Źródło | Co daje | Konfiguracja |
+|---|---|---|
+| **Binance** | Ceny krypto w czasie rzeczywistym (sekundy) | Brak – publiczne API |
+| **CoinGecko** | Dominacja BTC/ETH, kapitalizacja rynku krypto | Brak – publiczne API |
+| **Alpaca Markets** | Ceny live (bid/ask) dla akcji/ETF-ów USA | Opcjonalne – darmowy klucz z alpaca.markets |
+
+Yahoo Finance pozostaje głównym źródłem (do liczenia score, dla spójności)
+i jedynym źródłem dla GPW oraz rynków europejskich – nie ma dla nich
+darmowego API real-time.
+
 ## Automatyczne alerty (scheduler)
 
 ```bash
@@ -86,7 +126,8 @@ python scheduler.py [usa|gpw|europa|krypto|all]
 pytest
 ```
 
-134 testów, działają offline (syntetyczne dane zamiast Yahoo Finance).
+201 testów, działają offline (syntetyczne dane + zamockowane API zamiast
+prawdziwych połączeń sieciowych do Yahoo Finance / Binance / CoinGecko / Alpaca).
 
 ## Wdrożenie na Streamlit Cloud
 
@@ -104,6 +145,14 @@ pytest
    ```toml
    YF_RATE_LIMIT = "4"
    ```
+5. (Opcjonalnie) darmowy klucz Alpaca Markets dla cen live akcji USA:
+   ```toml
+   ALPACA_API_KEY = "twój-klucz"
+   ALPACA_SECRET_KEY = "twój-sekret"
+   ```
+   Bez tego aplikacja działa normalnie – po prostu bez dodatkowego źródła
+   live dla akcji USA (Binance dla krypto i CoinGecko dla dominacji BTC
+   działają zawsze, bez konfiguracji).
 
 **Ważne dla wersji testowej:** Streamlit Cloud kasuje dysk przy każdym
 restarcie/redeploy, więc baza (`stock_app.db`) i logi resetują się –
@@ -114,3 +163,9 @@ podłącz zewnętrzną bazę (np. Postgres/Supabase) w przyszłej wersji.
 
 Narzędzie edukacyjne/analityczne. Nie stanowi porady inwestycyjnej.
 Dane z Yahoo Finance – mogą być nieaktualne. Decyzje na własną odpowiedzialność.
+
+## Licencja
+
+Copyright (c) 2026 Damian Migała / StockFlow. **Wszystkie prawa zastrzeżone.**
+Kopiowanie, używanie, modyfikowanie i dystrybuowanie tego kodu bez pisemnej
+zgody właściciela jest zabronione. Pełne warunki w pliku [LICENSE](LICENSE).

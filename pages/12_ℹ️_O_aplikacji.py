@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Damian Migała / StockFlow (Analizator Spółek)
+# Wszystkie prawa zastrzeżone. All rights reserved.
+# Zobacz plik LICENSE w katalogu głównym repozytorium.
+
 """
 O aplikacji
 ============
@@ -16,7 +20,7 @@ beta_banner()
 st.markdown("""
 ### Co to jest?
 
-**StockFlow** to narzędzie **edukacyjne i analityczne**, które dla
+**Analizator Spółek** to narzędzie **edukacyjne i analityczne**, które dla
 spółek, ETF-ów, kryptowalut i surowców liczy zbiorczy „wynik" (0–100) na
 podstawie sygnałów technicznych i fundamentalnych. Pomaga szybciej zrozumieć
 sytuację instrumentu i porównać kilka naraz.
@@ -58,7 +62,7 @@ wrażliwych. W wersji testowej dane mogą zostać zresetowane.
 st.divider()
 st.markdown("### 💬 Masz uwagi lub znalazłeś błąd?")
 st.markdown(
-    f"Będe wdzięczny za feedback w trakcie testów. "
+    f"Będziemy wdzięczni za feedback w trakcie testów. "
     f"[**Zgłoś uwagę lub błąd →**]({FEEDBACK_URL})"
 )
 

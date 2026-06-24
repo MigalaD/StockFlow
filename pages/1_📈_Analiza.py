@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Damian Migała / StockFlow (Analizator Spółek)
+# Wszystkie prawa zastrzeżone. All rights reserved.
+# Zobacz plik LICENSE w katalogu głównym repozytorium.
+
 """
 Analiza jednej spółki
 """
@@ -27,16 +31,24 @@ from common import (
     ticker_search_widget,
 )
 from stock_analyzer import WEIGHTS, interpret_score
+from intraday_signals import (
+    atr_summary,
+    stochastic_summary,
+    compute_obv,
+    detect_obv_divergence,
+    detect_support_resistance,
+)
 from pdf_report import generate_stock_report
 from strategies import STRATEGIE, evaluate_strategy, interpret_match
 from tickers import PRZYKLADOWE_SPOLKI
 import forecasting
 import database as db
+import external_data
 
 user_id = sidebar_user()
 sidebar_legenda()
 
-st.title("📈 Analiza")
+st.title("📈 Analiza spółki")
 
 with st.sidebar:
     st.divider()
@@ -222,9 +234,10 @@ if red_flags:
             "(np. dług na ekspansję) - sprawdź raporty finansowe spółki."
         )
 
-tab1, tab_news, tab2, tab3, tab_forecast, tab4, tab5, tab6 = st.tabs([
+tab1, tab_news, tab_intraday, tab2, tab3, tab_forecast, tab4, tab5, tab6 = st.tabs([
     "📈 Wykres ceny",
     "📰 Newsy i wydarzenia",
+    "⚡ Sygnały krótkoterminowe",
     "🧮 Szczegóły wyniku",
     "🕒 Historia sygnału",
     "🔮 Scenariusze cenowe",
@@ -277,9 +290,23 @@ with tab1:
         if auto:
             df_live, _ = pobierz_dane_live(ticker, period=okres)
             df_chart = df_live if df_live is not None else df
+            znacznik_czasu = f"🔄 Ostatnia aktualizacja: {datetime.now():%H:%M:%S}"
+
+            # Dla amerykańskich akcji/ETF-ów, jeśli skonfigurowano Alpaca
+            # (darmowy klucz API), dolicz prawdziwy live quote (bid/ask) -
+            # to jedyne źródło w aplikacji z faktycznym czasem rzeczywistym
+            # dla rynku USA (Yahoo ma ~15 min opóźnienia niezależnie od
+            # częstotliwości odpytywania).
+            if external_data.is_alpaca_configured() and external_data.is_alpaca_supported(ticker):
+                alpaca_quote = external_data.get_alpaca_quote(ticker)
+                if alpaca_quote:
+                    st.caption(
+                        f"🟢 **Alpaca (na żywo):** {alpaca_quote['price']:.2f} {waluta} "
+                        f"(bid {alpaca_quote['bid']:.2f} / ask {alpaca_quote['ask']:.2f})"
+                    )
             st.caption(
-                f"🔄 Ostatnia aktualizacja: {datetime.now():%H:%M:%S} · "
-                f"dane Yahoo Finance mogą być opóźnione ~15 min"
+                f"{znacznik_czasu} · dane wykresu (Yahoo Finance) mogą być "
+                f"opóźnione ~15 min"
             )
         else:
             df_chart = df
@@ -397,6 +424,137 @@ with tab_news:
             meta_bits = [b for b in [item.get("publisher"), item.get("published")] if b]
             if meta_bits:
                 st.caption(" • ".join(meta_bits))
+
+with tab_intraday:
+    st.markdown("#### ⚡ Sygnały krótkoterminowe")
+    st.warning(
+        "⚠️ **Ważne ograniczenie:** te wskaźniki liczone są na danych "
+        "**dziennych** z Yahoo Finance (opóźnienie ~15 min) – nie na "
+        "danych minutowych ani tick-po-ticku. To narzędzie dla "
+        "**swing-tradingu** (pozycje trzymane dni/tygodnie), nie dla "
+        "prawdziwego intraday day-tradingu (wejście i wyjście tego "
+        "samego dnia, na bazie notowań sekundowych)."
+    )
+
+    atr_info = atr_summary(df)
+    stoch_info = stochastic_summary(df)
+
+    col_atr, col_stoch = st.columns(2)
+    with col_atr:
+        st.markdown("**📏 ATR (Average True Range)**")
+        if atr_info:
+            st.metric(
+                "Średni dzienny zasięg ruchu",
+                f"{atr_info['atr']:.2f} {waluta}",
+                delta=f"{atr_info['atr_pct']:.1f}% ceny",
+                delta_color="off",
+            )
+            st.caption(
+                "ATR pokazuje, ile instrument *zwykle* porusza się w ciągu "
+                "dnia. Przydatne do ustawiania stop-lossów: stop ciaśniejszy "
+                "niż ATR często zostaje 'wybity' przez zwykły szum rynkowy, "
+                "nie przez faktyczne odwrócenie trendu."
+            )
+        else:
+            st.caption("Brak wystarczających danych do wyliczenia ATR.")
+
+    with col_stoch:
+        st.markdown("**🎯 Stochastik (%K / %D)**")
+        if stoch_info:
+            st.metric(
+                "Pozycja w zakresie wahań",
+                f"%K={stoch_info['k']:.0f}  %D={stoch_info['d']:.0f}",
+                delta=stoch_info["signal"],
+                delta_color="off",
+            )
+            if stoch_info["crossed"] == "bullish":
+                st.success("🟢 %K przecięło %D od dołu (sygnał bullish)")
+            elif stoch_info["crossed"] == "bearish":
+                st.error("🔴 %K przecięło %D od góry (sygnał bearish)")
+            st.caption(
+                "Stochastik pokazuje, gdzie cena leży względem niedawnego "
+                "zakresu wahań. < 20 = wyprzedanie, > 80 = przegrzanie. "
+                "Bywa czulszy na krótkoterminowe odwrócenia niż RSI."
+            )
+        else:
+            st.caption("Brak wystarczających danych do wyliczenia stochastyku.")
+
+    st.divider()
+
+    # ── OBV i dywergencja ──────────────────────────────────────────
+    st.markdown("**📊 OBV (On-Balance Volume) i dywergencja**")
+    obv_series = compute_obv(df)
+    obv_valid = obv_series.dropna()
+    if not obv_valid.empty:
+        fig_obv = go.Figure()
+        fig_obv.add_trace(go.Scatter(
+            x=obv_valid.index, y=obv_valid.values, name="OBV",
+            line=dict(color="#7c3aed", width=1.6),
+            fill="tozeroy", fillcolor="rgba(124,58,237,0.08)",
+        ))
+        fig_obv.update_layout(
+            height=220, margin=dict(l=10, r=10, t=10, b=10),
+            showlegend=False,
+        )
+        st.plotly_chart(apply_theme(fig_obv), use_container_width=True)
+
+        divergence = detect_obv_divergence(df)
+        if divergence:
+            if divergence["type"] == "bearish":
+                st.error(f"🔴 Dywergencja niedźwiedzia: {divergence['description']}")
+            else:
+                st.success(f"🟢 Dywergencja bycza: {divergence['description']}")
+        else:
+            st.caption("Brak wykrytej dywergencji ceny i wolumenu w ostatnich 20 dniach.")
+
+        st.caption(
+            "OBV kumuluje wolumen w kierunku ruchu ceny – pokazuje, czy "
+            "wolumen 'popiera' trend. Dywergencja (cena i OBV idą w różne "
+            "strony) bywa sygnałem słabnącego trendu jeszcze zanim "
+            "odwróci się sama cena."
+        )
+    else:
+        st.caption("Brak wystarczających danych do wyliczenia OBV.")
+
+    st.divider()
+
+    # ── Poziomy wsparcia i oporu ───────────────────────────────────
+    st.markdown("**📐 Poziomy wsparcia i oporu**")
+    levels = detect_support_resistance(df)
+    if levels["support"] or levels["resistance"]:
+        col_sup, col_res = st.columns(2)
+        with col_sup:
+            st.caption("🟢 Wsparcie (cena historycznie się tu zatrzymywała od dołu)")
+            for lvl in reversed(levels["support"]):
+                st.markdown(f"`{lvl:.2f} {waluta}`")
+        with col_res:
+            st.caption("🔴 Opór (cena historycznie się tu zatrzymywała od góry)")
+            for lvl in levels["resistance"]:
+                st.markdown(f"`{lvl:.2f} {waluta}`")
+
+        # Wykres ceny z poziomami jako poziome linie.
+        fig_sr = go.Figure()
+        fig_sr.add_trace(go.Scatter(
+            x=df.index, y=df["Close"], name="Cena",
+            line=dict(color="#2563eb", width=1.4),
+        ))
+        for lvl in levels["support"]:
+            fig_sr.add_hline(y=lvl, line_dash="dot", line_color="#16a34a", opacity=0.6)
+        for lvl in levels["resistance"]:
+            fig_sr.add_hline(y=lvl, line_dash="dot", line_color="#dc2626", opacity=0.6)
+        fig_sr.update_layout(
+            height=320, margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
+        )
+        st.plotly_chart(apply_theme(fig_sr), use_container_width=True)
+
+        st.caption(
+            "Poziomy wykryte automatycznie na podstawie lokalnych "
+            "minimów/maksimów z ostatnich ~120 dni. To **historyczne** "
+            "punkty zatrzymania ceny, nie gwarancja, że cena znów się tam "
+            "zatrzyma – rynek nie jest zobowiązany 'respektować' te poziomy."
+        )
+    else:
+        st.caption("Brak wystarczających danych do wykrycia poziomów wsparcia/oporu.")
 
 with tab2:
     st.plotly_chart(rysuj_wykres_scoru(wynik["components"]), use_container_width=True)

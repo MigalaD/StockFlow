@@ -199,7 +199,11 @@ def test_get_asset_type_etf_commodity():
 
 def test_get_asset_type_commodity_future():
     assert sa.get_asset_type({"quoteType": "FUTURE"}) == "commodity"
-    assert sa.get_asset_type({"quoteType": "CRYPTOCURRENCY"}) == "commodity"
+    # UWAGA: od v1.1 CRYPTOCURRENCY ma WŁASNY typ "crypto", osobny od
+    # "commodity" - patrz test_get_asset_type_crypto_quote_type powyżej
+    # (sekcja "TYP AKTYWA crypto"). Krypto ma inną charakterystykę
+    # zmienności niż surowce, więc dzielenie wag/scoringu ma sens.
+    assert sa.get_asset_type({"quoteType": "CRYPTOCURRENCY"}) == "crypto"
 
 
 def test_get_weights_for_asset_type_sums_to_one():
@@ -586,3 +590,243 @@ def test_sector_label_for_commodity_etf(fake_yfinance, monkeypatch):
 def test_sector_label_stays_for_normal_stock(fake_yfinance):
     res = sa.analyze_ticker("AAPL")
     assert res["sector"] == "Technology"
+
+
+# ----------------------------------------------------------------------
+# TYP AKTYWA "crypto" - osobny od "commodity" (v1.1)
+# ----------------------------------------------------------------------
+def test_get_asset_type_crypto_quote_type():
+    assert sa.get_asset_type({"quoteType": "CRYPTOCURRENCY"}) == "crypto"
+
+
+def test_get_asset_type_commodity_quote_type():
+    assert sa.get_asset_type({"quoteType": "FUTURE"}) == "commodity"
+    assert sa.get_asset_type({"quoteType": "COMMODITY"}) == "commodity"
+    assert sa.get_asset_type({"quoteType": "CURRENCY"}) == "commodity"
+
+
+def test_get_asset_type_crypto_and_commodity_are_distinct():
+    crypto = sa.get_asset_type({"quoteType": "CRYPTOCURRENCY"})
+    commodity = sa.get_asset_type({"quoteType": "FUTURE"})
+    assert crypto != commodity
+
+
+def test_get_asset_type_fallback_to_ticker_suffix():
+    # Brak quoteType od Yahoo, ale ticker ma sufiks -USD -> rozpoznaj jako crypto.
+    assert sa.get_asset_type({}, ticker="BTC-USD") == "crypto"
+    assert sa.get_asset_type({}, ticker="DOGE-USD") == "crypto"
+
+
+def test_get_asset_type_fallback_without_suffix_defaults_to_stock():
+    assert sa.get_asset_type({}, ticker="AAPL") == "stock"
+    assert sa.get_asset_type({}) == "stock"  # brak tickera w ogóle
+
+
+def test_get_weights_crypto_swaps_volatility_for_crypto_variant():
+    weights = sa.get_weights_for_asset_type("crypto")
+    assert "volatility_crypto" in weights
+    assert "volatility" not in weights
+    assert "btc_dominance" in weights
+    # fundamentalne składowe wciąż wykluczone
+    assert "valuation" not in weights
+    assert "dividend" not in weights
+    assert "fundamentals" not in weights
+
+
+def test_get_weights_crypto_sums_to_one():
+    weights = sa.get_weights_for_asset_type("crypto")
+    assert abs(sum(weights.values()) - 1.0) < 1e-9
+
+
+def test_get_weights_commodity_adds_seasonality():
+    weights = sa.get_weights_for_asset_type("commodity")
+    assert "seasonality" in weights
+    assert abs(sum(weights.values()) - 1.0) < 1e-9
+
+
+def test_get_weights_etf_commodity_adds_seasonality():
+    weights = sa.get_weights_for_asset_type("etf_commodity")
+    assert "seasonality" in weights
+
+
+def test_get_weights_stock_unaffected_by_crypto_changes():
+    """Upewnij się, że dodanie crypto nie popsuło zwykłych akcji."""
+    weights = sa.get_weights_for_asset_type("stock")
+    assert "volatility" in weights
+    assert "volatility_crypto" not in weights
+    assert "btc_dominance" not in weights
+    assert "seasonality" not in weights
+    assert abs(sum(weights.values()) - 1.0) < 1e-9
+
+
+# ----------------------------------------------------------------------
+# score_volatility_crypto - progi kalibrowane pod krypto
+# ----------------------------------------------------------------------
+def test_score_volatility_crypto_low_vol_higher_than_stock_thresholds():
+    """40% rocznej zmienności to wysoka zmienność dla akcji, ale niska dla krypto."""
+    import numpy as np
+    rng = np.random.default_rng(1)
+    n = 100
+    # ~40% roczna zmienność: dzienne odchylenie ≈ 0.40/sqrt(252) ≈ 0.025
+    close = 100 * np.cumprod(1 + rng.normal(0.0005, 0.025, n))
+    idx = pd.date_range("2024-01-01", periods=n, freq="B")
+    df = pd.DataFrame({"Close": close}, index=idx)
+    score, note = sa.score_volatility_crypto(df)
+    assert score >= 50  # niska/normalna jak na krypto -> nie karana mocno
+    assert "krypto" in note.lower()
+
+
+def test_score_volatility_crypto_extreme_vol_scores_low():
+    import numpy as np
+    rng = np.random.default_rng(2)
+    n = 100
+    # Bardzo wysoka zmienność (~300% rocznie)
+    close = 100 * np.cumprod(1 + rng.normal(0, 0.19, n))
+    idx = pd.date_range("2024-01-01", periods=n, freq="B")
+    df = pd.DataFrame({"Close": close}, index=idx)
+    score, note = sa.score_volatility_crypto(df)
+    assert score <= 40
+
+
+def test_score_volatility_crypto_insufficient_data():
+    df = pd.DataFrame({"Close": [100.0, 101.0]})
+    score, note = sa.score_volatility_crypto(df)
+    assert score == 50
+    assert "brak" in note.lower()
+
+
+def test_score_volatility_crypto_vs_stock_same_data_different_score():
+    """Ta sama zmienność (60% rocznie) - akcyjna f-cja karze mocniej niż krypto."""
+    import numpy as np
+    rng = np.random.default_rng(3)
+    n = 100
+    close = 100 * np.cumprod(1 + rng.normal(0, 0.038, n))  # ~60% rocznie
+    idx = pd.date_range("2024-01-01", periods=n, freq="B")
+    df = pd.DataFrame({"Close": close}, index=idx)
+    stock_score, _ = sa.score_volatility(df)
+    crypto_score, _ = sa.score_volatility_crypto(df)
+    assert crypto_score >= stock_score
+
+
+# ----------------------------------------------------------------------
+# score_btc_dominance
+# ----------------------------------------------------------------------
+def test_score_btc_dominance_btc_itself_is_neutral(fake_yfinance, monkeypatch):
+    import stock_analyzer as sa2
+
+    class CryptoTicker(fake_yfinance):
+        @property
+        def info(self):
+            return {"currency": "USD", "longName": "Bitcoin USD",
+                    "quoteType": "CRYPTOCURRENCY", "sector": None}
+
+    monkeypatch.setattr(sa2.yf, "Ticker", CryptoTicker)
+    monkeypatch.setattr(sa2.external_data, "get_btc_dominance", lambda: None)
+    df = CryptoTicker("BTC-USD").history()
+    score, note = sa2.score_btc_dominance("BTC-USD", df)
+    assert score == 50
+    assert "punktem odniesienia" in note.lower()
+
+
+def test_score_btc_dominance_altcoin_insufficient_data():
+    df = pd.DataFrame({"Close": [100.0] * 10})
+    score, note = sa.score_btc_dominance("ETH-USD", df)
+    assert score == 50
+    assert "brak" in note.lower()
+
+
+def test_score_btc_dominance_altcoin_outperforming_btc(fake_yfinance, monkeypatch):
+    import stock_analyzer as sa2
+    import numpy as np
+
+    # Altcoin: silny wzrost 30d. BTC (mockowany fetch_history): płaski.
+    n = 60
+    idx = pd.date_range("2024-01-01", periods=n, freq="B")
+    altcoin_close = np.linspace(100, 140, n)  # +40% w 30d ostatnich
+    altcoin_df = pd.DataFrame({"Close": altcoin_close}, index=idx)
+
+    btc_flat = pd.DataFrame({"Close": np.full(n, 100.0)}, index=idx)
+
+    def fake_fetch_history(stock, period, interval="1d"):
+        return btc_flat
+
+    monkeypatch.setattr(sa2, "fetch_history", fake_fetch_history)
+    score, note = sa2.score_btc_dominance("SOL-USD", altcoin_df)
+    assert score > 50  # altcoin bije płaski BTC
+    assert "bije btc" in note.lower()
+
+
+# ----------------------------------------------------------------------
+# score_seasonality
+# ----------------------------------------------------------------------
+def test_score_seasonality_known_ticker_returns_modifier():
+    score, note = sa.score_seasonality("GLD")
+    assert 0 <= score <= 100
+    assert isinstance(note, str) and note
+
+
+def test_score_seasonality_unknown_ticker_neutral():
+    score, note = sa.score_seasonality("UNKNOWNTICKER")
+    assert score == 50
+    assert "brak danych" in note.lower()
+
+
+def test_score_seasonality_case_insensitive():
+    score_lower, _ = sa.score_seasonality("gld")
+    score_upper, _ = sa.score_seasonality("GLD")
+    assert score_lower == score_upper
+
+
+# ----------------------------------------------------------------------
+# Integracja: analyze_ticker dla crypto i commodity z nowymi składowymi
+# ----------------------------------------------------------------------
+def test_analyze_ticker_crypto_has_specialized_components(fake_yfinance, monkeypatch):
+    import stock_analyzer as sa2
+
+    class CryptoTicker(fake_yfinance):
+        @property
+        def info(self):
+            return {"currency": "USD", "longName": "Ethereum USD",
+                    "quoteType": "CRYPTOCURRENCY", "sector": None}
+
+    monkeypatch.setattr(sa2.yf, "Ticker", CryptoTicker)
+    monkeypatch.setattr(sa2.external_data, "get_btc_dominance", lambda: None)
+    res = sa2.analyze_ticker("ETH-USD")
+    assert res["asset_type"] == "crypto"
+    assert "volatility_crypto" in res["components"]
+    assert "btc_dominance" in res["components"]
+    assert "volatility" not in res["components"]
+    # fundamentalne nadal wykluczone
+    assert "valuation" not in res["components"]
+    assert "dividend" not in res["components"]
+    assert "fundamentals" not in res["components"]
+
+
+def test_analyze_ticker_commodity_has_seasonality(fake_yfinance, monkeypatch):
+    import stock_analyzer as sa2
+
+    class CommodityTicker(fake_yfinance):
+        @property
+        def info(self):
+            return {"currency": "USD", "longName": "Gold ETF",
+                    "quoteType": "ETF", "sector": None,
+                    "trailingPE": None, "dividendYield": None}
+
+    monkeypatch.setattr(sa2.yf, "Ticker", CommodityTicker)
+    res = sa2.analyze_ticker("GLD")
+    assert "seasonality" in res["components"]
+
+
+def test_analyze_ticker_crypto_total_score_in_range(fake_yfinance, monkeypatch):
+    import stock_analyzer as sa2
+
+    class CryptoTicker(fake_yfinance):
+        @property
+        def info(self):
+            return {"currency": "USD", "longName": "Bitcoin USD",
+                    "quoteType": "CRYPTOCURRENCY", "sector": None}
+
+    monkeypatch.setattr(sa2.yf, "Ticker", CryptoTicker)
+    monkeypatch.setattr(sa2.external_data, "get_btc_dominance", lambda: None)
+    res = sa2.analyze_ticker("BTC-USD")
+    assert 0 <= res["total_score"] <= 100

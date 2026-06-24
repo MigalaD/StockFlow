@@ -1,0 +1,107 @@
+Copyright (c) 2026 Damian Migała / StockFlow (Analizator Spółek)
+Wszystkie prawa zastrzeżone. All rights reserved.
+
+================================================================================
+WSZYSTKIE PRAWA ZASTRZEŻONE / ALL RIGHTS RESERVED
+================================================================================
+
+Niniejsze oprogramowanie oraz wszelkie powiązane pliki dokumentacji
+(zwane dalej "Oprogramowaniem") stanowią własność intelektualną Damiana
+Migały, działającego pod marką StockFlow (Analizator Spółek)
+("Właściciel").
+
+1. ZASTRZEŻENIE PRAW
+
+   Wszelkie prawa autorskie majątkowe i osobiste do Oprogramowania,
+   w tym między innymi do kodu źródłowego, architektury, algorytmów
+   scoringu, struktury bazy danych, dokumentacji technicznej i
+   użytkowej, nazwy "StockFlow" / "Analizator Spółek" oraz wszelkich
+   powiązanych materiałów, należą wyłącznie do Właściciela.
+
+2. ZAKAZ KOPIOWANIA, UŻYWANIA I MODYFIKACJI
+
+   Bez wyraźnej, pisemnej zgody Właściciela ZABRONIONE jest:
+
+   a) Kopiowanie, powielanie lub reprodukowanie Oprogramowania w całości
+      lub w części, w jakiejkolwiek formie i za pomocą jakichkolwiek
+      środków (elektronicznych, mechanicznych lub innych);
+
+   b) Używanie Oprogramowania, w całości lub w części, do celów
+      własnych, komercyjnych lub niekomercyjnych;
+
+   c) Modyfikowanie, adaptowanie, tłumaczenie lub tworzenie utworów
+      zależnych (pochodnych) na podstawie Oprogramowania;
+
+   d) Dystrybuowanie, publikowanie, podlicencjonowanie, wynajmowanie,
+      leasingowanie, sprzedawanie lub w inny sposób udostępnianie
+      Oprogramowania osobom trzecim;
+
+   e) Dekompilowanie, deasemblowanie lub odtwarzanie kodu źródłowego
+      (reverse engineering) jakiejkolwiek skompilowanej lub
+      zaciemnionej części Oprogramowania;
+
+   f) Usuwanie, zmienianie lub ukrywanie jakichkolwiek informacji
+      o prawach autorskich, znaków towarowych lub innych oznaczeń
+      własności zawartych w Oprogramowaniu;
+
+   g) Używanie nazwy "StockFlow", "Analizator Spółek" lub jakichkolwiek
+      podobnych oznaczeń mogących wprowadzać w błąd co do pochodzenia
+      produktu lub jego powiązania z Właścicielem.
+
+3. BRAK UDZIELONEJ LICENCJI
+
+   Udostępnienie kodu źródłowego (np. w repozytorium prywatnym,
+   wybranym współpracownikom, recenzentom lub w celach demonstracyjnych)
+   NIE stanowi udzielenia jakiejkolwiek licencji, dorozumianej lub
+   wyraźnej, na korzystanie z Oprogramowania. Dostęp do kodu źródłowego
+   w jakiejkolwiek formie nie uprawnia odbiorcy do żadnego z działań
+   wymienionych w punkcie 2.
+
+4. WYJĄTKI
+
+   Powyższe ograniczenia nie dotyczą:
+
+   a) Osób, które uzyskały wyraźną, pisemną zgodę Właściciela na
+      konkretne, opisane w tej zgodzie działanie;
+
+   b) Zakresu dozwolonego użytku określonego bezwzględnie obowiązującymi
+      przepisami prawa autorskiego (np. cytowanie w celach edukacyjnych
+      lub krytycznych, zgodnie z art. 23-35 polskiej ustawy o prawie
+      autorskim i prawach pokrewnych), w zakresie, w jakim przepisy te
+      nie mogą zostać wyłączone niniejszą licencją.
+
+5. BRAK GWARANCJI
+
+   OPROGRAMOWANIE JEST DOSTARCZANE "TAK JAK JEST" (AS IS), BEZ
+   JAKICHKOLWIEK GWARANCJI, WYRAŹNYCH LUB DOROZUMIANYCH, W TYM MIĘDZY
+   INNYMI GWARANCJI PRZYDATNOŚCI HANDLOWEJ, PRZYDATNOŚCI DO OKREŚLONEGO
+   CELU ORAZ NIENARUSZANIA PRAW OSÓB TRZECICH. WŁAŚCICIEL NIE PONOSI
+   ODPOWIEDZIALNOŚCI ZA JAKIEKOLWIEK SZKODY WYNIKAJĄCE Z UŻYCIA LUB
+   NIEMOŻNOŚCI UŻYCIA OPROGRAMOWANIA.
+
+6. CHARAKTER APLIKACJI
+
+   Analizator Spółek (StockFlow) jest narzędziem edukacyjnym i
+   analitycznym. Nie stanowi porady inwestycyjnej, rekomendacji
+   finansowej ani usługi doradztwa inwestycyjnego w rozumieniu
+   obowiązujących przepisów prawa.
+
+7. NARUSZENIA
+
+   Wszelkie nieautoryzowane kopiowanie, używanie, modyfikowanie lub
+   dystrybuowanie Oprogramowania stanowi naruszenie praw autorskich
+   i może skutkować odpowiedzialnością cywilną oraz karną na podstawie
+   obowiązujących przepisów prawa, w tym polskiej ustawy z dnia 4 lutego
+   1994 r. o prawie autorskim i prawach pokrewnych.
+
+8. KONTAKT
+
+   W sprawie uzyskania licencji, zgody na użycie lub innych pytań
+   dotyczących praw do Oprogramowania, należy skontaktować się
+   bezpośrednio z Właścicielem.
+
+================================================================================
+
+Data ostatniej aktualizacji: 2026
+Wersja Oprogramowania objęta niniejszą licencją: 1.1.0 i wszystkie
+poprzednie oraz przyszłe wersje, chyba że wskazano inaczej.
