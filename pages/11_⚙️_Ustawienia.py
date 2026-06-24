@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Damian Migała / StockFlow (Analizator Spółek)
+# Wszystkie prawa zastrzeżone. All rights reserved.
+# Zobacz plik LICENSE w katalogu głównym repozytorium.
+
 """
 Ustawienia
 """
@@ -221,7 +225,10 @@ st.markdown(
 with tab_wyglad:
     st.markdown("#### 🌓 Tryb ciemny / jasny")
     st.markdown(
-        "Wygląd strony możesz zmienić rozwijając opcję w prawnym górnym rogu Streamlit."
+        "Tryb ciemny jest skonfigurowany w pliku `.streamlit/config.toml` "
+        "(folder `.streamlit` w tym samym katalogu co `dashboard.py`). "
+        "Aby wrócić do trybu jasnego, otwórz ten plik i zmień "
+        "`base = \"dark\"` na `base = \"light\"`, albo usuń cały plik."
     )
 
     st.divider()
@@ -265,6 +272,36 @@ with tab_diag:
     else:
         st.code("\n".join(logi), language="log")
         st.caption(f"Plik logu: `{get_log_file_path()}`")
+
+    st.divider()
+    st.markdown("#### 🌐 Źródła danych zewnętrznych")
+    st.markdown(
+        "Status dodatkowych, darmowych źródeł danych live, które "
+        "uzupełniają Yahoo Finance (główne źródło, ~15 min opóźnienia)."
+    )
+    import external_data
+
+    src_col1, src_col2, src_col3 = st.columns(3)
+    with src_col1:
+        st.markdown("**₿ Binance**")
+        st.success("✅ Aktywne (krypto, na żywo)")
+        st.caption("Bez konfiguracji – publiczne API, zawsze dostępne.")
+    with src_col2:
+        st.markdown("**📊 CoinGecko**")
+        st.success("✅ Aktywne (dominacja BTC)")
+        st.caption("Bez konfiguracji – publiczne API, zawsze dostępne.")
+    with src_col3:
+        st.markdown("**🇺🇸 Alpaca Markets**")
+        if external_data.is_alpaca_configured():
+            st.success("✅ Skonfigurowane (akcje USA, na żywo)")
+        else:
+            st.warning("⚠️ Nieskonfigurowane")
+            st.caption(
+                "Opcjonalne. Wymaga darmowego klucza API z alpaca.markets "
+                "– ustaw ALPACA_API_KEY i ALPACA_SECRET_KEY w sekretach "
+                "Streamlit Cloud. Bez klucza aplikacja korzysta wyłącznie "
+                "z Yahoo Finance dla akcji USA (~15 min opóźnienia)."
+            )
 
 
 footer()

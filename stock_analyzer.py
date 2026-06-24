@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Damian Migała / StockFlow (Analizator Spółek)
+# Wszystkie prawa zastrzeżone. All rights reserved.
+# Zobacz plik LICENSE w katalogu głównym repozytorium.
+
 """
 Stock Analytics Tool
 =====================
@@ -23,6 +27,7 @@ import yfinance as yf
 
 import database as db
 from rate_limiter import rate_limited, with_backoff
+import external_data
 
 
 # ----------------------------------------------------------------------
@@ -394,28 +399,49 @@ EXCLUDED_COMPONENTS_BY_ASSET_TYPE = {
     "etf": {"fundamentals"},
     "etf_commodity": {"valuation", "dividend", "fundamentals"},
     "commodity": {"valuation", "dividend", "fundamentals"},
+    "crypto": {"valuation", "dividend", "fundamentals"},
     "other": {"valuation", "dividend", "fundamentals"},
 }
+
+# Krypto i surowce mają wykluczone te same fundamentalne składowe co wyżej,
+# ale dodatkowo dostają WŁASNE składowe (volatility_crypto / btc_dominance
+# dla krypto; seasonality dla surowców) ZAMIAST zwykłej "volatility".
+# Patrz get_weights_for_asset_type() - tam dzieje się podmiana.
+CRYPTO_EXTRA_COMPONENTS = {"btc_dominance"}
+COMMODITY_EXTRA_COMPONENTS = {"seasonality"}
 
 ASSET_TYPE_LABELS = {
     "stock": "Akcja",
     "etf": "ETF",
     "etf_commodity": "ETF (towarowy)",
     "commodity": "Surowiec / kontrakt",
+    "crypto": "Kryptowaluta",
     "other": "Inny instrument",
 }
 
 
-def get_asset_type(info: dict) -> str:
+def get_asset_type(info: dict, ticker: str | None = None) -> str:
     """
     Klasyfikuje instrument na podstawie pola `quoteType` z yfinance:
-    EQUITY -> akcja, ETF -> etf, FUTURE/CURRENCY/CRYPTOCURRENCY -> surowiec
-    (te ostatnie traktujemy podobnie - brak fundamentów spółki).
+    EQUITY -> akcja, ETF -> etf, CRYPTOCURRENCY -> crypto,
+    FUTURE/CURRENCY/COMMODITY -> surowiec (commodity).
+
+    Krypto i surowce były wcześniej traktowane identycznie ("commodity"),
+    ale mają zupełnie inną charakterystykę: krypto ma wielokrotnie wyższą
+    "normalną" zmienność (60-150% rocznie to nic niezwykłego, podczas gdy
+    dla akcji to już ekstremum) i brak fundamentów makro typu sezonowość.
+    Dlatego od teraz rozróżniamy je jako osobne typy aktywów z osobnymi
+    wagami i osobnymi składowymi score (patrz get_weights_for_asset_type).
 
     Specjalny przypadek: ETF-y towarowe (np. GLD, SLV, USO) mają
     quoteType=ETF, ale - tak jak surowce - nie mają P/E ani dywidendy.
     Jeśli ETF nie ma żadnej z tych wartości, traktujemy go jak
     'etf_commodity' (wyklucza też wycenę/dywidendę z score).
+
+    Parametr `ticker` (opcjonalny) to dodatkowe zabezpieczenie: jeśli Yahoo
+    nie poda quoteType="CRYPTOCURRENCY" (zdarza się dla niektórych mniej
+    popularnych monet), a symbol kończy się na "-USD" (konwencja Yahoo dla
+    krypto), i tak rozpoznajemy to jako krypto.
     """
     quote_type = (info.get("quoteType") or "").upper()
     if quote_type == "EQUITY":
@@ -424,10 +450,16 @@ def get_asset_type(info: dict) -> str:
         if info.get("trailingPE") is None and info.get("dividendYield") is None:
             return "etf_commodity"
         return "etf"
-    if quote_type in ("FUTURE", "CURRENCY", "CRYPTOCURRENCY", "COMMODITY"):
+    if quote_type == "CRYPTOCURRENCY":
+        return "crypto"
+    if quote_type in ("FUTURE", "CURRENCY", "COMMODITY"):
         return "commodity"
     if quote_type == "":
-        return "stock"  # brak informacji - domyślnie traktuj jak akcję
+        # Brak informacji od Yahoo - sprawdź ticker jako fallback zanim
+        # domyślnie potraktujemy jak akcję (konwencja: krypto = "XXX-USD").
+        if ticker and ticker.upper().endswith("-USD"):
+            return "crypto"
+        return "stock"
     return "other"
 
 
@@ -435,9 +467,29 @@ def get_weights_for_asset_type(asset_type: str) -> dict:
     """
     Zwraca wagi przeliczone dla danego typu aktywa - wyklucza nieadekwatne
     składowe i renormalizuje pozostałe tak, by sumowały się do 1.0.
+
+    Dla krypto: zwykła 'volatility' jest ZASTĘPOWANA przez 'volatility_crypto'
+    (te same wagi, ale inna funkcja licząca - kalibrowana pod zmienność
+    krypto) i dochodzi nowa składowa 'btc_dominance' (waga 0.08, kosztem
+    pozostałych, renormalizowana).
+
+    Dla surowców: dochodzi 'seasonality' (waga 0.08) na podobnej zasadzie.
     """
     excluded = EXCLUDED_COMPONENTS_BY_ASSET_TYPE.get(asset_type, set())
     remaining = {k: v for k, v in WEIGHTS.items() if k not in excluded}
+
+    if asset_type == "crypto":
+        # Podmień 'volatility' na 'volatility_crypto' z tą samą wagą bazową.
+        if "volatility" in remaining:
+            remaining["volatility_crypto"] = remaining.pop("volatility")
+        # Dodaj dominację BTC jako nową składową (waga stała 0.08 przed
+        # renormalizacją - dla samego BTC ta składowa i tak da neutralne 50,
+        # patrz score_btc_dominance).
+        remaining["btc_dominance"] = 0.08
+
+    elif asset_type in ("commodity", "etf_commodity"):
+        remaining["seasonality"] = 0.08
+
     total = sum(remaining.values())
     if total <= 0:
         return dict(WEIGHTS)
@@ -699,6 +751,168 @@ def _bollinger_percent_b(df: pd.DataFrame) -> float | None:
     if np.isnan(upper) or np.isnan(lower) or upper == lower:
         return None
     return float((price - lower) / (upper - lower))
+
+
+# ----------------------------------------------------------------------
+# SCORING DEDYKOWANY DLA KRYPTO
+# Krypto ma WIELOKROTNIE wyższą "normalną" zmienność niż akcje (60-150%
+# rocznie to norma, nie anomalia). Stosowanie progów score_volatility()
+# (kalibrowanych pod akcje, gdzie >60% to "bardzo wysoka zmienność") do
+# Bitcoina strukturalnie zaniża jego wynik tylko dlatego, że jest krypto -
+# nie dlatego, że dzieje się coś niezwykłego. Dlatego osobna funkcja
+# z progami skalowanymi pod realia rynku krypto.
+# ----------------------------------------------------------------------
+def score_volatility_crypto(df: pd.DataFrame) -> tuple[float, str]:
+    """Ocenia stabilność ceny krypto - progi zmienności kalibrowane pod
+    realia rynku kryptowalut, nie pod akcje.
+
+    Orientacyjne poziomy roczne (na podstawie historii BTC/ETH/altcoinów):
+    < 50%  - niska jak na krypto (zwykle tylko duże, dojrzałe coiny w
+             spokojnym okresie rynku)
+    50-120% - normalna zmienność krypto (większość czasu dla BTC/ETH)
+    > 120%  - podwyższona, typowa dla mniejszych altcoinów lub okresów
+              dużej niepewności rynkowej
+    > 250%  - ekstremalna, nawet jak na krypto
+    """
+    returns = df["Close"].pct_change()
+    vol_30d = returns.rolling(30).std().iloc[-1] * np.sqrt(252)
+    if np.isnan(vol_30d):
+        return 50, "brak danych"
+
+    vol_pct = vol_30d * 100
+    if vol_pct < 50:
+        score, note = 65, f"niska zmienność jak na krypto ({vol_pct:.0f}% rocznie)"
+    elif vol_pct < 120:
+        score, note = 55, f"normalna zmienność krypto ({vol_pct:.0f}% rocznie)"
+    elif vol_pct < 250:
+        score, note = 35, f"podwyższona zmienność ({vol_pct:.0f}% rocznie)"
+    else:
+        score, note = 20, f"ekstremalna zmienność, nawet jak na krypto ({vol_pct:.0f}% rocznie)"
+
+    # Kontekst Bollingera - tak samo jak w score_volatility (akcje).
+    pct_b = _bollinger_percent_b(df)
+    if pct_b is not None:
+        if pct_b <= 0.0:
+            score += 10
+            note += "; cena poniżej dolnej wstęgi Bollingera (wyprzedanie)"
+        elif pct_b >= 1.0:
+            score -= 10
+            note += "; cena powyżej górnej wstęgi Bollingera (przegrzanie)"
+        elif pct_b < 0.2:
+            score += 5
+            note += "; cena przy dolnej wstędze Bollingera"
+        elif pct_b > 0.8:
+            score -= 5
+            note += "; cena przy górnej wstędze Bollingera"
+
+    return float(np.clip(score, 0, 100)), note
+
+
+def score_btc_dominance(ticker: str, df: pd.DataFrame) -> tuple[float, str]:
+    """Dla altcoinów: ocenia siłę względem Bitcoina (czy bije BTC, czy
+    zostaje w tyle) - analogicznie do relative strength vs S&P 500 dla akcji.
+
+    Dla samego BTC-USD zwraca neutralne 50 (Bitcoin jest punktem
+    odniesienia, nie ma sensu porównywać go z samym sobą).
+
+    Logika: pobiera 30-dniowy zwrot danego altcoina i 30-dniowy zwrot BTC
+    (z lokalnie dostępnych danych - nie wymaga dodatkowego zapytania
+    sieciowego), porównuje je. Altcoin bijący BTC dostaje wyższy wynik -
+    sugeruje to "wiarę rynku" w dany projekt ponad ogólny sentyment krypto.
+    Dodatkowo, jeśli dostępna jest aktualna dominacja BTC (CoinGecko),
+    dolicza się to jako kontekst w opisie (nie wpływa na liczbę punktów -
+    to dane rynkowe ogólne, nie specyficzne dla danego altcoina).
+    """
+    if ticker.upper() == "BTC-USD":
+        dom = external_data.get_btc_dominance()
+        if dom:
+            return 50, f"BTC jest punktem odniesienia (dominacja rynku: {dom['btc_dominance_pct']:.1f}%)"
+        return 50, "BTC jest punktem odniesienia"
+
+    close = df["Close"]
+    if len(close) < 31:
+        return 50, "brak wystarczających danych"
+
+    altcoin_ret_30d = (close.iloc[-1] / close.iloc[-31] - 1) * 100
+
+    btc_ret_30d = None
+    try:
+        btc_stock = yf.Ticker("BTC-USD")
+        btc_df = fetch_history(btc_stock, period="3mo", interval="1d")
+        if not btc_df.empty and len(btc_df) >= 31:
+            btc_close = btc_df["Close"].dropna()
+            if len(btc_close) >= 31:
+                btc_ret_30d = (btc_close.iloc[-1] / btc_close.iloc[-31] - 1) * 100
+    except Exception:
+        btc_ret_30d = None
+
+    if btc_ret_30d is None:
+        return 50, "brak danych BTC do porównania"
+
+    outperformance = altcoin_ret_30d - btc_ret_30d
+    # +/-30 pkt różnicy w zwrocie mapuje na +/-25 punktów score wokół 50
+    score = 50 + np.clip(outperformance, -30, 30) / 30 * 25
+    score = float(np.clip(score, 0, 100))
+
+    kierunek = "bije BTC" if outperformance > 0 else "słabszy niż BTC"
+    note = (
+        f"30d: ten coin {altcoin_ret_30d:+.1f}% vs BTC {btc_ret_30d:+.1f}% "
+        f"({kierunek} o {abs(outperformance):.1f} pkt proc.)"
+    )
+    return score, note
+
+
+# ----------------------------------------------------------------------
+# SCORING DEDYKOWANY DLA SUROWCÓW
+# Surowce mają silne wzorce sezonowe wynikające z fizycznego popytu/podaży
+# (zima -> popyt na gaz, lato -> sezon zbiorów w rolnictwie, itd.). To
+# dodatkowy kontekst, którego nie mają akcje - prosta tabela miesięcznych
+# modyfikatorów na bazie ogólnie znanych wzorców sezonowych.
+# ----------------------------------------------------------------------
+
+# Modyfikator sezonowy per miesiąc (1=styczeń...12=grudzień) dla każdego
+# tickera surowcowego. Wartości to ORIENTACYJNE, historyczne tendencje
+# (nie gwarancje) - oparte na fizycznych cyklach popytu/podaży:
+#   GLD (złoto): sezonowo silniejsze Q4/Q1 (popyt jubilerski - indyjski
+#                sezon ślubny, chiński Nowy Rok, zachodnie święta)
+#   USO (ropa WTI): sezon jazdy letniej w USA podbija popyt wiosną/latem
+#   UNG (gaz ziemny): silny popyt grzewczy zimą
+#   DBA (rolnictwo): zmienne w zależności od cyklu zbiorów - uproszczone
+_SEASONALITY_BY_TICKER = {
+    "GLD":  {1: 5, 2: 3, 3: 0, 4: 0, 5: 0, 6: -3, 7: -3, 8: 0, 9: 2, 10: 5, 11: 5, 12: 3},
+    "USO":  {1: -3, 2: 0, 3: 3, 4: 5, 5: 5, 6: 3, 7: 0, 8: 0, 9: -3, 10: -5, 11: -3, 12: -2},
+    "UNG":  {1: 5, 2: 5, 3: 0, 4: -3, 5: -5, 6: -3, 7: -2, 8: -2, 9: 0, 10: 3, 11: 5, 12: 5},
+    "DBA":  {1: 0, 2: 0, 3: 2, 4: 2, 5: 0, 6: -2, 7: -2, 8: 0, 9: 2, 10: 2, 11: 0, 12: 0},
+}
+
+
+def score_seasonality(ticker: str) -> tuple[float, str]:
+    """Modyfikator sezonowy dla surowców na bazie znanych, historycznych
+    wzorców popytowo-podażowych. Zwraca score wokół 50 (neutralnie), +/-5
+    punktów w zależności od miesiąca i tickera.
+
+    UWAGA: to orientacyjne, historyczne tendencje - nie reguła ani
+    gwarancja. Pojedynczy rok może łatwo odbiegać od wzorca (pogoda,
+    geopolityka, decyzje OPEC itd. dominują nad sezonowością).
+    """
+    import datetime as _dt
+
+    table = _SEASONALITY_BY_TICKER.get(ticker.upper())
+    if table is None:
+        return 50, "brak danych sezonowych dla tego instrumentu"
+
+    month = _dt.datetime.now().month
+    modifier = table.get(month, 0)
+    score = float(np.clip(50 + modifier, 0, 100))
+
+    if modifier > 0:
+        note = f"miesiąc historycznie sprzyjający dla tego surowca (+{modifier} pkt)"
+    elif modifier < 0:
+        note = f"miesiąc historycznie słabszy dla tego surowca ({modifier} pkt)"
+    else:
+        note = "miesiąc neutralny sezonowo dla tego surowca"
+
+    return score, note
 
 
 def score_valuation(info: dict) -> tuple[float, str]:
@@ -1126,7 +1340,7 @@ def analyze_ticker(ticker: str) -> dict:
     info = fetch_info(stock)
     news = fetch_news(stock)
 
-    asset_type = get_asset_type(info)
+    asset_type = get_asset_type(info, ticker=ticker)
     weights = get_weights_for_asset_type(asset_type)
 
     all_components = {
@@ -1141,6 +1355,17 @@ def analyze_ticker(ticker: str) -> dict:
         "sentiment": score_sentiment(news),
         "fundamentals": score_fundamentals_deep(info),
     }
+    # Składowe specjalistyczne - liczone tylko gdy faktycznie potrzebne
+    # (czyli gdy występują w wagach dla danego typu aktywa), żeby nie
+    # wykonywać zbędnej pracy (np. score_btc_dominance robi dodatkowe
+    # zapytanie sieciowe dla BTC) dla instrumentów, które ich nie używają.
+    if "volatility_crypto" in weights:
+        all_components["volatility_crypto"] = score_volatility_crypto(df)
+    if "btc_dominance" in weights:
+        all_components["btc_dominance"] = score_btc_dominance(ticker, df)
+    if "seasonality" in weights:
+        all_components["seasonality"] = score_seasonality(ticker)
+
     # tylko składowe sensowne dla tego typu aktywa (patrz weights powyżej)
     components = {k: v for k, v in all_components.items() if k in weights}
 
@@ -1159,7 +1384,7 @@ def analyze_ticker(ticker: str) -> dict:
     # default w .get() nie wystarcza. Dla takich aktywów użyj sensownej etykiety.
     sector = info.get("sector") or None
     if not sector:
-        if asset_type == "commodity" and ticker.upper().endswith("-USD"):
+        if asset_type == "crypto":
             sector = "Kryptowaluta"
         elif asset_type in ("commodity", "etf_commodity"):
             sector = ASSET_TYPE_LABELS.get(asset_type, "Surowiec / kontrakt")

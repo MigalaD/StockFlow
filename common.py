@@ -1,7 +1,11 @@
+# Copyright (c) 2026 Damian Migała / StockFlow (Analizator Spółek)
+# Wszystkie prawa zastrzeżone. All rights reserved.
+# Zobacz plik LICENSE w katalogu głównym repozytorium.
+
 """
 common.py – współdzielone stałe, funkcje pomocnicze i funkcje cache'ujące
 =========================================================================
-Importowane przez App.py i każdą stronę w pages/.
+Importowane przez app.py i każdą stronę w pages/.
 NIE zawiera żadnych wywołań st.* na poziomie modułu – tylko definicje.
 """
 from __future__ import annotations
@@ -71,7 +75,7 @@ DISCLAIMER = (
 
 # Wersja aplikacji - pokazywana w stopce. Ułatwia powiązanie zgłoszeń
 # testerów z konkretnym stanem kodu. Podnoś przy każdym wydaniu.
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 # ⬇️ PODMIEŃ na swój formularz Google / GitHub Issues przed publicznym launchem.
 # Używane w stopce (footer) i na stronie „O aplikacji”.
@@ -476,7 +480,7 @@ def footer(pokaz_feedback: bool = True):
             f"💬 Wersja testowa – [zgłoś uwagę lub błąd]({FEEDBACK_URL}) "
             "· ℹ️ więcej w zakładce „O aplikacji”."
         )
-    st.caption(f"StockFlow · wersja {APP_VERSION}")
+    st.caption(f"Analizator Spółek · wersja {APP_VERSION}")
 
 
 def banner_dane_niedostepne():
@@ -502,5 +506,5 @@ def beta_banner():
     st.warning(
         "🧪 **Wersja testowa (beta).** To narzędzie edukacyjne, **nie** porada "
         "inwestycyjna. Dane mogą się okresowo resetować (watchlista, portfolio, "
-        "ustawienia) – to normalne dla wersji testowej. Dziękujemy za testy!"
+        "ustawienia) – to normalne dla wersji testowej. Dziękuję za testy!"
     )

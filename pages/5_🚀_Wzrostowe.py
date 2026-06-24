@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Damian Migała / StockFlow (Analizator Spółek)
+# Wszystkie prawa zastrzeżone. All rights reserved.
+# Zobacz plik LICENSE w katalogu głównym repozytorium.
+
 """
 Spółki wzrostowe
 """
@@ -29,10 +33,10 @@ st.info(
     "duże, ugruntowane firmy."
 )
 
-#st.markdown(
-#    "Lista jest edytowalna w pliku `tickers.py` (`SPOLKI_WZROSTOWE`) - "
-#    "dodaj własne spółki, które chcesz śledzić."
-#)
+st.markdown(
+    "Lista jest edytowalna w pliku `tickers.py` (`SPOLKI_WZROSTOWE`) - "
+    "dodaj własne spółki, które chcesz śledzić."
+)
 
 with st.spinner("Sprawdzanie spółek wzrostowych..."):
     wyniki_wzrost = []

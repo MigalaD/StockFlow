@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Damian Migała / StockFlow (Analizator Spółek)
+# Wszystkie prawa zastrzeżone. All rights reserved.
+# Zobacz plik LICENSE w katalogu głównym repozytorium.
+
 """
 Moduł bazy danych (SQLite)
 ============================
