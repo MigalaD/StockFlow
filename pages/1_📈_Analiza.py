@@ -35,6 +35,7 @@ from stock_analyzer import WEIGHTS, interpret_score
 from intraday_signals import (
     atr_summary,
     stochastic_summary,
+    compute_stochastic,
     compute_obv,
     detect_obv_divergence,
     detect_support_resistance,
@@ -88,34 +89,40 @@ if not ticker:
     st.stop()
 
 with st.spinner(f"Pobieranie danych dla {ticker}..."):
+    # Score i metadane (Yahoo) – niezależne od źródła wykresu.
     try:
         wynik = pobierz_analize(ticker)
+    except Exception:
+        wynik = {"error": "fetch_failed"}
 
-        # Dla kryptowalut obsługiwanych przez Binance: pobierz historyczne
-        # świece OHLCV z Binance (prawdziwe dane, bez opóźnienia Yahoo).
-        # Score nadal liczony z Yahoo (spójność z resztą aplikacji).
-        # Fallback: gdy Binance niedostępny → Yahoo Finance jak zwykle.
-        df_binance = None
+    # Dane wykresu: Binance dla krypto (live), Yahoo jako fallback/default.
+    # Rozdzielone celowo – awaria jednego źródła nie blokuje drugiego.
+    df, info, _zrodlo_wykresu = None, {}, "Yahoo Finance (~15 min opóźnienia)"
+    try:
         if external_data.is_binance_supported(ticker):
             df_binance, _ = pobierz_dane_binance(ticker, okres=okres)
+            if df_binance is not None and not df_binance.empty:
+                df = df_binance
+                _zrodlo_wykresu = "Binance (na żywo)"
 
-        if df_binance is not None:
-            df = df_binance
-            info = wynik  # info z wynik dict (wystarczy do nazwy/waluty)
-            _zrodlo_wykresu = "Binance (na żywo)"
-        else:
+        if df is None:
             df, info = pobierz_dane(ticker, period=okres)
-            _zrodlo_wykresu = "Yahoo Finance (~15 min opóźnienia)"
-
+            if info is None:
+                info = {}
     except Exception:
-        df, info, wynik = None, {}, {"error": "fetch_failed"}
+        df, info = None, {}
+
+    # Gdy Binance dostarczył wykres ale Yahoo score failuje – zachowaj df.
+    # Gdy obydwa failują – df=None i wynik zawiera error, st.stop() poniżej.
 
 # Rozróżniamy: awaria Yahoo Finance vs nieprawidłowy symbol.
-if wynik.get("error") == "fetch_failed":
+# Brak danych wykresu I brak score → totalny fail, pokaż banner.
+if df is None and wynik.get("error") == "fetch_failed":
     banner_dane_niedostepne()
     st.stop()
 
-if df is None or "error" in wynik:
+# Brak wykresu (ale score może być) – nieprawidłowy symbol lub problem z danymi.
+if df is None:
     st.error(
         f"Nie udało się znaleźć danych dla symbolu **{ticker}**. "
         "Sprawdź, czy symbol jest prawidłowy (np. AAPL dla Apple, "
@@ -123,14 +130,37 @@ if df is None or "error" in wynik:
     )
     st.stop()
 
+# Brak score (Yahoo failuje) ale mamy wykres z Binance – ostrzeż i kontynuuj.
+if "error" in wynik:
+    st.warning(
+        "⚠️ Wynik (score) chwilowo niedostępny – Yahoo Finance ma przejściowy "
+        "problem. Wykres pochodzi z Binance i działa normalnie. "
+        "Odśwież stronę za chwilę, aby załadować pełną analizę."
+    )
+    # Wypełnij wynik minimalnymi danymi, żeby strona się nie wysypała.
+    wynik = {
+        "total_score": None,
+        "name": ticker,
+        "currency": "USD",
+        "price": df["Close"].iloc[-1] if df is not None and not df.empty else None,
+        "sector": "—",
+        "industry": "—",
+        "asset_type": "crypto" if external_data.is_binance_supported(ticker) else "other",
+        "components": {},
+        "weights": {},
+        "vwap": None,
+        "calendar_info": {},
+        "news": [],
+    }
+
 nazwa_firmy = (
     info.get("longName")          # yfinance info dict
     or info.get("name")           # wynik dict z analyze_ticker
     or ticker
 )
-waluta = info.get("currency", "USD")
-cena = wynik["price"]
-score = wynik["total_score"]
+waluta = info.get("currency") or wynik.get("currency", "USD")
+cena = wynik.get("price")
+score = wynik.get("total_score")
 sektor = wynik.get("sector", "Nieznany")
 branza = wynik.get("industry", "Nieznana")
 asset_type = wynik.get("asset_type", "stock")
@@ -151,16 +181,20 @@ with col1:
     else:
         st.caption(f"🏷️ {asset_label}")
 with col2:
+    cena_str = f"{cena} {waluta}" if cena is not None else "—"
     st.metric(
-        "Aktualna cena", f"{cena} {waluta}",
-        help="Ostatnia dostępna cena zamknięcia z Yahoo Finance.",
+        "Aktualna cena", cena_str,
+        help="Ostatnia dostępna cena zamknięcia.",
     )
 with col3:
-    st.metric(
-        "Wynik ogólny", f"{score:.0f} / 100",
-        delta=interpret_score(score), delta_color="off",
-        help=LEGENDA_SCORE,
-    )
+    if score is not None:
+        st.metric(
+            "Wynik ogólny", f"{score:.0f} / 100",
+            delta=interpret_score(score), delta_color="off",
+            help=LEGENDA_SCORE,
+        )
+    else:
+        st.metric("Wynik ogólny", "—", help="Score niedostępny – Yahoo Finance chwilowo nieosiągalny.")
 with col4:
     st.write("")
     st.write("")
@@ -183,7 +217,7 @@ with st.expander("📓 Szybki wpis do dziennika dla tej spółki"):
         from datetime import date as _date
         db.add_journal_entry(
             user_id, _date.today().isoformat(), ticker, quick_decyzja,
-            quick_powod.strip(), score, cena,
+            quick_powod.strip(), score or 0, cena or 0,
         )
         st.success(f"Dodano wpis do dziennika dla {ticker} (wynik {score:.0f}/100, cena {cena}).")
 
@@ -242,7 +276,7 @@ if info_bits:
             "- pomagają ocenić kontekst, ale nie zmieniają score."
         )
 
-score_banner(score, len(wynik["components"]))
+score_banner(score if score is not None else 50, len(wynik.get("components", {})))
 
 red_flags = wynik.get("red_flags") or []
 if red_flags:
@@ -455,21 +489,85 @@ with tab_news:
 
 with tab_intraday:
     st.markdown("#### ⚡ Sygnały krótkoterminowe")
-    st.warning(
-        "⚠️ **Ważne ograniczenie:** te wskaźniki liczone są na danych "
-        "**dziennych** z Yahoo Finance (opóźnienie ~15 min) – nie na "
-        "danych minutowych ani tick-po-ticku. To narzędzie dla "
-        "**swing-tradingu** (pozycje trzymane dni/tygodnie), nie dla "
-        "prawdziwego intraday day-tradingu (wejście i wyjście tego "
-        "samego dnia, na bazie notowań sekundowych)."
+    st.caption(
+        "Dane dzienne z Yahoo Finance (~15 min opóźnienia) – narzędzie dla "
+        "**swing-tradingu** (pozycje trzymane dni/tygodnie), nie dla intraday day-tradingu."
     )
 
-    atr_info = atr_summary(df)
+    atr_info   = atr_summary(df)
     stoch_info = stochastic_summary(df)
+    levels     = detect_support_resistance(df)
+    obv_series = compute_obv(df)
+    divergence = detect_obv_divergence(df)
 
+    # ── PANEL SYNTEZY ─────────────────────────────────────────────
+    # Zbiera wszystkie sygnały w jedno zdanie z oceną sytuacji.
+    sygnaly_bycze    = []
+    sygnaly_niedzw   = []
+    sygnaly_neutralne = []
+
+    if stoch_info:
+        if stoch_info["signal"] == "wyprzedanie":
+            sygnaly_bycze.append("wyprzedanie stochastyku (<20)")
+        elif stoch_info["signal"] == "przegrzanie":
+            sygnaly_niedzw.append("przegrzanie stochastyku (>80)")
+        if stoch_info["crossed"] == "bullish":
+            sygnaly_bycze.append("bullish crossover %K/%D")
+        elif stoch_info["crossed"] == "bearish":
+            sygnaly_niedzw.append("bearish crossover %K/%D")
+
+    if divergence:
+        if divergence["type"] == "bullish":
+            sygnaly_bycze.append("bycza dywergencja OBV")
+        else:
+            sygnaly_niedzw.append("niedźwiedzia dywergencja OBV")
+
+    if levels and atr_info and cena is not None:
+        najblizszy_opor   = next((l for l in levels["resistance"] if l > cena), None)
+        najblizsze_wsprcie = next((l for l in reversed(levels["support"]) if l < cena), None)
+        if najblizszy_opor and najblizsze_wsprcie:
+            dist_opor  = (najblizszy_opor - cena) / cena * 100
+            dist_wsp   = (cena - najblizsze_wsprcie) / cena * 100
+            if dist_wsp < dist_opor * 0.5:
+                sygnaly_niedzw.append("cena blisko wsparcia")
+            elif dist_opor < dist_wsp * 0.5:
+                sygnaly_bycze.append("cena blisko oporu")
+
+    n_b = len(sygnaly_bycze)
+    n_n = len(sygnaly_niedzw)
+
+    if n_b > 0 and n_n == 0:
+        ikona_syntezy = "🟢"
+        kolor_syntezy = "success"
+        tekst_syntezy = f"**Sygnały pozytywne ({n_b}):** " + ", ".join(sygnaly_bycze)
+    elif n_n > 0 and n_b == 0:
+        ikona_syntezy = "🔴"
+        kolor_syntezy = "error"
+        tekst_syntezy = f"**Sygnały negatywne ({n_n}):** " + ", ".join(sygnaly_niedzw)
+    elif n_b > 0 and n_n > 0:
+        ikona_syntezy = "🟡"
+        kolor_syntezy = "warning"
+        tekst_syntezy = (
+            f"**Mieszane sygnały** – bycze: {', '.join(sygnaly_bycze)} | "
+            f"niedźwiedzie: {', '.join(sygnaly_niedzw)}"
+        )
+    else:
+        ikona_syntezy = "⚪"
+        kolor_syntezy = "info"
+        tekst_syntezy = "**Brak wyraźnych sygnałów krótkoterminowych** – wskaźniki w strefie neutralnej."
+
+    getattr(st, kolor_syntezy)(f"{ikona_syntezy} {tekst_syntezy}")
+    st.caption(
+        "Synteza nie jest rekomendacją – to skrót tego, co mówią poszczególne "
+        "wskaźniki poniżej. Zawsze sprawdzaj każdy z nich samodzielnie."
+    )
+
+    st.divider()
+
+    # ── ATR + KONKRETNY STOP-LOSS ──────────────────────────────────
     col_atr, col_stoch = st.columns(2)
     with col_atr:
-        st.markdown("**📏 ATR (Average True Range)**")
+        st.markdown("**📏 ATR – zasięg ruchu i sugerowany stop-loss**")
         if atr_info:
             st.metric(
                 "Średni dzienny zasięg ruchu",
@@ -477,43 +575,148 @@ with tab_intraday:
                 delta=f"{atr_info['atr_pct']:.1f}% ceny",
                 delta_color="off",
             )
+            if cena is not None:
+                stop_1x = cena - atr_info["atr"]
+                stop_15 = cena - 1.5 * atr_info["atr"]
+                stop_tekst = (
+                    "**Sugerowany stop-loss:**\n\n"
+                    f"- Ciąsny (1× ATR): **{stop_1x:.2f} {waluta}**\n\n"
+                    f"- Szeroki (1.5× ATR): **{stop_15:.2f} {waluta}**"
+                )
+                st.markdown(stop_tekst)
             st.caption(
-                "ATR pokazuje, ile instrument *zwykle* porusza się w ciągu "
-                "dnia. Przydatne do ustawiania stop-lossów: stop ciaśniejszy "
-                "niż ATR często zostaje 'wybity' przez zwykły szum rynkowy, "
-                "nie przez faktyczne odwrócenie trendu."
+                "Stop-loss ciasniejszy niż ATR bywa 'wybijany' przez zwykły szum "
+                "rynkowy, a nie faktyczne odwrócenie trendu."
             )
         else:
             st.caption("Brak wystarczających danych do wyliczenia ATR.")
 
+    # ── STOCHASTIK Z WYKRESEM ──────────────────────────────────────
     with col_stoch:
-        st.markdown("**🎯 Stochastik (%K / %D)**")
+        st.markdown("**🎯 Stochastik – pozycja w zakresie wahań**")
         if stoch_info:
             st.metric(
-                "Pozycja w zakresie wahań",
-                f"%K={stoch_info['k']:.0f}  %D={stoch_info['d']:.0f}",
+                "Aktualny stan",
+                f"%K = {stoch_info['k']:.0f}  |  %D = {stoch_info['d']:.0f}",
                 delta=stoch_info["signal"],
                 delta_color="off",
             )
             if stoch_info["crossed"] == "bullish":
-                st.success("🟢 %K przecięło %D od dołu (sygnał bullish)")
+                st.success("🟢 %K przecięło %D od dołu – sygnał bullish")
             elif stoch_info["crossed"] == "bearish":
-                st.error("🔴 %K przecięło %D od góry (sygnał bearish)")
-            st.caption(
-                "Stochastik pokazuje, gdzie cena leży względem niedawnego "
-                "zakresu wahań. < 20 = wyprzedanie, > 80 = przegrzanie. "
-                "Bywa czulszy na krótkoterminowe odwrócenia niż RSI."
-            )
+                st.error("🔴 %K przecięło %D od góry – sygnał bearish")
+            else:
+                st.caption("Brak przecięcia %K/%D w ostatnim dniu.")
+            st.caption("< 20 = wyprzedanie  |  > 80 = przegrzanie")
         else:
-            st.caption("Brak wystarczających danych do wyliczenia stochastyku.")
+            st.caption("Brak wystarczających danych.")
+
+    # Mini wykres stochastyku za ostatnie 60 dni
+    if stoch_info:
+        k_series, d_series = compute_stochastic(df)
+        k60 = k_series.dropna().iloc[-60:]
+        d60 = d_series.dropna().iloc[-60:]
+        if not k60.empty:
+            fig_stoch = go.Figure()
+            fig_stoch.add_trace(go.Scatter(
+                x=k60.index, y=k60.values, name="%K",
+                line=dict(color="#f59e0b", width=1.6),
+            ))
+            fig_stoch.add_trace(go.Scatter(
+                x=d60.index, y=d60.values, name="%D (sygnał)",
+                line=dict(color="#94a3b8", width=1.2, dash="dot"),
+            ))
+            fig_stoch.add_hline(y=80, line_dash="dot", line_color="#ef4444",
+                                annotation_text="Przegrzanie (80)", opacity=0.5)
+            fig_stoch.add_hline(y=20, line_dash="dot", line_color="#22c55e",
+                                annotation_text="Wyprzedanie (20)", opacity=0.5)
+            fig_stoch.update_layout(
+                height=200, margin=dict(l=10, r=10, t=10, b=10),
+                yaxis=dict(range=[0, 100]),
+                legend=dict(orientation="h", y=1.1),
+            )
+            st.plotly_chart(apply_theme(fig_stoch), use_container_width=True)
 
     st.divider()
 
-    # ── OBV i dywergencja ──────────────────────────────────────────
-    st.markdown("**📊 OBV (On-Balance Volume) i dywergencja**")
-    obv_series = compute_obv(df)
+    # ── WSPARCIE I OPÓR Z ODLEGŁOŚCIĄ % ───────────────────────────
+    st.markdown("**📐 Wsparcie i opór – odległość od aktualnej ceny**")
+    if levels["support"] or levels["resistance"]:
+        col_sup, col_res = st.columns(2)
+        with col_sup:
+            st.caption("🟢 Wsparcie")
+            for lvl in reversed(levels["support"]):
+                if cena is not None:
+                    dist = (cena - lvl) / cena * 100
+                    st.markdown(
+                        f"**{lvl:.2f} {waluta}** &nbsp; "
+                        f"<span style='color:#94a3b8'>−{dist:.1f}% od ceny</span>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(f"`{lvl:.2f} {waluta}`")
+        with col_res:
+            st.caption("🔴 Opór")
+            for lvl in levels["resistance"]:
+                if cena is not None:
+                    dist = (lvl - cena) / cena * 100
+                    st.markdown(
+                        f"**{lvl:.2f} {waluta}** &nbsp; "
+                        f"<span style='color:#94a3b8'>+{dist:.1f}% od ceny</span>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(f"`{lvl:.2f} {waluta}`")
+
+        # Wykres ceny z poziomami i etykietami odległości
+        fig_sr = go.Figure()
+        fig_sr.add_trace(go.Scatter(
+            x=df.index, y=df["Close"], name="Cena",
+            line=dict(color="#2563eb", width=1.6),
+        ))
+        for lvl in levels["support"]:
+            fig_sr.add_hline(
+                y=lvl, line_dash="dot", line_color="#16a34a", opacity=0.7,
+                annotation_text=f"Wsp. {lvl:.0f}",
+                annotation_position="left",
+            )
+        for lvl in levels["resistance"]:
+            fig_sr.add_hline(
+                y=lvl, line_dash="dot", line_color="#dc2626", opacity=0.7,
+                annotation_text=f"Opór {lvl:.0f}",
+                annotation_position="left",
+            )
+        if cena is not None:
+            fig_sr.add_hline(
+                y=cena, line_dash="solid", line_color="#f59e0b", opacity=0.9,
+                annotation_text=f"Teraz {cena:.0f}",
+                annotation_position="right",
+            )
+        fig_sr.update_layout(
+            height=340, margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
+        )
+        st.plotly_chart(apply_theme(fig_sr), use_container_width=True)
+        st.caption(
+            "Poziomy wykryte automatycznie z lokalnych ekstremów ostatnich ~120 dni. "
+            "To historyczne punkty zatrzymania – rynek nie musi ich 'respektować'."
+        )
+    else:
+        st.caption("Brak wystarczających danych do wykrycia poziomów.")
+
+    st.divider()
+
+    # ── OBV I DYWERGENCJA ─────────────────────────────────────────
+    st.markdown("**📊 OBV – czy wolumen popiera trend?**")
     obv_valid = obv_series.dropna()
     if not obv_valid.empty:
+        if divergence:
+            if divergence["type"] == "bearish":
+                st.error(f"🔴 Dywergencja niedźwiedzia: {divergence['description']}")
+            else:
+                st.success(f"🟢 Dywergencja bycza: {divergence['description']}")
+        else:
+            st.info("✅ Brak dywergencji – wolumen zgodny z kierunkiem ceny (ostatnie 20 dni).")
+
         fig_obv = go.Figure()
         fig_obv.add_trace(go.Scatter(
             x=obv_valid.index, y=obv_valid.values, name="OBV",
@@ -521,69 +724,15 @@ with tab_intraday:
             fill="tozeroy", fillcolor="rgba(124,58,237,0.08)",
         ))
         fig_obv.update_layout(
-            height=220, margin=dict(l=10, r=10, t=10, b=10),
-            showlegend=False,
+            height=200, margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
         )
         st.plotly_chart(apply_theme(fig_obv), use_container_width=True)
-
-        divergence = detect_obv_divergence(df)
-        if divergence:
-            if divergence["type"] == "bearish":
-                st.error(f"🔴 Dywergencja niedźwiedzia: {divergence['description']}")
-            else:
-                st.success(f"🟢 Dywergencja bycza: {divergence['description']}")
-        else:
-            st.caption("Brak wykrytej dywergencji ceny i wolumenu w ostatnich 20 dniach.")
-
         st.caption(
-            "OBV kumuluje wolumen w kierunku ruchu ceny – pokazuje, czy "
-            "wolumen 'popiera' trend. Dywergencja (cena i OBV idą w różne "
-            "strony) bywa sygnałem słabnącego trendu jeszcze zanim "
-            "odwróci się sama cena."
+            "OBV rośnie gdy cena rośnie na dużym wolumenie, spada gdy spada na dużym. "
+            "Dywergencja = cena i OBV idą w różne strony → możliwy sygnał odwrócenia."
         )
     else:
         st.caption("Brak wystarczających danych do wyliczenia OBV.")
-
-    st.divider()
-
-    # ── Poziomy wsparcia i oporu ───────────────────────────────────
-    st.markdown("**📐 Poziomy wsparcia i oporu**")
-    levels = detect_support_resistance(df)
-    if levels["support"] or levels["resistance"]:
-        col_sup, col_res = st.columns(2)
-        with col_sup:
-            st.caption("🟢 Wsparcie (cena historycznie się tu zatrzymywała od dołu)")
-            for lvl in reversed(levels["support"]):
-                st.markdown(f"`{lvl:.2f} {waluta}`")
-        with col_res:
-            st.caption("🔴 Opór (cena historycznie się tu zatrzymywała od góry)")
-            for lvl in levels["resistance"]:
-                st.markdown(f"`{lvl:.2f} {waluta}`")
-
-        # Wykres ceny z poziomami jako poziome linie.
-        fig_sr = go.Figure()
-        fig_sr.add_trace(go.Scatter(
-            x=df.index, y=df["Close"], name="Cena",
-            line=dict(color="#2563eb", width=1.4),
-        ))
-        for lvl in levels["support"]:
-            fig_sr.add_hline(y=lvl, line_dash="dot", line_color="#16a34a", opacity=0.6)
-        for lvl in levels["resistance"]:
-            fig_sr.add_hline(y=lvl, line_dash="dot", line_color="#dc2626", opacity=0.6)
-        fig_sr.update_layout(
-            height=320, margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
-        )
-        st.plotly_chart(apply_theme(fig_sr), use_container_width=True)
-
-        st.caption(
-            "Poziomy wykryte automatycznie na podstawie lokalnych "
-            "minimów/maksimów z ostatnich ~120 dni. To **historyczne** "
-            "punkty zatrzymania ceny, nie gwarancja, że cena znów się tam "
-            "zatrzyma – rynek nie jest zobowiązany 'respektować' te poziomy."
-        )
-    else:
-        st.caption("Brak wystarczających danych do wykrycia poziomów wsparcia/oporu.")
-
 with tab2:
     st.plotly_chart(rysuj_wykres_scoru(wynik["components"]), use_container_width=True)
 
