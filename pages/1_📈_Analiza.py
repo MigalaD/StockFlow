@@ -20,6 +20,7 @@ from common import (
     pobierz_analize,
     pobierz_dane,
     pobierz_dane_live,
+    pobierz_dane_binance,
     policz_historie_score,
     rysuj_wykres_ceny,
     rysuj_wykres_historii_score,
@@ -88,8 +89,24 @@ if not ticker:
 
 with st.spinner(f"Pobieranie danych dla {ticker}..."):
     try:
-        df, info = pobierz_dane(ticker, period=okres)
         wynik = pobierz_analize(ticker)
+
+        # Dla kryptowalut obsługiwanych przez Binance: pobierz historyczne
+        # świece OHLCV z Binance (prawdziwe dane, bez opóźnienia Yahoo).
+        # Score nadal liczony z Yahoo (spójność z resztą aplikacji).
+        # Fallback: gdy Binance niedostępny → Yahoo Finance jak zwykle.
+        df_binance = None
+        if external_data.is_binance_supported(ticker):
+            df_binance, _ = pobierz_dane_binance(ticker, okres=okres)
+
+        if df_binance is not None:
+            df = df_binance
+            info = wynik  # info z wynik dict (wystarczy do nazwy/waluty)
+            _zrodlo_wykresu = "Binance (na żywo)"
+        else:
+            df, info = pobierz_dane(ticker, period=okres)
+            _zrodlo_wykresu = "Yahoo Finance (~15 min opóźnienia)"
+
     except Exception:
         df, info, wynik = None, {}, {"error": "fetch_failed"}
 
@@ -106,8 +123,12 @@ if df is None or "error" in wynik:
     )
     st.stop()
 
-nazwa_firmy = info.get("longName", ticker)
-waluta = info.get("currency", "")
+nazwa_firmy = (
+    info.get("longName")          # yfinance info dict
+    or info.get("name")           # wynik dict z analyze_ticker
+    or ticker
+)
+waluta = info.get("currency", "USD")
 cena = wynik["price"]
 score = wynik["total_score"]
 sektor = wynik.get("sector", "Nieznany")
@@ -285,18 +306,23 @@ with tab1:
         """Rysuje wykres ceny + RSI + podsumowanie VWAP.
 
         auto=True: pobiera świeższe dane (krótki cache) i pokazuje znacznik czasu.
-        Wywoływane albo raz (statycznie), albo cyklicznie przez st.fragment.
+        Dla krypto: używa Binance jako źródła (prawdziwy live trend).
+        Dla akcji USA ze skonfigurowanym Alpaca: dodaje live quote (bid/ask).
         """
         if auto:
-            df_live, _ = pobierz_dane_live(ticker, period=okres)
-            df_chart = df_live if df_live is not None else df
+            # Krypto: odśwież z Binance (TTL 60s) – prawdziwy live trend.
+            # Akcje: odśwież z Yahoo (TTL 60s) – nowy punkt co ~15 min.
+            if external_data.is_binance_supported(ticker):
+                df_fresh, _ = pobierz_dane_binance(ticker, okres=okres)
+                zrodlo_live = "Binance (na żywo)"
+            else:
+                df_fresh, _ = pobierz_dane_live(ticker, period=okres)
+                zrodlo_live = "Yahoo Finance (~15 min opóźnienia)"
+
+            df_chart = df_fresh if df_fresh is not None else df
             znacznik_czasu = f"🔄 Ostatnia aktualizacja: {datetime.now():%H:%M:%S}"
 
-            # Dla amerykańskich akcji/ETF-ów, jeśli skonfigurowano Alpaca
-            # (darmowy klucz API), dolicz prawdziwy live quote (bid/ask) -
-            # to jedyne źródło w aplikacji z faktycznym czasem rzeczywistym
-            # dla rynku USA (Yahoo ma ~15 min opóźnienia niezależnie od
-            # częstotliwości odpytywania).
+            # Dla akcji USA ze skonfigurowanym Alpaca: live quote bid/ask.
             if external_data.is_alpaca_configured() and external_data.is_alpaca_supported(ticker):
                 alpaca_quote = external_data.get_alpaca_quote(ticker)
                 if alpaca_quote:
@@ -304,10 +330,7 @@ with tab1:
                         f"🟢 **Alpaca (na żywo):** {alpaca_quote['price']:.2f} {waluta} "
                         f"(bid {alpaca_quote['bid']:.2f} / ask {alpaca_quote['ask']:.2f})"
                     )
-            st.caption(
-                f"{znacznik_czasu} · dane wykresu (Yahoo Finance) mogą być "
-                f"opóźnione ~15 min"
-            )
+            st.caption(f"{znacznik_czasu} · 📡 {zrodlo_live}")
         else:
             df_chart = df
 
@@ -319,6 +342,11 @@ with tab1:
             ),
             use_container_width=True,
         )
+        # Oznaczenie źródła danych wykresu – ważne dla przejrzystości.
+        if auto:
+            pass  # znacznik czasu już wyświetlony wyżej w trybie live
+        else:
+            st.caption(f"📡 Dane wykresu: {_zrodlo_wykresu}")
         st.plotly_chart(rysuj_wykres_rsi(df_chart), use_container_width=True)
 
         # Podsumowanie pozycji względem VWAP (liczone z aktualnego df)
