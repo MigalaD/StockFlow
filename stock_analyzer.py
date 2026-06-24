@@ -1307,6 +1307,212 @@ def score_momentum(df: pd.DataFrame) -> tuple[float, str]:
 
 
 # ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# SCORE KRÓTKOTERMINOWY (swing-trading, dane dzienne)
+# ----------------------------------------------------------------------
+# Osobny zestaw wskaźników i wag — odpowiada na inne pytanie niż score
+# długoterminowy: nie "czy to dobra spółka na miesiące/lata", tylko
+# "czy ten instrument ma teraz sygnały do ruchu w ciągu dni/tygodni".
+#
+# Składowe i ich logika:
+#   rsi_st      – RSI z oknem 7 (zamiast 14), bardziej czuły na krótkie ruchy
+#   stoch_st    – Stochastik %K (okno 14): wyprzedanie/przegrzanie w zakresie
+#   momentum_st – zmiana ceny 5d i 10d (zamiast 21d/63d jak w długoterminowym)
+#   volume_st   – wolumen ostatnich 3 dni vs średnia 10d (krótsze okna)
+#   obv_st      – czy OBV rośnie/spada (kierunek wolumenu)
+#   vwap_st     – pozycja ceny względem VWAP (powyżej/poniżej)
+#   bb_st       – %B Bollingera (gdzie leży cena w wstędze, sygnał krotkoterm.)
+#   atr_ratio   – ATR jako % ceny (wysoki = duży potencjał ruchu, wysoka zmienność)
+#
+# Wagi celowo faworyzują momentum krótkoterminowe i wolumen (najszybciej
+# reagują na krótkoterminowe zmiany) kosztem fundamentów i trendu MA200.
+
+_WAGI_ST = {
+    "rsi_st":      0.18,
+    "stoch_st":    0.15,
+    "momentum_st": 0.20,
+    "volume_st":   0.15,
+    "obv_st":      0.12,
+    "vwap_st":     0.10,
+    "bb_st":       0.10,
+}
+# Uwaga: atr_ratio celowo NIE jest składową score — wysokie ATR to szansa
+# I ryzyko jednocześnie, więc nie chcemy karać/nagradzać za samą zmienność.
+# ATR jest pokazywany oddzielnie w UI jako kontekst (ile może się ruszyć).
+
+
+def _rsi_custom(series: "pd.Series", window: int) -> "pd.Series":
+    """RSI z dowolnym oknem – wewnętrzny helper (score_krotkoterminowy)."""
+    delta = series.diff()
+    gain = delta.clip(lower=0).ewm(com=window - 1, adjust=False).mean()
+    loss = (-delta.clip(upper=0)).ewm(com=window - 1, adjust=False).mean()
+    rs = gain / loss.replace(0, np.nan)
+    return 100 - (100 / (1 + rs))
+
+
+def compute_score_krotkoterminowy(df: "pd.DataFrame") -> tuple[float, dict]:
+    """Liczy score krótkoterminowy (swing-trading) na danych dziennych.
+
+    Zwraca (total_score: float, components: dict[str, tuple[float, str]]).
+    Każda składowa to (score_0_100, opis_tekstowy).
+
+    Dane wejściowe: ten sam df co dla score długoterminowego (Yahoo Finance
+    lub Binance, z kolumnami Close, High, Low, Volume, plus obliczone MACD,
+    BB_upper/lower, VWAP). Jeśli brakuje kolumn – daną składową pomijamy
+    i renormalizujemy wagi.
+    """
+    components: dict[str, tuple[float, str]] = {}
+    close = df["Close"].dropna()
+
+    if len(close) < 15:
+        return 50.0, {}
+
+    # ── RSI-7 (krótkie okno, czulszy na krótkoterminowe odwrócenia) ──
+    rsi7 = _rsi_custom(close, 7).dropna()
+    if not rsi7.empty:
+        val = float(rsi7.iloc[-1])
+        if val <= 25:
+            sc, note = 85, f"RSI(7)={val:.0f} – silne wyprzedanie"
+        elif val <= 40:
+            sc, note = 70, f"RSI(7)={val:.0f} – wyprzedanie"
+        elif val >= 75:
+            sc, note = 15, f"RSI(7)={val:.0f} – silne przegrzanie"
+        elif val >= 60:
+            sc, note = 30, f"RSI(7)={val:.0f} – przegrzanie"
+        else:
+            sc, note = 50, f"RSI(7)={val:.0f} – neutralnie"
+        components["rsi_st"] = (float(sc), note)
+
+    # ── Stochastik %K okno 14 ────────────────────────────────────────
+    if {"High", "Low"}.issubset(df.columns) and len(df) >= 14:
+        low14  = df["Low"].rolling(14).min()
+        high14 = df["High"].rolling(14).max()
+        denom  = (high14 - low14).replace(0, np.nan)
+        pct_k  = ((close - low14) / denom * 100).dropna()
+        if not pct_k.empty:
+            k = float(pct_k.iloc[-1])
+            if k < 20:
+                sc, note = 80, f"%K={k:.0f} – strefa wyprzedania"
+            elif k > 80:
+                sc, note = 20, f"%K={k:.0f} – strefa przegrzania"
+            else:
+                # liniowo: środek (50) = score 50, im bliżej 20 tym wyżej
+                sc   = float(np.clip(50 + (50 - k) * 0.6, 0, 100))
+                note = f"%K={k:.0f} – neutralnie"
+            components["stoch_st"] = (sc, note)
+
+    # ── Momentum krótkoterminowy: 5d i 10d ───────────────────────────
+    if len(close) >= 11:
+        ret5  = (close.iloc[-1] / close.iloc[-6]  - 1) * 100
+        ret10 = (close.iloc[-1] / close.iloc[-11] - 1) * 100 if len(close) >= 11 else None
+        sc    = float(np.clip(50 + ret5 * 2.5, 0, 100))   # +/-10% → +/-25 pkt
+        note  = f"5d={ret5:+.1f}%"
+        if ret10 is not None:
+            note += f", 10d={ret10:+.1f}%"
+            # Zgodność kierunków wzmacnia sygnał
+            if ret5 > 0 and ret10 > 0:
+                sc = min(sc + 8, 100)
+                note += " (oba dodatnie)"
+            elif ret5 < 0 and ret10 < 0:
+                sc = max(sc - 8, 0)
+                note += " (oba ujemne)"
+        components["momentum_st"] = (sc, note)
+
+    # ── Wolumen krótkoterminowy: ostatnie 3 dni vs avg 10d ───────────
+    if "Volume" in df.columns and len(df) >= 10:
+        vol      = df["Volume"].dropna()
+        avg10    = float(vol.rolling(10).mean().iloc[-1])
+        avg3     = float(vol.iloc[-3:].mean()) if len(vol) >= 3 else float(vol.iloc[-1])
+        price_ch = float(close.pct_change().iloc[-1]) if len(close) >= 2 else 0.0
+        if avg10 > 0:
+            ratio = avg3 / avg10
+            if ratio > 1.5 and price_ch > 0:
+                sc, note = 82, f"wolumen 3d={ratio:.1f}x + wzrost ceny"
+            elif ratio > 1.5 and price_ch < 0:
+                sc, note = 18, f"wolumen 3d={ratio:.1f}x + spadek ceny"
+            elif ratio > 1.2:
+                sc, note = 65, f"wolumen 3d nieco wyższy ({ratio:.1f}x)"
+            elif ratio < 0.6:
+                sc, note = 40, f"wolumen 3d niższy ({ratio:.1f}x) – brak zainteresowania"
+            else:
+                sc, note = 50, f"wolumen 3d normalny ({ratio:.1f}x)"
+            components["volume_st"] = (float(sc), note)
+
+    # ── OBV – kierunek: czy OBV rośnie w ostatnich 5 dniach ─────────
+    if "Volume" in df.columns and len(df) >= 6:
+        direction  = np.sign(close.diff().fillna(0))
+        obv        = (direction * df["Volume"].fillna(0)).cumsum()
+        obv5       = obv.dropna().iloc[-5:]
+        if len(obv5) >= 5:
+            obv_chg = float(obv5.iloc[-1] - obv5.iloc[0])
+            price_chg5 = float(close.iloc[-1] - close.iloc[-6]) if len(close) >= 6 else 0.0
+            if obv_chg > 0 and price_chg5 > 0:
+                sc, note = 75, "OBV rośnie + cena rośnie (wolumen potwierdza)"
+            elif obv_chg > 0 and price_chg5 <= 0:
+                sc, note = 65, "OBV rośnie mimo spadku ceny (bycza dywergencja)"
+            elif obv_chg < 0 and price_chg5 < 0:
+                sc, note = 25, "OBV spada + cena spada (wolumen potwierdza)"
+            elif obv_chg < 0 and price_chg5 >= 0:
+                sc, note = 35, "OBV spada mimo wzrostu ceny (niedźwiedzia dywergencja)"
+            else:
+                sc, note = 50, "OBV bez wyraźnego kierunku"
+            components["obv_st"] = (float(sc), note)
+
+    # ── VWAP – czy cena powyżej/poniżej i jak daleko ────────────────
+    if "VWAP" in df.columns:
+        vwap_vals = df["VWAP"].dropna()
+        if not vwap_vals.empty:
+            last_vwap  = float(vwap_vals.iloc[-1])
+            last_price = float(close.iloc[-1])
+            if last_vwap > 0:
+                dist_pct = (last_price / last_vwap - 1) * 100
+                if dist_pct > 2:
+                    sc, note = 72, f"cena {dist_pct:+.1f}% powyżej VWAP (siła popytu)"
+                elif dist_pct > 0:
+                    sc, note = 60, f"cena {dist_pct:+.1f}% powyżej VWAP"
+                elif dist_pct > -2:
+                    sc, note = 40, f"cena {dist_pct:+.1f}% poniżej VWAP"
+                else:
+                    sc, note = 28, f"cena {dist_pct:+.1f}% poniżej VWAP (słabszy popyt)"
+                components["vwap_st"] = (float(sc), note)
+
+    # ── Bollinger %B – pozycja w wstędze ────────────────────────────
+    if {"BB_upper", "BB_lower"}.issubset(df.columns):
+        upper = df["BB_upper"].dropna()
+        lower = df["BB_lower"].dropna()
+        if not upper.empty and not lower.empty:
+            u, l   = float(upper.iloc[-1]), float(lower.iloc[-1])
+            p      = float(close.iloc[-1])
+            if u != l:
+                pct_b = (p - l) / (u - l)
+                if pct_b < 0.05:
+                    sc, note = 82, f"%B={pct_b:.2f} – cena przy dolnej wstędze (wyprzedanie)"
+                elif pct_b < 0.25:
+                    sc, note = 65, f"%B={pct_b:.2f} – cena nisko w wstędze"
+                elif pct_b > 0.95:
+                    sc, note = 18, f"%B={pct_b:.2f} – cena przy górnej wstędze (przegrzanie)"
+                elif pct_b > 0.75:
+                    sc, note = 35, f"%B={pct_b:.2f} – cena wysoko w wstędze"
+                else:
+                    sc, note = 50, f"%B={pct_b:.2f} – cena w środku wstęgi"
+                components["bb_st"] = (float(sc), note)
+
+    # ── Łączny score: średnia ważona obecnych składowych ─────────────
+    if not components:
+        return 50.0, {}
+
+    total_waga = sum(_WAGI_ST[k] for k in components if k in _WAGI_ST)
+    if total_waga <= 0:
+        return 50.0, components
+
+    total = sum(
+        components[k][0] * _WAGI_ST[k]
+        for k in components if k in _WAGI_ST
+    ) / total_waga
+
+    return float(np.clip(total, 0, 100)), components
+
+
 # GŁÓWNA ANALIZA
 # ----------------------------------------------------------------------
 def analyze_ticker(ticker: str) -> dict:
@@ -1414,11 +1620,20 @@ def analyze_ticker(ticker: str) -> dict:
     except Exception:
         calendar_info = {"earnings_date": None, "ex_dividend_date": None}
 
+    # Score krótkoterminowy (swing-trading) – osobny zestaw wskaźników.
+    try:
+        score_st, components_st = compute_score_krotkoterminowy(df)
+        score_st = round(score_st, 1)
+    except Exception:
+        score_st, components_st = 50.0, {}
+
     return {
         "ticker": ticker,
         "price": round(float(last_price), 2),
         "total_score": round(total_score, 1),
+        "score_st": score_st,
         "components": components,
+        "components_st": components_st,
         "weights": weights,
         "asset_type": asset_type,
         "asset_type_label": ASSET_TYPE_LABELS.get(asset_type, "Inny instrument"),

@@ -73,6 +73,21 @@ OPISY_WSKAZNIKOW: dict[str, dict] = {
     # Składowe specyficzne dla surowców (od v1.1)
     "seasonality":       {"nazwa": "Sezonowość surowca",
                           "opis": "Modyfikator oparty na historycznych wzorcach sezonowych popytu/podaży (np. złoto silniejsze Q4/Q1, gaz ziemny silniejszy zimą). Orientacyjna tendencja, nie gwarancja."},
+    # Składowe score krótkoterminowego (od v1.1)
+    "rsi_st":      {"nazwa": "RSI-7 (krótkie okno)",
+                    "opis": "RSI z oknem 7 dni – bardziej czuły na krótkoterminowe odwrócenia niż standardowy RSI-14. Poniżej 25 = silne wyprzedanie, powyżej 75 = silne przegrzanie."},
+    "stoch_st":    {"nazwa": "Stochastik %K",
+                    "opis": "Gdzie leży aktualna cena w zakresie ostatnich 14 dni. Poniżej 20 = wyprzedanie, powyżej 80 = przegrzanie. Czulszy na krótkie odwrócenia niż RSI."},
+    "momentum_st": {"nazwa": "Momentum 5d/10d",
+                    "opis": "Zmiana ceny w ostatnich 5 i 10 dniach. Oba dodatnie = trend wzrostowy potwierdzony; oba ujemne = spójny trend spadkowy."},
+    "volume_st":   {"nazwa": "Wolumen 3d vs 10d",
+                    "opis": "Średni wolumen z ostatnich 3 dni względem średniej z 10 dni. Wysoki wolumen + wzrost ceny = siła popytu; wysoki + spadek = siła podaży."},
+    "obv_st":      {"nazwa": "OBV – kierunek wolumenu",
+                    "opis": "Czy On-Balance Volume rośnie czy spada w ostatnich 5 dniach, i czy zgadza się z kierunkiem ceny. Dywergencja może sygnalizować zbliżające się odwrócenie."},
+    "vwap_st":     {"nazwa": "Pozycja względem VWAP",
+                    "opis": "Gdzie leży cena względem VWAP (średniej ważonej wolumenem z 20 dni). Powyżej VWAP = kupujący płacą więcej niż średnia handlowa (siła popytu)."},
+    "bb_st":       {"nazwa": "Bollinger %B",
+                    "opis": "Gdzie leży cena w wstędze Bollingera (0 = dolna, 1 = górna). Poniżej 0.05 = silne wyprzedanie przy dolnej wstędze; powyżej 0.95 = przegrzanie przy górnej."},
 }
 
 DISCLAIMER = (

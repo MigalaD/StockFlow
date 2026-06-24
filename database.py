@@ -218,9 +218,16 @@ def _migration_1(conn):
         conn.execute("ALTER TABLE watchlist ADD COLUMN last_ma_state TEXT")
 
 
+def _migration_2(conn):
+    """Dodaje kolumnę score_st (score krótkoterminowy) do tabeli scan_results."""
+    if not _column_exists(conn, "scan_results", "score_st"):
+        conn.execute("ALTER TABLE scan_results ADD COLUMN score_st REAL")
+
+
 # Lista migracji: (numer_wersji, funkcja). Stosowane rosnąco.
 MIGRATIONS = [
     (1, _migration_1),
+    (2, _migration_2),
 ]
 
 
@@ -346,14 +353,15 @@ def get_previous_score(ticker: str) -> float | None:
 # SCAN RESULTS
 # ----------------------------------------------------------------------
 def save_scan_results(results: list[dict]):
-    """results: list of dicts with keys ticker, name, sector, price, score"""
+    """results: list of dicts with keys ticker, name, sector, price, score, score_st (opt.)"""
     now = datetime.now().isoformat()
     with get_conn() as conn:
         conn.execute("DELETE FROM scan_results")  # keep only latest scan
         conn.executemany(
-            "INSERT INTO scan_results (ticker, name, sector, price, score, scanned_at) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            [(r["ticker"], r.get("name"), r.get("sector"), r.get("price"), r["score"], now)
+            "INSERT INTO scan_results (ticker, name, sector, price, score, score_st, scanned_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [(r["ticker"], r.get("name"), r.get("sector"), r.get("price"),
+              r["score"], r.get("score_st"), now)
              for r in results],
         )
 

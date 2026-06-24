@@ -44,11 +44,12 @@ def _analyze_one(ticker: str) -> dict | None:
         if "error" in res:
             return None
         return {
-            "ticker": res["ticker"],
-            "name":   res["name"],
-            "sector": res.get("sector", "Nieznany"),
-            "price":  res["price"],
-            "score":  res["total_score"],
+            "ticker":   res["ticker"],
+            "name":     res["name"],
+            "sector":   res.get("sector", "Nieznany"),
+            "price":    res["price"],
+            "score":    res["total_score"],
+            "score_st": res.get("score_st", 50.0),
         }
     except Exception as e:
         log.warning("Błąd analizy %s: %s", ticker, e)
