@@ -1,5 +1,1 @@
-# Systemowe zależności dla Streamlit Cloud (apt-get, Debian).
-# matplotlib/reportlab zwykle działają z samych wheels, ale te biblioteki
-# do renderowania fontów/PNG bywają potrzebne na czystym obrazie.
-libfreetype6
-libpng16-16
+
