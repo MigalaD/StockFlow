@@ -98,19 +98,47 @@ with st.spinner(f"Pobieranie danych dla {ticker}..."):
     # Dane wykresu: Binance dla krypto (live), Yahoo jako fallback/default.
     # Rozdzielone celowo – awaria jednego źródła nie blokuje drugiego.
     df, info, _zrodlo_wykresu = None, {}, "Yahoo Finance (~15 min opóźnienia)"
-    try:
-        if external_data.is_binance_supported(ticker):
+    _fetch_errors = []
+
+    # Próba 1: Binance (dla krypto)
+    if external_data.is_binance_supported(ticker):
+        try:
             df_binance, _ = pobierz_dane_binance(ticker, okres=okres)
             if df_binance is not None and not df_binance.empty:
                 df = df_binance
                 _zrodlo_wykresu = "Binance (na żywo)"
+        except Exception as e:
+            _fetch_errors.append(f"Binance: {e}")
 
-        if df is None:
-            df, info = pobierz_dane(ticker, period=okres)
-            if info is None:
-                info = {}
-    except Exception:
-        df, info = None, {}
+    # Próba 2: Yahoo Finance (zawsze, jako fallback lub główne źródło)
+    if df is None:
+        try:
+            df_yf, info_yf = pobierz_dane(ticker, period=okres)
+            if df_yf is not None and not df_yf.empty:
+                df = df_yf
+                info = info_yf or {}
+        except Exception as e:
+            _fetch_errors.append(f"Yahoo: {e}")
+
+    # Próba 3: Dla krypto – yfinance bezpośrednio z krótkim cache (bypass rate-limiter)
+    if df is None and external_data.is_binance_supported(ticker):
+        try:
+            import yfinance as _yf
+            _stock = _yf.Ticker(ticker)
+            _df3 = _stock.history(period=okres, interval="1d")
+            if _df3 is not None and not _df3.empty:
+                from stock_analyzer import rsi as _rsi, macd as _macd, bollinger_bands as _bb, compute_vwap as _vwap
+                _df3["RSI"]   = _rsi(_df3["Close"])
+                _df3["MA20"]  = _df3["Close"].rolling(20).mean()
+                _df3["MA50"]  = _df3["Close"].rolling(50).mean()
+                _df3["MA200"] = _df3["Close"].rolling(200).mean()
+                _df3["MACD"], _df3["MACD_signal"] = _macd(_df3["Close"])
+                _df3["BB_mid"], _df3["BB_upper"], _df3["BB_lower"] = _bb(_df3["Close"])
+                _df3["VWAP"] = _vwap(_df3)
+                df = _df3
+                _zrodlo_wykresu = "Yahoo Finance (bezpośredni)"
+        except Exception as e:
+            _fetch_errors.append(f"Yahoo direct: {e}")
 
     # Gdy Binance dostarczył wykres ale Yahoo score failuje – zachowaj df.
     # Gdy obydwa failują – df=None i wynik zawiera error, st.stop() poniżej.
@@ -121,13 +149,22 @@ if df is None and wynik.get("error") == "fetch_failed":
     banner_dane_niedostepne()
     st.stop()
 
-# Brak wykresu (ale score może być) – nieprawidłowy symbol lub problem z danymi.
+# Brak wykresu – nieprawidłowy symbol lub oba źródła niedostępne.
 if df is None:
-    st.error(
-        f"Nie udało się znaleźć danych dla symbolu **{ticker}**. "
-        "Sprawdź, czy symbol jest prawidłowy (np. AAPL dla Apple, "
-        "CDR.WA dla CD Projekt na GPW)."
-    )
+    if external_data.is_binance_supported(ticker):
+        # Krypto obsługiwane przez Binance – oba źródła failują → problem sieciowy
+        banner_dane_niedostepne()
+        st.caption(
+            f"Symbol **{ticker}** jest rozpoznany (kryptowaluta). "
+            "Dane chwilowo niedostępne – zarówno Binance jak i Yahoo Finance "
+            "nie odpowiadają. Spróbuj ponownie za chwilę."
+        )
+    else:
+        st.error(
+            f"Nie udało się znaleźć danych dla symbolu **{ticker}**. "
+            "Sprawdź, czy symbol jest prawidłowy (np. AAPL dla Apple, "
+            "CDR.WA dla CD Projekt na GPW, BTC-USD dla Bitcoina)."
+        )
     st.stop()
 
 # Brak score (Yahoo failuje) ale mamy wykres z Binance – ostrzeż i kontynuuj.
