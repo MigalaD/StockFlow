@@ -198,12 +198,13 @@ nazwa_firmy = (
 waluta = info.get("currency") or wynik.get("currency", "USD")
 cena = wynik.get("price")
 score = wynik.get("total_score")
+score_st = wynik.get("score_st")          # score krótkoterminowy (swing)
 sektor = wynik.get("sector", "Nieznany")
 branza = wynik.get("industry", "Nieznana")
 asset_type = wynik.get("asset_type", "stock")
 asset_label = wynik.get("asset_type_label", "Akcja")
 
-col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 1])
 with col1:
     st.subheader(f"{nazwa_firmy} ({ticker})")
     if asset_type == "stock" and sektor and sektor != "Nieznany":
@@ -226,13 +227,22 @@ with col2:
 with col3:
     if score is not None:
         st.metric(
-            "Wynik ogólny", f"{score:.0f} / 100",
+            "📈 Wynik DT", f"{score:.0f} / 100",
             delta=interpret_score(score), delta_color="off",
-            help=LEGENDA_SCORE,
+            help="Wynik długoterminowy: trend, fundamenty, wycena, dywidenda, momentum 21d/63d.",
         )
     else:
-        st.metric("Wynik ogólny", "—", help="Score niedostępny – Yahoo Finance chwilowo nieosiągalny.")
+        st.metric("📈 Wynik DT", "—", help="Score niedostępny – Yahoo Finance chwilowo nieosiągalny.")
 with col4:
+    if score_st is not None:
+        st.metric(
+            "⚡ Wynik ST", f"{score_st:.0f} / 100",
+            delta=interpret_score(score_st), delta_color="off",
+            help="Wynik krótkoterminowy (swing): RSI-7, Stochastik, momentum 5d/10d, OBV, VWAP, Bollinger %B.",
+        )
+    else:
+        st.metric("⚡ Wynik ST", "—", help="Score krótkoterminowy niedostępny.")
+with col5:
     st.write("")
     st.write("")
     if st.button("⭐ Dodaj do watchlist", use_container_width=True):
@@ -525,11 +535,38 @@ with tab_news:
                 st.caption(" • ".join(meta_bits))
 
 with tab_intraday:
-    st.markdown("#### ⚡ Sygnały krótkoterminowe")
-    st.caption(
-        "Dane dzienne z Yahoo Finance (~15 min opóźnienia) – narzędzie dla "
-        "**swing-tradingu** (pozycje trzymane dni/tygodnie), nie dla intraday day-tradingu."
-    )
+    # ── Score krótkoterminowy – prominently on top ─────────────────
+    st_col1, st_col2 = st.columns([1, 3])
+    with st_col1:
+        if score_st is not None:
+            from stock_analyzer import interpret_score as _interp
+            st.metric(
+                "⚡ Wynik krótkoterminowy",
+                f"{score_st:.0f} / 100",
+                delta=_interp(score_st), delta_color="off",
+                help=(
+                    "Score swing-tradingowy (0–100). Składowe: RSI-7, Stochastik %K, "
+                    "momentum 5d/10d, wolumen 3d, OBV, VWAP, Bollinger %B. "
+                    "Dane dzienne (~15 min opóźnienia)."
+                ),
+            )
+        else:
+            st.metric("⚡ Wynik krótkoterminowy", "—")
+    with st_col2:
+        st.caption(
+            "Dane dzienne z Yahoo Finance (~15 min opóźnienia) – narzędzie dla "
+            "**swing-tradingu** (pozycje trzymane dni/tygodnie), nie dla intraday day-tradingu."
+        )
+        if score is not None and score_st is not None:
+            roznica = score_st - score
+            if abs(roznica) >= 10:
+                kierunek = "wyższy niż długoterminowy" if roznica > 0 else "niższy niż długoterminowy"
+                st.caption(
+                    f"💡 Wynik ST ({score_st:.0f}) jest o **{abs(roznica):.0f} pkt {kierunek}** "
+                    f"({score:.0f} DT) – sygnały krótkoterminowe różnią się od długoterminowych."
+                )
+
+    st.divider()
 
     atr_info   = atr_summary(df)
     stoch_info = stochastic_summary(df)
