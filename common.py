@@ -64,6 +64,14 @@ OPISY_WSKAZNIKOW: dict[str, dict] = {
                      "opis": "Sprawdza ton ostatnich nagłówków newsów – więcej pozytywnych słów podnosi wynik, negatywnych obniża."},
     "fundamentals": {"nazwa": "Fundamenty (wzrost, ROE, dług, CF)",
                      "opis": "Patrzy na wzrost przychodów/zysku, zadłużenie i wolny cash flow – 'pod maską' firmy."},
+    # Składowe specyficzne dla krypto (od v1.1)
+    "volatility_crypto": {"nazwa": "Stabilność ceny (kalibracja krypto)",
+                          "opis": "Mierzy zmienność ceny w skali typowej dla rynku krypto – 50–120% rocznie to norma, nie anomalia. Progi inne niż dla akcji."},
+    "btc_dominance":     {"nazwa": "Siła względem Bitcoina",
+                          "opis": "Porównuje 30-dniowy zwrot tej kryptowaluty z Bitcoinem. Altcoin bijący BTC sugeruje większe zainteresowanie rynku tym projektem."},
+    # Składowe specyficzne dla surowców (od v1.1)
+    "seasonality":       {"nazwa": "Sezonowość surowca",
+                          "opis": "Modyfikator oparty na historycznych wzorcach sezonowych popytu/podaży (np. złoto silniejsze Q4/Q1, gaz ziemny silniejszy zimą). Orientacyjna tendencja, nie gwarancja."},
 }
 
 DISCLAIMER = (
@@ -79,7 +87,7 @@ APP_VERSION = "1.1.0"
 
 # ⬇️ PODMIEŃ na swój formularz Google / GitHub Issues przed publicznym launchem.
 # Używane w stopce (footer) i na stronie „O aplikacji”.
-FEEDBACK_URL = "https://github.com/MigalaD/StockFlow_Issues/issues/new"
+FEEDBACK_URL = "https://forms.gle/your-feedback-form"
 
 
 # ── Motyw wykresów ────────────────────────────────────────────────────
@@ -506,5 +514,5 @@ def beta_banner():
     st.warning(
         "🧪 **Wersja testowa (beta).** To narzędzie edukacyjne, **nie** porada "
         "inwestycyjna. Dane mogą się okresowo resetować (watchlista, portfolio, "
-        "ustawienia) – to normalne dla wersji testowej. Dziękuję za testy!"
+        "ustawienia) – to normalne dla wersji testowej. Dziękujemy za testy!"
     )
