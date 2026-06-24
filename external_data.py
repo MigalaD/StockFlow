@@ -133,6 +133,39 @@ def is_binance_supported(ticker: str) -> bool:
     return binance_symbol_for(ticker) is not None
 
 
+def binance_klines_to_df(klines: list) -> "pd.DataFrame | None":
+    """Konwertuje surowe świece Binance (lista list) do DataFrame kompatybilnego
+    z formatem Yahoo Finance (kolumny Open/High/Low/Close/Volume, indeks datetime).
+
+    Format jednej świecy Binance:
+    [open_time_ms, open, high, low, close, volume, close_time_ms, ...]
+
+    Zwraca None gdy klines jest pusty lub nastąpił błąd parsowania.
+    """
+    if not klines:
+        return None
+    try:
+        import pandas as pd
+        import numpy as np
+        rows = []
+        for k in klines:
+            rows.append({
+                "Open":   float(k[1]),
+                "High":   float(k[2]),
+                "Low":    float(k[3]),
+                "Close":  float(k[4]),
+                "Volume": float(k[5]),
+            })
+        # Indeks: open_time w milisekundach → datetime UTC → naive (bez tz) jak Yahoo
+        timestamps = pd.to_datetime([k[0] for k in klines], unit="ms", utc=True)
+        timestamps = timestamps.tz_localize(None)
+        df = pd.DataFrame(rows, index=timestamps)
+        df = df.dropna(subset=["Close"])
+        return df if not df.empty else None
+    except Exception:
+        return None
+
+
 # ----------------------------------------------------------------------
 # COINGECKO - dominacja BTC i dane rynku krypto
 # ----------------------------------------------------------------------

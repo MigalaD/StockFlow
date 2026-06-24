@@ -178,6 +178,44 @@ def pobierz_dane_live(ticker: str, period: str = "1y"):
     return _pobierz_dane_core(ticker, period=period)
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def pobierz_dane_binance(ticker: str, okres: str = "1y") -> "tuple":
+    """Pobiera dane OHLCV z Binance (prawdziwe dane live) zamiast Yahoo Finance.
+
+    Zwraca krotkę (df, None) kompatybilną z pobierz_dane() — None zamiast info,
+    bo Binance nie dostarcza metadanych spółki (używane tylko do wykresu/wskaźników).
+
+    Parametr `okres` mapowany na limit świec Binance:
+    '3mo'→90, '6mo'→180, '1y'→365, '2y'→730, '5y'→1825.
+    Wszystkie świece dzienne (interval='1d') — tak samo jak Yahoo.
+
+    Fallback: gdy Binance niedostępny zwraca (None, None). Wywołujący kod
+    powinien wtedy użyć Yahoo Finance jako źródła zapasowego.
+    """
+    limit_map = {"3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
+    limit = limit_map.get(okres, 365)
+
+    klines = external_data.get_binance_klines(ticker, interval="1d", limit=limit)
+    if klines is None:
+        return None, None
+
+    df = external_data.binance_klines_to_df(klines)
+    if df is None or df.empty:
+        return None, None
+
+    # Wylicz te same wskaźniki co w _pobierz_dane_core, żeby wykres
+    # i RSI działały identycznie niezależnie od źródła danych.
+    df["RSI"]    = rsi(df["Close"])
+    df["MA20"]   = df["Close"].rolling(20).mean()
+    df["MA50"]   = df["Close"].rolling(50).mean()
+    df["MA200"]  = df["Close"].rolling(200).mean()
+    df["MACD"], df["MACD_signal"] = macd(df["Close"])
+    df["BB_mid"], df["BB_upper"], df["BB_lower"] = bollinger_bands(df["Close"])
+    df["VWAP"]   = compute_vwap(df)
+
+    return df, None
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def pobierz_analize(ticker: str) -> dict:
     return analyze_ticker(ticker)
