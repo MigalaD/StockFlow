@@ -15,6 +15,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import yfinance as yf
+import external_data
 
 from stock_analyzer import (
     WEIGHTS,
