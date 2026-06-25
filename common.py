@@ -237,6 +237,95 @@ def pobierz_analize(ticker: str) -> dict:
     return analyze_ticker(ticker)
 
 
+# ── Konfiguracja interwałów intraday ──────────────────────────────────
+# Każdy interwał ma: etykietę UI, interwał Yahoo, max historię Yahoo (period),
+# max historię Binance (limit świec), TTL cache (sekundy).
+# Opóźnienie Yahoo ~15 min niezależnie od interwału.
+INTRADAY_INTERVALS = {
+    "1d":  {"label": "1 dzień",    "yf": "1d",  "period": "1y",  "binance": "1d",  "limit": 365, "ttl": 900},
+    "1h":  {"label": "1 godzina",  "yf": "1h",  "period": "60d", "binance": "1h",  "limit": 500, "ttl": 300},
+    "30m": {"label": "30 minut",   "yf": "30m", "period": "30d", "binance": "30m", "limit": 500, "ttl": 120},
+    "15m": {"label": "15 minut",   "yf": "15m", "period": "8d",  "binance": "15m", "limit": 500, "ttl": 60},
+    "5m":  {"label": "5 minut",    "yf": "5m",  "period": "5d",  "binance": "5m",  "limit": 500, "ttl": 30},
+    "1m":  {"label": "1 minuta",   "yf": "1m",  "period": "7d",  "binance": "1m",  "limit": 500, "ttl": 15},
+}
+
+# Maksymalna dostępna historia per interwał (info do UI)
+INTRADAY_MAX_HISTORIA = {
+    "1d": "lata",
+    "1h": "730 dni",
+    "30m": "60 dni",
+    "15m": "8 dni",
+    "5m": "5 dni",
+    "1m": "7 dni",
+}
+
+
+def _dodaj_wskazniki(df: "pd.DataFrame", interval: str = "1d") -> "pd.DataFrame":
+    """Dodaje wskaźniki techniczne do DataFrame OHLCV.
+
+    Dla interwałów krótszych niż dzienny (intraday) MA50/MA200 mogą być
+    bez sensu (za mało historii), ale obliczamy je i tak – puste wartości
+    są po prostu NaN i nie pojawią się na wykresie.
+    """
+    df["RSI"]   = rsi(df["Close"])
+    df["MA20"]  = df["Close"].rolling(20).mean()
+    df["MA50"]  = df["Close"].rolling(50).mean()
+    df["MA200"] = df["Close"].rolling(200).mean()
+    df["MACD"], df["MACD_signal"] = macd(df["Close"])
+    df["BB_mid"], df["BB_upper"], df["BB_lower"] = bollinger_bands(df["Close"])
+    df["VWAP"]  = compute_vwap(df)
+    return df
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def pobierz_dane_intraday(
+    ticker: str, interval: str = "1d"
+) -> "tuple":
+    """Pobiera dane OHLCV dla wybranego interwału (1d / 1h / 30m / 15m / 5m / 1m).
+
+    Routing źródeł:
+    - Krypto obsługiwane przez Binance → Binance klines (brak opóźnienia!).
+    - Wszystko inne → Yahoo Finance (opóźnienie ~15 min, zawsze).
+
+    Zwraca (df, źródło_str) lub (None, None) przy błędzie.
+    TTL cache: krótszy dla mniejszych interwałów (patrz INTRADAY_INTERVALS).
+    """
+    cfg = INTRADAY_INTERVALS.get(interval, INTRADAY_INTERVALS["1d"])
+
+    # Krypto: użyj Binance (prawdziwy live, bez opóźnienia)
+    if external_data.is_binance_supported(ticker):
+        try:
+            klines = external_data.get_binance_klines(
+                ticker, interval=cfg["binance"], limit=cfg["limit"]
+            )
+            if klines:
+                df = external_data.binance_klines_to_df(klines)
+                if df is not None and not df.empty:
+                    df = _dodaj_wskazniki(df, interval)
+                    return df, "Binance (na żywo)"
+        except Exception:
+            pass
+
+    # Yahoo Finance (akcje, ETF, surowce i fallback dla krypto)
+    try:
+        stock = yf.Ticker(ticker)
+        df = stock.history(period=cfg["period"], interval=cfg["yf"])
+        if df is not None and not df.empty:
+            df = df.dropna(subset=["Close"])
+            if not df.empty:
+                # Dla interwałów intraday Yahoo zwraca tz-aware index,
+                # konwertujemy do UTC naive żeby uniknąć błędów Plotly.
+                if hasattr(df.index, "tz") and df.index.tz is not None:
+                    df.index = df.index.tz_localize(None)
+                df = _dodaj_wskazniki(df, interval)
+                return df, f"Yahoo Finance (~15 min opóźnienia)"
+    except Exception:
+        pass
+
+    return None, None
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def policz_historie_score(df: pd.DataFrame, dni: int = 90) -> pd.DataFrame:
     full = compute_simple_score_series(df)
