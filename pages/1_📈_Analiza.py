@@ -21,6 +21,9 @@ from common import (
     pobierz_dane,
     pobierz_dane_live,
     pobierz_dane_binance,
+    pobierz_dane_intraday,
+    INTRADAY_INTERVALS,
+    INTRADAY_MAX_HISTORIA,
     policz_historie_score,
     rysuj_wykres_ceny,
     rysuj_wykres_historii_score,
@@ -349,61 +352,85 @@ tab1, tab_news, tab_intraday, tab2, tab3, tab_forecast, tab4, tab5, tab6 = st.ta
 ])
 
 with tab1:
-    ctrl1, ctrl2, ctrl3, ctrl4 = st.columns([1.4, 1, 1.2, 1])
+    # ── Selektor interwału ────────────────────────────────────────────
+    intv_options = list(INTRADAY_INTERVALS.keys())
+    intv_labels  = [INTRADAY_INTERVALS[k]["label"] for k in intv_options]
+
+    intv_col, ctrl1, ctrl2, ctrl3, ctrl4 = st.columns([2.2, 1.4, 1, 1.2, 1])
+    with intv_col:
+        wybrany_intv = st.select_slider(
+            "Interwał wykresu",
+            options=intv_options,
+            value="1d",
+            format_func=lambda k: INTRADAY_INTERVALS[k]["label"],
+            key="chart_interval",
+        )
     with ctrl1:
+        # Dla interwałów intraday świece są bardziej czytelne – ustaw jako domyślne
+        domyslny_tryb = "Świece" if wybrany_intv != "1d" else "Linia"
         tryb_wykresu = st.radio(
             "Typ wykresu", ["Linia", "Świece"],
+            index=["Linia", "Świece"].index(domyslny_tryb),
             horizontal=True, key="chart_type",
         )
     with ctrl2:
-        pokaz_ma20 = st.checkbox("MA 20d", value=True, key="show_ma20")
+        pokaz_ma20 = st.checkbox("MA 20", value=(wybrany_intv == "1d"), key="show_ma20")
     with ctrl3:
         pokaz_bb = st.checkbox("Wstęgi Bollingera", value=False, key="show_bb")
     with ctrl4:
         pokaz_vwap = st.checkbox("VWAP", value=False, key="show_vwap")
 
-    # ── Tryb "na żywo": auto-odświeżanie wykresu ──────────────────────
+    # Komunikat o dostępnej historii i opóźnieniu
+    max_hist = INTRADAY_MAX_HISTORIA.get(wybrany_intv, "")
+    if wybrany_intv == "1d":
+        st.caption(f"📅 Interwał dzienny · historia: {max_hist} · 📡 {_zrodlo_wykresu}")
+    elif external_data.is_binance_supported(ticker):
+        st.caption(
+            f"📅 Interwał {INTRADAY_INTERVALS[wybrany_intv]['label']} · "
+            f"historia: ~{max_hist} · 📡 **Binance (na żywo, brak opóźnienia)**"
+        )
+    else:
+        st.caption(
+            f"📅 Interwał {INTRADAY_INTERVALS[wybrany_intv]['label']} · "
+            f"historia dostępna: ~{max_hist} · "
+            f"📡 Yahoo Finance (~15 min opóźnienia)"
+        )
+
+    # ── Tryb na żywo ──────────────────────────────────────────────────
     live1, live2 = st.columns([1.3, 2.7])
     with live1:
         tryb_live = st.toggle(
             "🔴 Tryb na żywo", value=False, key="live_mode",
-            help="Wykres odświeża się automatycznie. Uwaga: dane Yahoo Finance "
-                 "są opóźnione (zwykle ~15 min), więc nowy punkt pojawia się co "
-                 "kilkanaście minut – to ograniczenie źródła danych, nie aplikacji.",
+            help=(
+                "Wykres odświeża się automatycznie. "
+                "Krypto (Binance): prawdziwy real-time. "
+                "Akcje/ETF (Yahoo): nowy punkt co ~15 min."
+            ),
         )
     with live2:
         if tryb_live:
-            interwal = st.select_slider(
+            interwal_live = st.select_slider(
                 "Częstotliwość odświeżania",
-                options=[30, 60, 120, 300],
+                options=[15, 30, 60, 120, 300],
                 value=60,
                 format_func=lambda s: f"co {s} s" if s < 60 else f"co {s // 60} min",
                 key="live_interval",
             )
         else:
-            interwal = None
+            interwal_live = None
 
     def _rysuj_panel_wykresu(auto: bool):
-        """Rysuje wykres ceny + RSI + podsumowanie VWAP.
+        """Rysuje wykres ceny + RSI + VWAP.
 
-        auto=True: pobiera świeższe dane (krótki cache) i pokazuje znacznik czasu.
-        Dla krypto: używa Binance jako źródła (prawdziwy live trend).
-        Dla akcji USA ze skonfigurowanym Alpaca: dodaje live quote (bid/ask).
+        auto=True: pobiera świeższe dane przez pobierz_dane_intraday (krótki TTL).
+        Routing: Binance dla krypto (live), Yahoo dla pozostałych.
         """
         if auto:
-            # Krypto: odśwież z Binance (TTL 60s) – prawdziwy live trend.
-            # Akcje: odśwież z Yahoo (TTL 60s) – nowy punkt co ~15 min.
-            if external_data.is_binance_supported(ticker):
-                df_fresh, _ = pobierz_dane_binance(ticker, okres=okres)
-                zrodlo_live = "Binance (na żywo)"
-            else:
-                df_fresh, _ = pobierz_dane_live(ticker, period=okres)
-                zrodlo_live = "Yahoo Finance (~15 min opóźnienia)"
-
+            df_fresh, zrodlo_fresh = pobierz_dane_intraday(ticker, interval=wybrany_intv)
             df_chart = df_fresh if df_fresh is not None else df
-            znacznik_czasu = f"🔄 Ostatnia aktualizacja: {datetime.now():%H:%M:%S}"
+            zrodlo_fresh = zrodlo_fresh or _zrodlo_wykresu
 
-            # Dla akcji USA ze skonfigurowanym Alpaca: live quote bid/ask.
+            # Alpaca live quote dla akcji USA (bid/ask)
             if external_data.is_alpaca_configured() and external_data.is_alpaca_supported(ticker):
                 alpaca_quote = external_data.get_alpaca_quote(ticker)
                 if alpaca_quote:
@@ -411,9 +438,18 @@ with tab1:
                         f"🟢 **Alpaca (na żywo):** {alpaca_quote['price']:.2f} {waluta} "
                         f"(bid {alpaca_quote['bid']:.2f} / ask {alpaca_quote['ask']:.2f})"
                     )
-            st.caption(f"{znacznik_czasu} · 📡 {zrodlo_live}")
+            st.caption(
+                f"🔄 Ostatnia aktualizacja: {datetime.now():%H:%M:%S} · "
+                f"📡 {zrodlo_fresh}"
+            )
         else:
-            df_chart = df
+            # Statyczny tryb: dla interwału 1d używamy df już pobranego,
+            # dla intraday pobieramy przez pobierz_dane_intraday.
+            if wybrany_intv == "1d":
+                df_chart = df
+            else:
+                df_fresh, _ = pobierz_dane_intraday(ticker, interval=wybrany_intv)
+                df_chart = df_fresh if df_fresh is not None else df
 
         st.plotly_chart(
             rysuj_wykres_ceny(
@@ -423,14 +459,12 @@ with tab1:
             ),
             use_container_width=True,
         )
-        # Oznaczenie źródła danych wykresu – ważne dla przejrzystości.
-        if auto:
-            pass  # znacznik czasu już wyświetlony wyżej w trybie live
-        else:
+        if not auto:
             st.caption(f"📡 Dane wykresu: {_zrodlo_wykresu}")
+
         st.plotly_chart(rysuj_wykres_rsi(df_chart), use_container_width=True)
 
-        # Podsumowanie pozycji względem VWAP (liczone z aktualnego df)
+        # VWAP summary (zawsze na podstawie df dziennego dla spójności ze score)
         vwap_info = wynik.get("vwap")
         if vwap_info:
             if vwap_info["above"]:
@@ -447,41 +481,36 @@ with tab1:
                 )
 
     if tryb_live:
-        # st.fragment odświeża TYLKO ten fragment (wykres), bez przeładowania
-        # całej strony. run_every ustawia interwał. Wymaga Streamlit >= 1.37.
-        @st.fragment(run_every=interwal)
+        @st.fragment(run_every=interwal_live)
         def _wykres_na_zywo():
             _rysuj_panel_wykresu(auto=True)
-
         _wykres_na_zywo()
-        st.caption(
-            "🔴 Tryb na żywo aktywny. Wyłącz przełącznik, aby zatrzymać "
-            "automatyczne odświeżanie."
-        )
+        st.caption("🔴 Tryb na żywo aktywny. Wyłącz przełącznik, aby zatrzymać.")
     else:
         _rysuj_panel_wykresu(auto=False)
 
-    opisy_wykresu = [
-        "**Średnie kroczące** (MA 20/50/200) wygładzają cenę i pokazują trend "
-        "w różnych horyzontach: 20 dni = krótki, 200 dni = długi.",
-    ]
+    opisy_wykresu = []
+    if wybrany_intv == "1d":
+        opisy_wykresu.append(
+            "**Średnie kroczące** (MA 20/50/200) wygładzają cenę i pokazują trend "
+            "w różnych horyzontach: 20 dni = krótki, 200 dni = długi."
+        )
+    else:
+        opisy_wykresu.append(
+            f"**Interwał {INTRADAY_INTERVALS[wybrany_intv]['label']}** – każda świeca/punkt "
+            f"to jeden przedział czasowy. MA i wstęgi liczone na świecach intraday "
+            f"(mają sens dopiero przy >20 świecach historii)."
+        )
     if pokaz_bb:
         opisy_wykresu.append(
-            "**Wstęgi Bollingera** to średnia 20-dniowa ± 2 odchylenia "
-            "standardowe. Cena przy górnej wstędze bywa uznawana za chwilowo "
-            "przegrzaną, a przy dolnej – za wyprzedaną."
+            "**Wstęgi Bollingera** to średnia 20 świec ± 2 odchylenia standardowe."
         )
     if pokaz_vwap:
         opisy_wykresu.append(
-            "**VWAP** (Volume Weighted Average Price) to średnia cena ważona "
-            "wolumenem – pokazuje 'sprawiedliwą' cenę, przy której faktycznie "
-            "handlowano. Często używana przez inwestorów instytucjonalnych."
+            "**VWAP** (Volume Weighted Average Price) – średnia cena ważona wolumenem."
         )
     if tryb_wykresu == "Świece":
-        opisy_wykresu.append(
-            "**Świece** pokazują cenę otwarcia, zamknięcia oraz max/min w danym "
-            "dniu. Zielona = wzrost, czerwona = spadek."
-        )
+        opisy_wykresu.append("**Świece:** zielona = wzrost, czerwona = spadek w danym przedziale.")
     st.caption("  \n".join(opisy_wykresu))
 
 with tab_news:
