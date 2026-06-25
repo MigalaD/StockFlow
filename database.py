@@ -356,6 +356,10 @@ def save_scan_results(results: list[dict]):
     """results: list of dicts with keys ticker, name, sector, price, score, score_st (opt.)"""
     now = datetime.now().isoformat()
     with get_conn() as conn:
+        # Upewnij się że kolumna score_st istnieje (migracja mogła nie zadziałać
+        # gdy baza była już otwarta przy imporcie modułu na Streamlit Cloud).
+        if not _column_exists(conn, "scan_results", "score_st"):
+            conn.execute("ALTER TABLE scan_results ADD COLUMN score_st REAL")
         conn.execute("DELETE FROM scan_results")  # keep only latest scan
         conn.executemany(
             "INSERT INTO scan_results (ticker, name, sector, price, score, score_st, scanned_at) "
