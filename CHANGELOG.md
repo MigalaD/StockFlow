@@ -7,71 +7,69 @@ Wersjonowanie: [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 
 ---
 
-## [1.1.0] — 2026-06-20
+## [1.1.0] — 2026-06-25
 
 ### Dodano
 
-**Scoring krypto i surowców — pełna separacja**
-- Kryptowaluty mają teraz własny `asset_type="crypto"`, osobny od surowców
-  (wcześniej traktowane identycznie pod wspólnym `"commodity"`).
-- `score_volatility_crypto()` — progi zmienności kalibrowane pod realia rynku
-  krypto (50–120% rocznej zmienności to norma, nie kara jak dla akcji).
-- `score_btc_dominance()` — nowa składowa dla altcoinów: siła względem
-  30-dniowego zwrotu Bitcoina. Sam BTC-USD dostaje neutralne 50 (punkt
-  odniesienia).
-- `score_seasonality()` — nowa składowa dla surowców (GLD, USO, UNG, DBA):
-  modyfikator na bazie historycznych wzorców sezonowych popytu/podaży.
-- Wagi automatycznie renormalizowane do sumy 1.0 dla każdego typu aktywa.
+**Scoring krypto i surowców — pełna separacja typów aktywów**
+- Nowy `asset_type="crypto"` osobny od `"commodity"` — inne wagi, inne składowe
+- `score_volatility_crypto()` — progi kalibrowane pod zmienność krypto (50–120% rocznie = norma)
+- `score_btc_dominance()` — siła altcoina względem 30-dniowego zwrotu BTC
+- `score_seasonality()` — modyfikator sezonowy dla GLD/USO/UNG/DBA
 
-**Darmowe źródła danych live (`external_data.py`, nowy moduł)**
-- **Binance** — prawdziwe ceny live (sekundy) dla 8 kryptowalut, bez
-  rejestracji. Strona Krypto wyświetla cenę z Binance zamiast Yahoo, gdy
-  dostępna (score nadal liczony z Yahoo, dla spójności).
-- **CoinGecko** — dominacja BTC/ETH i kapitalizacja całego rynku krypto,
-  widoczne jako baner na górze strony Krypto.
-- **Alpaca Markets** — opcjonalny live quote (bid/ask) dla akcji USA w
-  trybie na żywo na stronie Analizy. Wymaga darmowego klucza API
-  (`ALPACA_API_KEY` / `ALPACA_SECRET_KEY`); bez klucza aplikacja działa
-  normalnie, korzystając wyłącznie z Yahoo Finance.
-- Wszystkie funkcje gracefully degradują do `None` przy błędzie sieci/API —
-  Yahoo Finance pozostaje zawsze działającym źródłem zapasowym.
-- Status źródeł danych widoczny w Ustawienia → Diagnostyka.
+**Score krótkoterminowy — `compute_score_krotkoterminowy()`**
+- Osobny score swing-tradingowy (0–100) obok istniejącego score długoterminowego
+- 7 składowych: RSI-7, Stochastik %K, momentum 5d/10d, wolumen 3d, OBV, VWAP pozycja, Bollinger %B
+- Dwa badże w nagłówku Analizy: `📈 Wynik DT` i `⚡ Wynik ST`
+- Skaner z przełącznikiem trybu — ranking DT lub ST, heatmapa sektorów per tryb
 
-**Sygnały krótkoterminowe (`intraday_signals.py`, nowy moduł)**
-- Nowa zakładka „⚡ Sygnały krótkoterminowe” na stronie Analizy.
-- **ATR** (Average True Range) — średni dzienny zasięg ruchu, pomocny przy
-  ustawianiu stop-lossów.
-- **Stochastik %K/%D** — oscylator czulszy na krótkoterminowe odwrócenia
-  niż RSI, z wykrywaniem przecięć bullish/bearish.
-- **OBV** (On-Balance Volume) — skumulowany wolumen + automatyczne
-  wykrywanie dywergencji cena/wolumen.
-- **Poziomy wsparcia/oporu** — automatyczne wykrywanie na bazie lokalnych
-  ekstremów ceny, narysowane na wykresie.
-- Jasne zastrzeżenie w UI: wskaźniki liczone na danych dziennych
-  (~15 min opóźnienia Yahoo) — narzędzie dla swing-tradingu, nie
-  prawdziwego intraday day-tradingu.
+**Darmowe API live — `external_data.py`**
+- **Binance** — ceny i świece OHLCV dla krypto w czasie rzeczywistym (bez rejestracji)
+- **CoinGecko** — dominacja BTC/ETH, kapitalizacja rynku krypto
+- **Alpaca Markets** — opcjonalny live quote (bid/ask) dla akcji USA
+- Graceful degradation — Yahoo Finance zawsze jako fallback
+
+**Wykresy z wyborem interwału**
+- Selektor: 1d / 1h / 30m / 15m / 5m / 1m
+- Krypto → Binance (prawdziwy live, zero opóźnienia dla każdego interwału)
+- Akcje/ETF → Yahoo Finance (~15 min opóźnienia)
+- Automatyczny tryb świecowy dla interwałów intraday
+- Tryb na żywo z selektorem częstotliwości (15s / 30s / 1min / 2min / 5min)
+
+**Sygnały krótkoterminowe — `intraday_signals.py`**
+- Nowa zakładka „⚡ Sygnały krótkoterminowe" w Analizie
+- ATR z wyliczonym stop-lossem (1× i 1.5× ATR od ceny)
+- Stochastik %K/%D z mini wykresem 60 dni
+- OBV z automatycznym wykrywaniem dywergencji
+- Poziomy wsparcia/oporu z odległością % od ceny + wykres z etykietami
+- Panel syntezy — jeden kolorowy komunikat łączący wszystkie sygnały
+
+**Strona Krypto**
+- Baner dominacji BTC/ETH (CoinGecko)
+- Ceny live z Binance (score nadal liczony z Yahoo dla spójności)
+
+**Inne**
+- `database.py`: migracja nr 2 — kolumna `score_st` w `scan_results`
+- `pages/10_Ustawienia.py`: status zewnętrznych źródeł danych
+- `LICENSE` i nagłówki copyright (Damian Migała / StockFlow)
+
+### Naprawiono
+- `KeyError` na stronie Analizy dla składowych krypto (`volatility_crypto`, `btc_dominance`) — brak wpisów w `OPISY_WSKAZNIKOW`
+- `NameError: external_data` w trybie na żywo — brakujący `import` w `common.py`
+- `packages.txt` z polskimi komentarzami → błąd apt-get na Streamlit Cloud — plik opróżniony
+- Konflikt `libpng16-16` vs `libpng16-16t64` na Debian Trixie
+- Poprawa obsługi błędów BTC-USD: trzy warstwy fallback (Binance → Yahoo cached → Yahoo direct)
+- `score_banner()` kompatybilny z `score=None`
 
 ### Zmieniono
-
-- `requirements.txt`: dodano jawną zależność `requests>=2.28,<3.0`
-  (wcześniej tylko tranzytywna przez yfinance, teraz używana bezpośrednio
-  przez `external_data.py`).
-- `.streamlit/secrets.toml.example`: dodano opcjonalny szablon dla
-  `ALPACA_API_KEY` / `ALPACA_SECRET_KEY`.
-- Sekcja sezonowości i dominacji BTC opisana w dokumentacji (wszystkie 3
-  pliki `.docx` zaktualizowane).
+- `requirements.txt`: `requests>=2.28`, Streamlit `>=1.37`
+- Nagłówek strony Analizy: dwa score zamiast jednego
 
 ### Testy
-
-- 134 → **201 testów** (+67).
-- Nowy `tests/test_external_data.py` (20 testów) — Binance/CoinGecko/Alpaca
-  z zamockowanym `requests.get`, bez prawdziwych połączeń sieciowych.
-- Nowy `tests/test_intraday_signals.py` (25 testów) — ATR, Stochastik, OBV,
-  wykrywanie dywergencji, poziomy wsparcia/oporu.
-- `tests/test_stock_analyzer.py`: +25 testów dla nowych typów aktywa, wag
-  i składowych score krypto/surowców.
-
----
+- 134 → **201 testów** (+67)
+- Nowy `tests/test_external_data.py` (20 testów)
+- Nowy `tests/test_intraday_signals.py` (25 testów)
+- `tests/test_stock_analyzer.py`: +25 testów dla krypto/surowców
 
 ## [1.0.0] — 2026-06-17
 
