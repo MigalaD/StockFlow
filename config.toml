@@ -1,16 +1,16 @@
-# Konfiguracja Streamlit
-# Zmień base = "dark" na base = "light" dla trybu jasnego
+# Konfiguracja Streamlit — StockFlow Brand Guide v1.1
+# Paleta: #22C55E (primary green), #14B8A6 (teal), #1F2937 (dark bg), #F8FAFC (text)
 
 [theme]
-base                  = "dark"
-primaryColor          = "#2563eb"
-backgroundColor       = "#0e1117"
-secondaryBackgroundColor = "#161b25"
-textColor             = "#e8eaf0"
-font                  = "sans serif"
+base                     = "dark"
+primaryColor             = "#22C55E"
+backgroundColor          = "#1F2937"
+secondaryBackgroundColor = "#111827"
+textColor                = "#F8FAFC"
+font                     = "sans serif"
 
 [client]
-showErrorDetails      = false
+showErrorDetails         = false
 
 [server]
-headless              = true
+headless                 = true

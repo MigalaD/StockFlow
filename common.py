@@ -31,10 +31,16 @@ from stock_analyzer import (
 )
 
 # ── Kolory ────────────────────────────────────────────────────────────
-KOLOR_DOBRY     = "#1a9850"
-KOLOR_NEUTRALNY = "#999999"
-KOLOR_SLABY     = "#d73027"
-KOLOR_AKCENTU   = "#2563eb"
+# ── Paleta kolorów StockFlow Brand Guide ──────────────────────────────
+# Źródło: brand guide StockFlow (zielony #22C55E, teal #14B8A6, niebieski #3B82F6)
+KOLOR_DOBRY     = "#22C55E"   # brand primary green  — sygnały pozytywne
+KOLOR_NEUTRALNY = "#64748B"   # slate-500            — stan neutralny
+KOLOR_SLABY     = "#EF4444"   # red-500              — sygnały negatywne
+KOLOR_AKCENTU   = "#14B8A6"   # brand teal           — akcenty, wykresy, linki
+KOLOR_BLUE      = "#3B82F6"   # brand blue           — wykresy, MA, info
+KOLOR_TLO       = "#1F2937"   # brand dark bg
+KOLOR_TLO2      = "#111827"   # brand darker bg (sidebar)
+KOLOR_TEKST     = "#F8FAFC"   # brand light text
 
 LEGENDA_SCORE = (
     "🟢 60-100: więcej sygnałów 'pozytywnych'\n\n"
@@ -112,10 +118,27 @@ def get_plotly_template() -> str:
 
 
 def apply_theme(fig: go.Figure) -> go.Figure:
+    """Stosuje brand guide StockFlow do wykresu Plotly.
+
+    Przezroczyste tło (dopasowuje się do tła Streamlit), brand grid i font.
+    """
     fig.update_layout(
         template=get_plotly_template(),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif", color=KOLOR_TEKST),
+        xaxis=dict(
+            gridcolor="rgba(255,255,255,0.05)",
+            linecolor="rgba(255,255,255,0.10)",
+        ),
+        yaxis=dict(
+            gridcolor="rgba(255,255,255,0.05)",
+            linecolor="rgba(255,255,255,0.10)",
+        ),
+        legend=dict(
+            bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, sans-serif", size=12),
+        ),
     )
     return fig
 
@@ -363,34 +386,34 @@ def rysuj_wykres_ceny(
         fig.add_trace(go.Candlestick(
             x=df.index, open=df["Open"], high=df["High"],
             low=df["Low"], close=df["Close"], name="OHLC",
-            increasing_line_color=KOLOR_DOBRY,
-            decreasing_line_color=KOLOR_SLABY,
+            increasing_line_color=KOLOR_DOBRY,    # #22C55E brand green
+            decreasing_line_color=KOLOR_SLABY,    # #EF4444 red
         ))
         fig.update_layout(xaxis_rangeslider_visible=False)
     else:
         fig.add_trace(go.Scatter(
             x=df.index, y=df["Close"], name="Cena",
-            line=dict(color=KOLOR_AKCENTU, width=2),
+            line=dict(color=KOLOR_AKCENTU, width=2),  # #14B8A6 brand teal
         ))
 
     if pokaz_vwap and "VWAP" in df.columns:
         fig.add_trace(go.Scatter(
             x=df.index, y=df["VWAP"], name="VWAP (20d)",
-            line=dict(color="#e11d48", width=1.6, dash="dashdot"),
+            line=dict(color="#E11D48", width=1.6, dash="dashdot"),
         ))
 
     if pokaz_ma20 and "MA20" in df.columns:
         fig.add_trace(go.Scatter(
             x=df.index, y=df["MA20"], name="MA 20d",
-            line=dict(color="#10b981", width=1.3, dash="dot"),
+            line=dict(color=KOLOR_DOBRY, width=1.3, dash="dot"),  # brand green
         ))
     fig.add_trace(go.Scatter(
         x=df.index, y=df["MA50"], name="MA 50d",
-        line=dict(color="#f59e0b", width=1.5, dash="dot"),
+        line=dict(color="#F59E0B", width=1.5, dash="dot"),         # amber — czytelny
     ))
     fig.add_trace(go.Scatter(
         x=df.index, y=df["MA200"], name="MA 200d",
-        line=dict(color="#7c3aed", width=1.5, dash="dot"),
+        line=dict(color="#7C3AED", width=1.5, dash="dot"),         # violet — czytelny
     ))
 
     fig.update_layout(
@@ -404,7 +427,7 @@ def rysuj_wykres_ceny(
 def rysuj_wykres_rsi(df: pd.DataFrame) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df.index, y=df["RSI"], name="RSI",
-                              line=dict(color="#0891b2", width=2)))
+                              line=dict(color=KOLOR_AKCENTU, width=2)))  # brand teal
     fig.add_hline(y=70, line_dash="dash", line_color=KOLOR_SLABY,   annotation_text="Przegrzanie (70)")
     fig.add_hline(y=30, line_dash="dash", line_color=KOLOR_DOBRY,   annotation_text="Wyprzedanie (30)")
     fig.update_layout(height=220, margin=dict(l=10, r=10, t=30, b=10),
@@ -447,22 +470,28 @@ def rysuj_wykres_historii_score(hist_df: pd.DataFrame) -> go.Figure:
 
 # ── UI-komponenty wielokrotnego użytku ───────────────────────────────
 def score_banner(score: float, n_skladowych: int):
-    """Kolorowy banner z wynikiem ogólnym."""
+    """Kolorowy banner z wynikiem ogólnym — brand guide StockFlow."""
     kolor = kolor_dla_score(score)
     emoji = emoji_dla_score(score)
+    interpretacja = interpret_score(score)
     st.markdown(
         f"""
         <div style="
-            background:{kolor}18;
-            border-left:5px solid {kolor};
-            padding:14px 18px;
-            border-radius:8px;
-            margin:8px 0 18px 0;
+            background: linear-gradient(135deg, {kolor}14, {kolor}08);
+            border-left: 4px solid {kolor};
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin: 8px 0 18px 0;
+            font-family: 'Inter', sans-serif;
         ">
-          <span style="font-size:1.25em">{emoji} <strong>{interpret_score(score)}</strong></span><br>
-          <span style="opacity:.8">
-            Wynik ogólny: <strong>{score:.0f}/100</strong>
-            &nbsp;(na podstawie {n_skladowych} wskaźników)
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+            <span style="font-size:1.4em">{emoji}</span>
+            <span style="font-size:1.15em; font-weight:700;
+                         color:{kolor};">{interpretacja}</span>
+          </div>
+          <span style="font-size:0.9em; opacity:0.75;">
+            Wynik ogólny: <strong style="color:{KOLOR_TEKST}">{score:.0f} / 100</strong>
+            &nbsp;·&nbsp; {n_skladowych} wskaźników
           </span>
         </div>
         """,
@@ -471,31 +500,156 @@ def score_banner(score: float, n_skladowych: int):
 
 
 def inject_base_css():
-    """Wstrzykuje wspólne style CSS dla spójnego, dopracowanego wyglądu.
+    """Wstrzykuje globalne style CSS zgodne z brand guide StockFlow.
 
-    Wywoływane raz na każdej stronie (tuż po sidebarze). Poprawia odstępy,
-    zaokrąglenia metryk, wygląd przycisków i nagłówków – tak, by całość
-    sprawiała wrażenie spójnego produktu, a nie zlepka domyślnych widżetów.
+    Ładuje czcionkę Inter (Google Fonts), ustawia kolory i typografię
+    zgodne z paleta brand (#22C55E, #14B8A6, #3B82F6), styluje metryki,
+    przyciski, nagłówki i sidebar.
+    Wywoływane raz per strona przez sidebar_user().
     """
     st.markdown(
-        """
+        f"""
         <style>
-        /* Metryki jako "karty" z delikatnym tłem i obramowaniem */
-        [data-testid="stMetric"] {
-            background: rgba(128,128,128,0.06);
-            border: 1px solid rgba(128,128,128,0.15);
-            padding: 14px 16px;
-            border-radius: 10px;
-        }
-        [data-testid="stMetricLabel"] { opacity: .75; }
-        /* Przyciski: pełna szerokość czytelniej, lekkie zaokrąglenie */
-        .stButton > button { border-radius: 8px; font-weight: 500; }
-        /* Nagłówek strony – mniejszy margines dolny */
-        h1 { margin-bottom: .2em; }
-        /* Zakładki – trochę więcej oddechu */
-        button[data-baseweb="tab"] { font-size: 0.95rem; }
-        /* Tabele – delikatne zaokrąglenie rogów */
-        [data-testid="stDataFrame"] { border-radius: 8px; overflow: hidden; }
+        /* ── Inter font (brand guide: Bold, SemiBold, Regular, Light) ── */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        html, body, [class*="css"], .stApp, .stMarkdown,
+        .stTextInput input, .stSelectbox, .stRadio, .stCheckbox,
+        button, [data-testid="stMetricLabel"], [data-testid="stMetricValue"] {{
+            font-family: 'Inter', sans-serif !important;
+        }}
+
+        /* ── Nagłówki — brand hierarchy ── */
+        h1 {{
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 700 !important;
+            font-size: 1.95rem !important;
+            color: {KOLOR_TEKST} !important;
+            margin-bottom: .15em !important;
+            letter-spacing: -0.02em;
+        }}
+        h2 {{
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+            color: {KOLOR_TEKST} !important;
+            letter-spacing: -0.01em;
+        }}
+        h3 {{
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+            color: {KOLOR_AKCENTU} !important;
+        }}
+
+        /* ── Sidebar — brand darker background ── */
+        [data-testid="stSidebar"] {{
+            background-color: {KOLOR_TLO2} !important;
+            border-right: 1px solid rgba(255,255,255,0.06);
+        }}
+        [data-testid="stSidebar"] .stMarkdown p,
+        [data-testid="stSidebar"] label {{
+            font-family: 'Inter', sans-serif !important;
+            font-size: 0.88rem !important;
+        }}
+
+        /* ── Przyciski — brand green gradient ── */
+        .stButton > button {{
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            border: none !important;
+            background: linear-gradient(135deg, {KOLOR_DOBRY}, #16A34A) !important;
+            color: #fff !important;
+            transition: opacity 0.15s ease, transform 0.1s ease !important;
+            letter-spacing: 0.01em;
+        }}
+        .stButton > button:hover {{
+            opacity: 0.88 !important;
+            transform: translateY(-1px) !important;
+        }}
+        .stButton > button:active {{
+            transform: translateY(0px) !important;
+        }}
+        /* Przyciski secondary (outlined) — tylko border, nie gradient */
+        .stButton > button[kind="secondary"] {{
+            background: transparent !important;
+            border: 1px solid {KOLOR_DOBRY} !important;
+            color: {KOLOR_DOBRY} !important;
+        }}
+
+        /* ── Metryki jako karty ── */
+        [data-testid="stMetric"] {{
+            background: rgba(34, 197, 94, 0.05) !important;
+            border: 1px solid rgba(34, 197, 94, 0.18) !important;
+            padding: 14px 16px !important;
+            border-radius: 10px !important;
+        }}
+        [data-testid="stMetricLabel"] {{
+            font-weight: 600 !important;
+            font-size: 0.78rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.06em !important;
+            opacity: 0.65 !important;
+        }}
+        [data-testid="stMetricValue"] {{
+            font-weight: 700 !important;
+            font-size: 1.6rem !important;
+            color: {KOLOR_TEKST} !important;
+        }}
+
+        /* ── Zakładki (tabs) ── */
+        button[data-baseweb="tab"] {{
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 500 !important;
+            font-size: 0.92rem !important;
+        }}
+        button[data-baseweb="tab"][aria-selected="true"] {{
+            color: {KOLOR_DOBRY} !important;
+            font-weight: 600 !important;
+        }}
+
+        /* ── Tabele ── */
+        [data-testid="stDataFrame"] {{
+            border-radius: 10px !important;
+            overflow: hidden !important;
+            border: 1px solid rgba(255,255,255,0.06) !important;
+        }}
+
+        /* ── Inputy i selectboxy ── */
+        .stTextInput input, .stSelectbox select,
+        [data-baseweb="input"] input,
+        [data-baseweb="select"] {{
+            font-family: 'Inter', sans-serif !important;
+            border-radius: 8px !important;
+            border-color: rgba(255,255,255,0.12) !important;
+        }}
+        .stTextInput input:focus,
+        [data-baseweb="input"] input:focus {{
+            border-color: {KOLOR_DOBRY} !important;
+            box-shadow: 0 0 0 2px rgba(34,197,94,0.18) !important;
+        }}
+
+        /* ── Alerty / info boxy ── */
+        [data-testid="stAlert"] {{
+            border-radius: 10px !important;
+            border-width: 1px !important;
+        }}
+
+        /* ── Divider ── */
+        hr {{
+            border-color: rgba(255,255,255,0.08) !important;
+            margin: 1em 0 !important;
+        }}
+
+        /* ── Scrollbar — subtelny brand styl ── */
+        ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
+        ::-webkit-scrollbar-track {{ background: {KOLOR_TLO2}; }}
+        ::-webkit-scrollbar-thumb {{
+            background: rgba(34,197,94,0.35);
+            border-radius: 3px;
+        }}
+        ::-webkit-scrollbar-thumb:hover {{
+            background: rgba(34,197,94,0.6);
+        }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -503,28 +657,41 @@ def inject_base_css():
 
 
 def page_header(tytul: str, podtytul: str = "", ikona: str = ""):
-    """Spójny nagłówek strony: tytuł + opcjonalny podtytuł i ikona.
-
-    Używaj na górze każdej strony zamiast samego st.title(), żeby wszystkie
-    strony miały identyczny rytm wizualny.
-    """
+    """Spójny nagłówek strony zgodny z brand guide StockFlow."""
     naglowek = f"{ikona} {tytul}".strip()
-    st.title(naglowek)
-    if podtytul:
-        st.caption(podtytul)
-    st.divider()
+    st.markdown(
+        f"""
+        <div style="margin-bottom: 0.5rem;">
+          <h1 style="
+            font-family: Inter, sans-serif;
+            font-weight: 700;
+            font-size: 1.95rem;
+            color: {KOLOR_TEKST};
+            margin: 0 0 4px 0;
+            letter-spacing: -0.02em;
+          ">{naglowek}</h1>
+          {"" if not podtytul else
+            f'<p style="font-family:Inter,sans-serif; font-size:0.9rem; '
+            f'color:{KOLOR_NEUTRALNY}; margin:0 0 8px 0;">{podtytul}</p>'
+          }
+          <div style="height:3px; width:48px;
+            background:linear-gradient(90deg,{KOLOR_DOBRY},{KOLOR_AKCENTU});
+            border-radius:2px; margin-bottom:12px;"></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def score_pill(score: float) -> str:
-    """Zwraca inline'owy, kolorowy "pill" z wynikiem (HTML) do osadzenia w markdown.
-
-    Przykład: st.markdown(score_pill(72), unsafe_allow_html=True)
-    """
+    """Zwraca inline'owy, kolorowy 'pill' z wynikiem (HTML) do osadzenia w markdown."""
     kolor = kolor_dla_score(score)
     return (
-        f'<span style="background:{kolor}22;color:{kolor};'
-        f'padding:2px 10px;border-radius:999px;font-weight:600;'
-        f'font-size:0.9em;white-space:nowrap">{score:.0f}/100</span>'
+        f'<span style="background:{kolor}1A; color:{kolor}; '
+        f'padding:3px 12px; border-radius:999px; font-weight:600; '
+        f'font-size:0.88em; font-family:Inter,sans-serif; '
+        f'white-space:nowrap; border:1px solid {kolor}40">'
+        f'{score:.0f}/100</span>'
     )
 
 
@@ -597,11 +764,30 @@ def ticker_search_widget(
 def sidebar_user(key: str = "user_id") -> str:
     """Renderuje pole użytkownika w sidebarze i zwraca user_id.
 
-    Przy okazji wstrzykuje wspólne style CSS (raz na stronę), dzięki czemu
-    każda strona ma spójny, dopracowany wygląd bez powielania kodu.
+    Przy okazji wstrzykuje wspólne style CSS (raz na stronę) i logo StockFlow.
     """
     inject_base_css()
     with st.sidebar:
+        # Logo tekstowe StockFlow (do czasu dodania pliku graficznego)
+        st.markdown(
+            f"""
+            <div style="padding: 12px 0 18px 0; text-align: center;">
+              <span style="
+                font-family: Inter, sans-serif;
+                font-size: 1.55rem;
+                font-weight: 700;
+                letter-spacing: -0.02em;
+              ">
+                <span style="color:{KOLOR_DOBRY};">Stock</span><span style="color:{KOLOR_AKCENTU};">Flow</span>
+              </span>
+              <div style="font-size:0.68rem; opacity:0.45; margin-top:2px;
+                          font-family:Inter,sans-serif; letter-spacing:0.04em;">
+                ANALITYKA RYNKOWA
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         st.text_input(
             "👤 Twoja nazwa",
             value="default",
@@ -631,7 +817,15 @@ def footer(pokaz_feedback: bool = True):
             f"💬 Wersja testowa – [zgłoś uwagę lub błąd]({FEEDBACK_URL}) "
             "· ℹ️ więcej w zakładce „O aplikacji”."
         )
-    st.caption(f"Analizator Spółek · wersja {APP_VERSION}")
+    st.markdown(
+        f"<p style='font-family:Inter,sans-serif; font-size:0.78rem; "
+        f"opacity:0.45; text-align:center; margin-top:6px;'>"
+        f"<span style='color:{KOLOR_DOBRY}; font-weight:600;'>Stock</span>"
+        f"<span style='color:{KOLOR_AKCENTU}; font-weight:600;'>Flow</span>"
+        f" \u00a0·\u00a0 v{APP_VERSION}"
+        f"</p>",
+        unsafe_allow_html=True,
+    )
 
 
 def banner_dane_niedostepne():
