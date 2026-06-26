@@ -7,6 +7,7 @@ Spółki wzrostowe
 """
 import streamlit as st
 from common import (
+    section_header, empty_state,
     LEGENDA_SCORE,
     footer,
     pobierz_analize,

@@ -9,6 +9,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from common import (
+    section_header, empty_state,
     apply_theme,
     footer,
     kolor_dla_score,
@@ -120,7 +121,7 @@ st.download_button(
 )
 
 st.divider()
-st.markdown("#### 📈 Porównanie zachowania cen (znormalizowane)")
+section_header("Porównanie zachowania cen (znormalizowane)", "📈")
 st.markdown(
     "Każda linia startuje od **100%** na początku okresu - dzięki temu "
     "można porównać, która spółka zyskała/straciła więcej w tym samym "
@@ -173,7 +174,7 @@ st.plotly_chart(apply_theme(fig_norm), use_container_width=True)
 # POJEDYNEK 1 vs 1 (side-by-side)
 # ========================================================================
 st.divider()
-st.markdown("#### ⚔️ Pojedynek: spółka vs spółka")
+section_header("⚔️ Pojedynek: spółka vs spółka")
 st.markdown(
     "Wybierz dwie spółki z porównywanych powyżej, aby zobaczyć pełne "
     "rozbicie ich wyników obok siebie – wskaźnik po wskaźniku."

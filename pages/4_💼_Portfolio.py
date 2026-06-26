@@ -9,6 +9,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from common import (
+    section_header, empty_state, karta_portfolio,
     LEGENDA_SCORE,
     apply_theme,
     footer,
@@ -111,35 +112,18 @@ if totals:
 for warn in analiza_portfela["warnings"]:
     st.warning(warn)
 
-st.markdown("#### Pozycje")
-for p in analiza_portfela["positions"]:
-    col1, col2, col3, col4, col5, col6 = st.columns([2, 1, 1, 1, 1, 1])
-    with col1:
-        st.markdown(f"**{p['name']}** ({p['ticker']})")
-        st.caption(f"🏷️ {p['sector']} • {p['shares']:g} akcji od {p['buy_date']}")
-        if p["notes"]:
-            st.caption(f"📝 {p['notes']}")
-    with col2:
-        st.metric("Cena zakupu", f"{p['buy_price']:.2f} {p['currency']}")
-    with col3:
-        st.metric("Cena aktualna", f"{p['current_price']:.2f} {p['currency']}")
-    with col4:
-        st.metric("Wartość", f"{p['current_value']:,.2f}")
-    with col5:
-        st.metric("P&L", f"{p['pnl']:+,.2f}", delta=f"{p['pnl_pct']:+.1f}%")
-    with col6:
-        st.metric(
-            "Wynik", f"{p['score']:.0f}/100",
-            delta=interpret_score(p["score"]), delta_color="off",
-            help=LEGENDA_SCORE,
-        )
-        if st.button("🗑️ Usuń", key=f"del_pos_{p['id']}"):
+section_header("Pozycje", "💼")
+col_l, col_r = st.columns(2)
+for i, p in enumerate(analiza_portfela["positions"]):
+    with (col_l if i % 2 == 0 else col_r):
+        karta_portfolio(p)
+        if st.button("🗑️ Usuń pozycję", key=f"del_pos_{p['id']}",
+                     use_container_width=True):
             db.remove_position(p["id"], user_id)
             st.rerun()
-    st.divider()
 
 if analiza_portfela["allocation_by_sector"]:
-    st.markdown("#### Alokacja sektorowa")
+    section_header("Alokacja sektorowa", "🥧")
     alloc = analiza_portfela["allocation_by_sector"]
     fig = go.Figure(go.Pie(
         labels=list(alloc.keys()), values=list(alloc.values()),

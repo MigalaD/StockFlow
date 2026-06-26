@@ -7,6 +7,7 @@ ETF i Surowce
 """
 import streamlit as st
 from common import (
+    section_header, empty_state,
     LEGENDA_SCORE,
     footer,
     pobierz_analize,
@@ -40,10 +41,10 @@ podsekcja = st.radio(
 
 lista = ETF_LIST if podsekcja == "📊 ETF-y" else KOMODITY_LIST
 
-#st.markdown(
-#    "Lista jest edytowalna w pliku `tickers.py` "
-#    f"(`{'ETF_LIST' if podsekcja == '📊 ETF-y' else 'KOMODITY_LIST'}`)."
-#)
+st.markdown(
+    "Lista jest edytowalna w pliku `tickers.py` "
+    f"(`{'ETF_LIST' if podsekcja == '📊 ETF-y' else 'KOMODITY_LIST'}`)."
+)
 
 with st.spinner("Sprawdzanie..."):
     wyniki_etf = []

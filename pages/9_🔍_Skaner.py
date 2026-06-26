@@ -9,6 +9,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from common import (
+    section_header, empty_state,
     apply_theme,
     footer,
     kolor_dla_score,
@@ -111,7 +112,7 @@ if uruchom:
 results = db.get_scan_results()
 
 if not results:
-    st.info("Brak wyników – uruchom skan powyżej.")
+    empty_state("🔍", "Brak wyników skanu", "Uruchom skan powyżej aby zobaczyć wyniki.")
     st.stop()
 
 # Kolumna score zależna od trybu
@@ -185,7 +186,7 @@ with col_bottom:
         use_container_width=True,
     )
 
-st.markdown("#### Pełna lista wyników")
+section_header("Pełna lista wyników")
 st.dataframe(
     df_show.style.background_gradient(subset=gradient_cols, cmap="RdYlGn", vmin=0, vmax=100),
     use_container_width=True,

@@ -20,6 +20,7 @@ import streamlit as st
 import pandas as pd
 
 from common import (
+    section_header, empty_state,
     LEGENDA_SCORE,
     badge_score,
     footer,

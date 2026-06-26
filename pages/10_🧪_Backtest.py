@@ -9,6 +9,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from common import (
+    section_header, empty_state,
     apply_theme,
     footer,
     sidebar_legenda,
@@ -20,7 +21,7 @@ from tickers import PRZYKLADOWE_SPOLKI
 user_id = sidebar_user()
 sidebar_legenda()
 
-st.title("🧪 Backtest")
+st.title("🧪 Backtest strategii")
 
 st.markdown(
     "Backtest sprawdza, **co by było, gdyby** kupować spółkę, gdy "
@@ -194,7 +195,7 @@ if bt_params:
     )
     st.plotly_chart(apply_theme(fig), use_container_width=True)
 
-    st.markdown("#### Historia transakcji")
+    section_header("Historia transakcji")
     if trades:
         trades_df = pd.DataFrame(trades)
         trades_df.index = trades_df.index + 1
@@ -212,7 +213,7 @@ if bt_params:
     # HEATMAPA PROGÓW
     # ----------------------------------------------------------
     st.divider()
-    st.markdown("#### 🗺️ Heatmapa progów kupna/sprzedaży")
+    section_header("🗺️ Heatmapa progów kupna/sprzedaży")
     st.caption(
         "Sprawdza wiele kombinacji progów kupna/sprzedaży naraz na tych "
         "samych danych - pomaga ocenić, czy wybrane progi (65/35) były "
@@ -258,7 +259,7 @@ if bt_params:
     # WALK-FORWARD
     # ----------------------------------------------------------
     st.divider()
-    st.markdown("#### 🚶 Test stabilności w czasie (walk-forward)")
+    section_header("Test stabilności w czasie (walk-forward)", "🚶")
     st.caption(
         "Dzieli historię na kilka okresów i sprawdza regułę w każdym "
         "z nich od nowa. Jeśli strategia wygrywa z 'kup i trzymaj' "

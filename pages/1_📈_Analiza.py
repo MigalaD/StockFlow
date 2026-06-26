@@ -10,6 +10,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 from common import (
+    section_header, empty_state,
     LEGENDA_SCORE,
     OPISY_WSKAZNIKOW,
     apply_theme,
@@ -91,7 +92,7 @@ if not ticker:
     st.info("Wpisz symbol spółki w panelu po lewej.")
     st.stop()
 
-with st.spinner(f"Pobieranie danych dla {ticker}..."):
+with st.spinner(f"Analizuję {ticker}…"):
     # Score i metadane (Yahoo) – niezależne od źródła wykresu.
     try:
         wynik = pobierz_analize(ticker)
@@ -514,7 +515,7 @@ with tab1:
     st.caption("  \n".join(opisy_wykresu))
 
 with tab_news:
-    st.markdown("#### 📅 Najbliższe wydarzenia")
+    section_header("Najbliższe wydarzenia", "📅")
     cal = wynik.get("calendar_info") or {}
     earnings_date = cal.get("earnings_date")
     ex_div_date = cal.get("ex_dividend_date")
@@ -544,7 +545,7 @@ with tab_news:
                 st.caption("Spółka nie wypłaca dywidendy / brak danych.")
 
     st.divider()
-    st.markdown("#### 📰 Ostatnie newsy")
+    section_header("Ostatnie newsy", "📰")
     news_list = wynik.get("news_list") or []
     if not news_list:
         st.caption("Brak dostępnych newsów dla tej spółki.")
@@ -850,7 +851,7 @@ with tab2:
             f"przeliczone tak, by sumowały się do 100%."
         )
 
-    st.markdown("#### Co dokładnie sprawdziliśmy?")
+    section_header("Co dokładnie sprawdziliśmy?")
     for key, (val, note) in wynik["components"].items():
         opis = OPISY_WSKAZNIKOW.get(key, {
             "nazwa": key,
@@ -1143,7 +1144,7 @@ with tab4:
             unsafe_allow_html=True,
         )
 
-    st.markdown("#### Lista warunków")
+    section_header("Lista warunków")
     for opis_warunku, spelniony, szczegoly in ocena_strategii["conditions"]:
         ikona = "✅" if spelniony else "❌"
         st.markdown(f"{ikona} **{opis_warunku}**")

@@ -8,6 +8,7 @@ Dziennik inwestycyjny
 import streamlit as st
 import pandas as pd
 from common import (
+    section_header, empty_state,
     footer,
     pobierz_analize,
     sidebar_legenda,
@@ -19,7 +20,7 @@ import database as db
 user_id = sidebar_user()
 sidebar_legenda()
 
-st.title("📓 Dziennik")
+st.title("📓 Dziennik inwestycyjny")
 st.markdown(
     "Zapisuj swoje decyzje i rozumowanie - co kupiłeś/sprzedałeś (albo "
     "dlaczego zdecydowałeś się NIC nie robić), i jaki był wynik (score) "
