@@ -723,25 +723,29 @@ def karta_instrumentu(res: dict, key_prefix: str, user_id: str, db_mod):
 
 # ── B: Spójne nagłówki sekcji ─────────────────────────────────────────
 def section_header(tekst: str, ikona: str = "", opis: str = "") -> None:
-    """Nagłówek sekcji z brand akcentem — zielona kreska po lewej.
-
-    Używaj zamiast st.markdown('#### ...') dla spójnego wyglądu.
-    Opcjonalny `opis` zastępuje st.caption() pod nagłówkiem.
-    """
+    """Nagłówek sekcji z brand akcentem — zielona kreska po lewej."""
+    ikona_html = (
+        "<span style='margin-right:6px'>" + ikona + "</span>" if ikona else ""
+    )
+    opis_html = (
+        "<div style='font-size:0.82rem;opacity:0.55;margin-top:2px;"
+        "font-family:Inter'>" + opis + "</div>"
+        if opis else ""
+    )
     html = (
-        f"<div style='"
-        f"border-left:3px solid {KOLOR_DOBRY};"
-        f"padding:2px 0 2px 12px;"
-        f"margin:18px 0 6px 0;'>"
-        f"<span style='"
-        f"font-family:Inter,sans-serif;"
-        f"font-size:1.05rem;"
-        f"font-weight:600;"
-        f"color:{KOLOR_TEKST};'>"
-        f"{'<span style=\"margin-right:6px\">' + ikona + '</span>' if ikona else ''}"
-        f"{tekst}</span>"
-        f"{'<div style=\"font-size:0.82rem;opacity:0.55;margin-top:2px;font-family:Inter\">' + opis + '</div>' if opis else ''}"
-        f"</div>"
+        "<div style='"
+        "border-left:3px solid " + KOLOR_DOBRY + ";"
+        "padding:2px 0 2px 12px;"
+        "margin:18px 0 6px 0;'>"
+        "<span style='"
+        "font-family:Inter,sans-serif;"
+        "font-size:1.05rem;"
+        "font-weight:600;"
+        "color:" + KOLOR_TEKST + ";'>"
+        + ikona_html + tekst +
+        "</span>"
+        + opis_html +
+        "</div>"
     )
     st.markdown(html, unsafe_allow_html=True)
 
