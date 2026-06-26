@@ -3,65 +3,56 @@
 # Zobacz plik LICENSE w katalogu głównym repozytorium.
 
 """
-app.py – punkt startowy aplikacji
-===================================
-Uruchomienie: streamlit run app.py
-
-Streamlit automatycznie wykrywa pliki w folderze pages/ i tworzy
-nawigację. Ten plik pełni rolę strony głównej (Start).
+app.py – strona główna (Dashboard) StockFlow
 """
-
 import streamlit as st
 import yfinance as yf
+from datetime import datetime
 
 from common import (
-    pobierz_analize, emoji_dla_score, badge_score, LEGENDA_SCORE,
-    KOLOR_DOBRY, KOLOR_SLABY, footer, sidebar_user, sidebar_legenda,
-    beta_banner,
+    KOLOR_DOBRY, KOLOR_SLABY, KOLOR_AKCENTU, KOLOR_NEUTRALNY,
+    KOLOR_TEKST, KOLOR_TLO2,
+    APP_VERSION,
+    pobierz_analize, emoji_dla_score, kolor_dla_score,
+    footer, sidebar_user, sidebar_legenda,
+    section_header, empty_state, karta_watchlist,
 )
 import database as db
 
-# ── Konfiguracja strony ───────────────────────────────────────────────
 st.set_page_config(
-    page_title="Analizator Spółek",
-    page_icon="📊",
+    page_title="StockFlow – Analityka Rynkowa",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Sidebar ───────────────────────────────────────────────────────────
 user_id = sidebar_user()
 sidebar_legenda()
 
-# ── Nagłówek ─────────────────────────────────────────────────────────
-st.title("📊 Analizator Spółek")
-st.caption(
-    "Narzędzie do analizy technicznej i fundamentalnej spółek, ETF-ów, "
-    "kryptowalut i surowców. **Nie jest to porada inwestycyjna.**"
-)
-beta_banner()
-st.divider()
+# ── Hero nagłówek ─────────────────────────────────────────────────────
+hora = datetime.now().hour
+powitanie = "Dzień dobry" if hora < 12 else "Witaj" if hora < 18 else "Dobry wieczór"
 
-# ── Szybka nawigacja ─────────────────────────────────────────────────
-st.markdown(f"#### 👋 Witaj, **{user_id}**")
 st.markdown(
-    "**Szybka nawigacja** – wybierz stronę z menu po lewej stronie:  \n"
-    "📈 **Analiza spółki** &nbsp;·&nbsp; "
-    "💼 **Portfolio** &nbsp;·&nbsp; "
-    "🔍 **Skaner rynku** &nbsp;·&nbsp; "
-    "🧪 **Backtest** &nbsp;·&nbsp; "
-    "₿ **Krypto** &nbsp;·&nbsp; "
-    "📦 **ETF i Surowce**"
+    f"""
+    <div style="padding:8px 0 20px 0; font-family:Inter,sans-serif;">
+      <div style="font-size:1.6rem; font-weight:700; color:{KOLOR_TEKST};">
+        {powitanie}, <span style="color:{KOLOR_DOBRY};">{user_id}</span> 👋
+      </div>
+      <div style="font-size:0.9rem; color:{KOLOR_NEUTRALNY}; margin-top:4px;">
+        StockFlow &nbsp;·&nbsp; v{APP_VERSION} &nbsp;·&nbsp;
+        {datetime.now().strftime('%d %b %Y, %H:%M')}
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
-st.divider()
 
-
-# ── VIX – kontekst makro ─────────────────────────────────────────────
+# ── VIX baner ────────────────────────────────────────────────────────
 @st.cache_data(ttl=1800, show_spinner=False)
 def get_vix():
     try:
-        vix = yf.Ticker("^VIX")
-        df = vix.history(period="5d")
+        df = yf.Ticker("^VIX").history(period="5d")
         if df.empty:
             return None, None
         current = float(df["Close"].iloc[-1])
@@ -70,66 +61,104 @@ def get_vix():
     except Exception:
         return None, None
 
-
 vix_val, vix_delta = get_vix()
 
-with st.container():
-    col_vix, col_spacer = st.columns([2, 3])
-    with col_vix:
-        if vix_val is not None:
-            if vix_val < 15:
-                vix_label, vix_color = "Spokój (niski strach)", KOLOR_DOBRY
-            elif vix_val < 25:
-                vix_label, vix_color = "Normalny poziom zmienności", "#f59e0b"
-            elif vix_val < 35:
-                vix_label, vix_color = "Podwyższona zmienność / niepewność", "#e07800"
-            else:
-                vix_label, vix_color = "Wysoki strach / panika rynkowa", KOLOR_SLABY
+col_vix, col_nav1, col_nav2, col_nav3 = st.columns([1.4, 1, 1, 1])
 
-            st.markdown(
-                f"""
-                <div style="background:{vix_color}18;border-left:4px solid {vix_color};
-                            padding:12px 16px;border-radius:6px;margin-bottom:12px">
-                  <span style="font-size:.8em;opacity:.7">VIX (indeks strachu)</span><br>
-                  <span style="font-size:1.6em;font-weight:700">{vix_val:.1f}</span>
-                  <span style="font-size:.9em;margin-left:8px">{vix_delta:+.2f}</span>
-                  <br><span style="font-size:.85em">{vix_label}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.caption(
-                "VIX mierzy oczekiwaną zmienność S&P 500 w ciągu 30 dni. "
-                "Wysokie wartości sygnalizują strach i niepewność na rynku – "
-                "wyniki score mogą być wtedy bardziej niestabilne niż zwykle."
-            )
+with col_vix:
+    if vix_val is not None:
+        if vix_val < 15:
+            vix_label, vix_color, vix_emoji = "Spokój rynkowy", KOLOR_DOBRY, "😌"
+        elif vix_val < 25:
+            vix_label, vix_color, vix_emoji = "Normalna zmienność", "#F59E0B", "😐"
+        elif vix_val < 35:
+            vix_label, vix_color, vix_emoji = "Podwyższona niepewność", "#E07800", "😟"
         else:
-            st.info("Nie udało się pobrać VIX.")
+            vix_label, vix_color, vix_emoji = "Wysoki strach / panika", KOLOR_SLABY, "😱"
 
+        st.markdown(
+            f"""
+            <div style="
+                background:{vix_color}14;
+                border:1px solid {vix_color}40;
+                border-radius:12px;
+                padding:14px 18px;
+                font-family:Inter,sans-serif;
+            ">
+              <div style="font-size:0.75rem;opacity:0.55;text-transform:uppercase;
+                          letter-spacing:0.06em;margin-bottom:4px;">
+                VIX – Indeks strachu
+              </div>
+              <div style="display:flex;align-items:baseline;gap:8px;">
+                <span style="font-size:2rem;font-weight:700;
+                             color:{vix_color};">{vix_val:.1f}</span>
+                <span style="font-size:0.9rem;color:{vix_color};opacity:0.8;">
+                    {vix_delta:+.2f}
+                </span>
+                <span style="font-size:1.2rem;">{vix_emoji}</span>
+              </div>
+              <div style="font-size:0.82rem;opacity:0.65;margin-top:2px;">
+                {vix_label}
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.caption("VIX niedostępny")
 
-st.divider()
+# Skróty nawigacyjne jako mini-karty
+for col, ikona, tytul, opis in [
+    (col_nav1, "📈", "Analiza", "Szczegółowa analiza jednej spółki"),
+    (col_nav2, "🔍", "Skaner", "Skan rynku USA / GPW / Krypto"),
+    (col_nav3, "💼", "Portfolio", "P&L i alokacja Twoich pozycji"),
+]:
+    with col:
+        st.markdown(
+            f"""
+            <div style="
+                background:rgba(255,255,255,0.03);
+                border:1px solid rgba(255,255,255,0.07);
+                border-radius:12px;
+                padding:14px 18px;
+                font-family:Inter,sans-serif;
+                height:100%;
+            ">
+              <div style="font-size:1.4rem;margin-bottom:4px;">{ikona}</div>
+              <div style="font-weight:600;font-size:0.95rem;">{tytul}</div>
+              <div style="font-size:0.78rem;opacity:0.5;margin-top:2px;">{opis}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-# ── Watchlist ─────────────────────────────────────────────────────────
+st.write("")
+
+# ── Watchlist dashboard ───────────────────────────────────────────────
+section_header("Twoja Watchlist", "⭐",
+               "Wyniki odświeżane przy każdym wejściu na stronę")
+
 watchlist = db.get_watchlist(user_id)
-st.markdown("#### ⭐ Twoja watchlist")
 
 if not watchlist:
-    # Onboarding: nowy użytkownik widzi pusty ekran - pomóżmy mu zacząć.
-    st.markdown(
-        "👋 **Wygląda na to, że dopiero zaczynasz!** Wynik (score) to liczba "
-        "**0–100** podsumowująca sygnały techniczne i fundamentalne instrumentu "
-        "– 🟢 wysoki = więcej sygnałów pozytywnych, 🔴 niski = negatywnych. "
-        "**To nie jest porada inwestycyjna.**"
+    # E: Empty state z onboardingiem
+    st.markdown("")
+    empty_state(
+        "⭐",
+        "Watchlist jest pusta",
+        "Dodaj spółki które chcesz obserwować, "
+        "aby zobaczyć ich wyniki i zmiany score w jednym miejscu.",
     )
-    st.markdown("Dodaj kilka spółek na start, aby zobaczyć, jak to działa:")
-
+    st.markdown(
+        "<div style='text-align:center;margin-top:4px;"
+        "font-family:Inter,sans-serif;font-size:0.88rem;"
+        f"color:{KOLOR_NEUTRALNY};'>Zacznij od popularnych instrumentów:</div>",
+        unsafe_allow_html=True,
+    )
     startery = {
-        "🍎 Apple": "AAPL",
-        "🪟 Microsoft": "MSFT",
-        "🔍 Alphabet (Google)": "GOOGL",
-        "🎮 CD Projekt": "CDR.WA",
-        "🏦 PKO BP": "PKO.WA",
-        "₿ Bitcoin": "BTC-USD",
+        "🍎 Apple": "AAPL", "🪟 Microsoft": "MSFT",
+        "🔍 Alphabet": "GOOGL", "🎮 CD Projekt": "CDR.WA",
+        "🏦 PKO BP": "PKO.WA", "₿ Bitcoin": "BTC-USD",
     }
     cols = st.columns(3)
     for i, (label, tk) in enumerate(startery.items()):
@@ -138,15 +167,10 @@ if not watchlist:
                 db.add_to_watchlist(tk, user_id)
                 st.success(f"Dodano {tk}!")
                 st.rerun()
-
-    st.caption(
-        "Możesz też wpisać dowolny symbol w zakładce **⭐ Watchlist**, "
-        "albo przejść od razu do **📈 Analiza**. Więcej o aplikacji: zakładka "
-        "**ℹ️ O aplikacji**."
-    )
 else:
+    # Pobierz dane watchlisty
     zmiany = []
-    with st.spinner("Sprawdzanie watchlist…"):
+    with st.spinner("Sprawdzanie watchlisty…"):
         for entry in watchlist:
             ticker = entry["ticker"]
             try:
@@ -155,57 +179,128 @@ else:
                 continue
             if "error" in wynik:
                 continue
-            nowy   = wynik["total_score"]
-            stary  = entry.get("last_score")
-            delta  = (nowy - stary) if stary is not None else 0.0
-            zmiany.append({"ticker": ticker, "name": wynik["name"],
-                            "score": nowy, "delta": delta,
-                            "price": wynik["price"], "currency": wynik["currency"]})
+            nowy  = wynik["total_score"]
+            stary = entry.get("last_score")
+            delta = (nowy - stary) if stary is not None else None
+            zmiany.append({
+                "ticker":   ticker,
+                "name":     wynik["name"],
+                "score":    nowy,
+                "score_st": wynik.get("score_st"),
+                "delta":    delta,
+                "price":    wynik["price"],
+                "currency": wynik["currency"],
+                "sector":   wynik.get("sector", ""),
+            })
 
-    if zmiany:
-        zmiany.sort(key=lambda x: -abs(x["delta"]))
+    if not zmiany:
+        empty_state("📡", "Nie udało się pobrać danych",
+                    "Yahoo Finance może mieć chwilowy problem. Spróbuj za chwilę.")
+    else:
+        zmiany.sort(key=lambda x: -(abs(x["delta"]) if x["delta"] else 0))
 
-        # metryki top-4
-        cols = st.columns(min(len(zmiany), 4))
-        for i, z in enumerate(zmiany[:4]):
+        # Podsumowanie w 4 metrykach
+        top4 = zmiany[:4]
+        cols = st.columns(len(top4))
+        for i, z in enumerate(top4):
             with cols[i]:
+                delta_str = f"{z['delta']:+.1f} pkt" if z["delta"] is not None else None
                 st.metric(
-                    f"{z['ticker']}",
-                    f"{z['score']:.0f}/100",
-                    delta=f"{z['delta']:+.1f}" if z["delta"] else None,
-                    help=LEGENDA_SCORE,
+                    label=f"{emoji_dla_score(z['score'])} {z['ticker']}",
+                    value=f"{z['score']:.0f}/100",
+                    delta=delta_str,
+                    help=f"{z['name']} · Cena: {z['price']} {z['currency']}",
                 )
 
-        # zmiany ≥ 3 pkt
-        duze = [z for z in zmiany if abs(z["delta"]) >= 3][:3]
+        # Alerty — największe zmiany
+        duze = [z for z in zmiany if z["delta"] is not None and abs(z["delta"]) >= 3]
         if duze:
-            st.markdown("**Największe zmiany od ostatniej wizyty:**")
-            for z in duze:
-                ikona = "📈" if z["delta"] > 0 else "📉"
+            st.markdown("")
+            section_header("Największe zmiany od ostatniej wizyty", "🔔")
+            for z in duze[:4]:
+                ikona_dir = "📈" if z["delta"] > 0 else "📉"
+                kolor     = KOLOR_DOBRY if z["delta"] > 0 else KOLOR_SLABY
                 st.markdown(
-                    f"- {emoji_dla_score(z['score'])} **{z['ticker']}** "
-                    f"({z['name']}) {ikona} {z['delta']:+.1f} pkt → {z['score']:.0f}/100"
+                    f"<span style='font-family:Inter,sans-serif;'>"
+                    f"{ikona_dir} <strong>{z['ticker']}</strong> "
+                    f"<span style='opacity:0.6;font-size:0.88rem;'>{z['name']}</span> "
+                    f"<span style='color:{kolor};font-weight:600;'>"
+                    f"{z['delta']:+.1f} pkt → {z['score']:.0f}/100</span></span>",
+                    unsafe_allow_html=True,
                 )
 
-st.divider()
+        # Pełna lista kart
+        st.markdown("")
+        section_header("Wszystkie pozycje", "📋")
+        col_l, col_r = st.columns(2)
+        for i, z in enumerate(zmiany):
+            with (col_l if i % 2 == 0 else col_r):
+                karta_watchlist(
+                    ticker=z["ticker"], name=z["name"],
+                    score=z["score"], score_st=z.get("score_st"),
+                    price=z["price"], currency=z["currency"],
+                    delta=z["delta"], sektor=z.get("sector", ""),
+                )
 
 # ── Ostatni skan ──────────────────────────────────────────────────────
-st.markdown("#### 🔍 Ostatni skan rynku")
+st.write("")
+section_header("Ostatni skan rynku", "🔍")
+
 last_scan = db.get_last_scan_time()
 if not last_scan:
-    st.info("Skan rynku nie był jeszcze uruchamiany. Przejdź do strony 🔍 Skaner.")
+    empty_state(
+        "🔍",
+        "Skan nie był jeszcze uruchamiany",
+        "Przejdź do strony Skaner rynku, aby przeskanować USA, GPW, Europę lub Krypto.",
+    )
 else:
-    st.caption(f"Ostatni skan: {last_scan[:19].replace('T', ' ')}")
+    scan_dt = last_scan[:19].replace("T", " ")
     results = db.get_scan_results()
     if results:
+        import pandas as pd
+
+        df_scan = pd.DataFrame(results).sort_values("score", ascending=False)
+
+        # Top 5 i Bottom 5 obok siebie
         col_top, col_bot = st.columns(2)
         with col_top:
-            st.markdown("🟢 **Top 5**")
-            for r in results[:5]:
-                st.markdown(f"- **{r['ticker']}** ({r['name']}) — {r['score']:.0f}/100")
+            st.markdown(
+                f"<div style='font-family:Inter,sans-serif;font-size:0.82rem;"
+                f"font-weight:600;color:{KOLOR_DOBRY};margin-bottom:6px;'>"
+                f"🟢 TOP 5</div>",
+                unsafe_allow_html=True,
+            )
+            for _, row in df_scan.head(5).iterrows():
+                kolor = kolor_dla_score(row["score"])
+                st.markdown(
+                    f"<div style='font-family:Inter,sans-serif;"
+                    f"display:flex;justify-content:space-between;"
+                    f"padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);'>"
+                    f"<span><strong>{row['ticker']}</strong> "
+                    f"<span style='opacity:0.5;font-size:0.8rem;'>{(row.get('name') or '')[:22]}</span></span>"
+                    f"<span style='color:{kolor};font-weight:700;'>{row['score']:.0f}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
         with col_bot:
-            st.markdown("🔴 **Bottom 5**")
-            for r in results[-5:]:
-                st.markdown(f"- **{r['ticker']}** ({r['name']}) — {r['score']:.0f}/100")
+            st.markdown(
+                f"<div style='font-family:Inter,sans-serif;font-size:0.82rem;"
+                f"font-weight:600;color:{KOLOR_SLABY};margin-bottom:6px;'>"
+                f"🔴 BOTTOM 5</div>",
+                unsafe_allow_html=True,
+            )
+            for _, row in df_scan.tail(5).iterrows():
+                kolor = kolor_dla_score(row["score"])
+                st.markdown(
+                    f"<div style='font-family:Inter,sans-serif;"
+                    f"display:flex;justify-content:space-between;"
+                    f"padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);'>"
+                    f"<span><strong>{row['ticker']}</strong> "
+                    f"<span style='opacity:0.5;font-size:0.8rem;'>{(row.get('name') or '')[:22]}</span></span>"
+                    f"<span style='color:{kolor};font-weight:700;'>{row['score']:.0f}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+        st.caption(f"Skan z {scan_dt} · {len(results)} instrumentów")
 
 footer()

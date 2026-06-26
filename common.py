@@ -719,7 +719,186 @@ def karta_instrumentu(res: dict, key_prefix: str, user_id: str, db_mod):
             db_mod.add_to_watchlist(ticker, user_id)
             db_mod.update_watchlist_score(ticker, res["score"], user_id)
             st.success(f"Dodano {ticker}!")
-    st.divider()
+
+
+# ── B: Spójne nagłówki sekcji ─────────────────────────────────────────
+def section_header(tekst: str, ikona: str = "", opis: str = "") -> None:
+    """Nagłówek sekcji z brand akcentem — zielona kreska po lewej.
+
+    Używaj zamiast st.markdown('#### ...') dla spójnego wyglądu.
+    Opcjonalny `opis` zastępuje st.caption() pod nagłówkiem.
+    """
+    html = (
+        f"<div style='"
+        f"border-left:3px solid {KOLOR_DOBRY};"
+        f"padding:2px 0 2px 12px;"
+        f"margin:18px 0 6px 0;'>"
+        f"<span style='"
+        f"font-family:Inter,sans-serif;"
+        f"font-size:1.05rem;"
+        f"font-weight:600;"
+        f"color:{KOLOR_TEKST};'>"
+        f"{'<span style=\"margin-right:6px\">' + ikona + '</span>' if ikona else ''}"
+        f"{tekst}</span>"
+        f"{'<div style=\"font-size:0.82rem;opacity:0.55;margin-top:2px;font-family:Inter\">' + opis + '</div>' if opis else ''}"
+        f"</div>"
+    )
+    st.markdown(html, unsafe_allow_html=True)
+
+
+# ── E: Empty states ───────────────────────────────────────────────────
+def empty_state(
+    ikona: str,
+    tytul: str,
+    opis: str,
+    akcja_label: str = "",
+    akcja_url: str = "",
+) -> None:
+    """Przyjazny pusty stan zamiast suchego st.info('brak danych').
+
+    Pokazuje ikonę, tytuł i opis, opcjonalnie link do akcji.
+    """
+    st.markdown(
+        f"""
+        <div style="
+            text-align:center;
+            padding:40px 20px;
+            opacity:0.75;
+            font-family:Inter,sans-serif;
+        ">
+          <div style="font-size:2.8rem;margin-bottom:12px;">{ikona}</div>
+          <div style="font-size:1.05rem;font-weight:600;
+                      color:{KOLOR_TEKST};margin-bottom:6px;">{tytul}</div>
+          <div style="font-size:0.88rem;color:{KOLOR_NEUTRALNY};
+                      max-width:380px;margin:0 auto;">{opis}</div>
+          {"<div style='margin-top:14px'><a href='" + akcja_url + "' style='color:" + KOLOR_DOBRY + ";font-weight:600;text-decoration:none'>" + akcja_label + " →</a></div>" if akcja_label else ""}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ── C: Karta watchlist ────────────────────────────────────────────────
+def karta_watchlist(
+    ticker: str,
+    name: str,
+    score: float,
+    score_st: "float | None",
+    price: float,
+    currency: str,
+    delta: "float | None",
+    sektor: str = "",
+) -> None:
+    """Karta HTML dla jednej pozycji watchlisty.
+
+    Wizualna hierarchia: nazwa duża, score wyróżniony kolorem,
+    cena i sektor mniejsze. Zastępuje surowe st.metric() w rzędzie.
+    """
+    kolor = kolor_dla_score(score)
+    delta_html = ""
+    if delta is not None and abs(delta) >= 0.5:
+        delta_kolor = KOLOR_DOBRY if delta > 0 else KOLOR_SLABY
+        delta_znak  = "▲" if delta > 0 else "▼"
+        delta_html  = (
+            f"<span style='color:{delta_kolor};font-size:0.82rem;"
+            f"font-weight:600;margin-left:6px;'>"
+            f"{delta_znak} {abs(delta):.1f} pkt</span>"
+        )
+    st_html = ""
+    if score_st is not None:
+        kolor_st = kolor_dla_score(score_st)
+        st_html = (
+            f"<span style='background:{kolor_st}18;color:{kolor_st};"
+            f"font-size:0.75rem;font-weight:600;padding:1px 7px;"
+            f"border-radius:999px;border:1px solid {kolor_st}40;"
+            f"margin-left:6px;'>⚡ ST {score_st:.0f}</span>"
+        )
+    st.markdown(
+        f"""
+        <div style="
+            background:rgba(255,255,255,0.025);
+            border:1px solid rgba(255,255,255,0.07);
+            border-left:4px solid {kolor};
+            border-radius:10px;
+            padding:14px 18px;
+            margin-bottom:8px;
+            font-family:Inter,sans-serif;
+        ">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <span style="font-weight:700;font-size:1rem;
+                           color:{KOLOR_TEKST};">{name}</span>
+              <span style="font-size:0.8rem;opacity:0.5;
+                           margin-left:7px;">{ticker}</span>
+              {"<div style='font-size:0.78rem;opacity:0.45;margin-top:2px;'>" + sektor + "</div>" if sektor else ""}
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:1.3rem;font-weight:700;
+                           color:{kolor};">{score:.0f}</span>
+              <span style="font-size:0.75rem;opacity:0.5;">/100</span>
+              {delta_html}
+              {st_html}
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:0.82rem;opacity:0.55;">
+            Cena: <strong style="color:{KOLOR_TEKST}">{price} {currency}</strong>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ── C: Karta pozycji portfolio ────────────────────────────────────────
+def karta_portfolio(p: dict) -> None:
+    """Karta HTML dla jednej pozycji portfolio.
+
+    P&L wyróżniony kolorem, reszta mniejsza. Zastępuje 6 st.metric() w rzędzie.
+    """
+    pnl      = p.get("pnl", 0) or 0
+    pnl_pct  = p.get("pnl_pct", 0) or 0
+    kolor    = KOLOR_DOBRY if pnl >= 0 else KOLOR_SLABY
+    znak     = "▲" if pnl >= 0 else "▼"
+    currency = p.get("currency", "")
+    st.markdown(
+        f"""
+        <div style="
+            background:rgba(255,255,255,0.025);
+            border:1px solid rgba(255,255,255,0.07);
+            border-left:4px solid {kolor};
+            border-radius:10px;
+            padding:14px 18px;
+            margin-bottom:8px;
+            font-family:Inter,sans-serif;
+        ">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <span style="font-weight:700;font-size:1rem;">{p.get('name',p['ticker'])}</span>
+              <span style="font-size:0.8rem;opacity:0.5;margin-left:7px;">{p['ticker']}</span>
+              <div style="font-size:0.78rem;opacity:0.45;margin-top:2px;">
+                {p.get('sector','—')} &nbsp;·&nbsp;
+                {p.get('shares',0):g} szt. &nbsp;·&nbsp;
+                zakup {p.get('buy_price',0):.2f} {currency}
+                {' · ' + p['buy_date'] if p.get('buy_date') else ''}
+              </div>
+              {("<div style='font-size:0.75rem;opacity:0.4;margin-top:2px;'>📝 " + p['notes'] + "</div>") if p.get('notes') else ''}
+            </div>
+            <div style="text-align:right;min-width:120px;">
+              <div style="font-size:1.25rem;font-weight:700;color:{kolor};">
+                {znak} {abs(pnl):,.2f} {currency}
+              </div>
+              <div style="font-size:0.85rem;color:{kolor};opacity:0.85;">
+                {pnl_pct:+.1f}%
+              </div>
+              <div style="font-size:0.78rem;opacity:0.45;margin-top:3px;">
+                Wartość: {p.get('current_value',0):,.2f} {currency}
+              </div>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def ticker_search_widget(
