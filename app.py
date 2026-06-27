@@ -24,10 +24,129 @@ st.set_page_config(
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
+    menu_items={
+        "Get Help": "https://github.com/migalad/stockflow",
+        "Report a bug": "https://github.com/migalad/stockflow/issues",
+        "About": "StockFlow v" + "1.1.0" + " — narzędzie edukacyjne do analizy rynkowej.",
+    },
+)
+
+# Mobile meta tags — theme-color dla paska przeglądarki na mobile
+st.markdown(
+    """
+    <meta name="theme-color" content="#1F2937">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    """,
+    unsafe_allow_html=True,
 )
 
 user_id = sidebar_user()
 sidebar_legenda()
+
+# ── 3. Onboarding flow dla nowego użytkownika ─────────────────────────
+_ONBOARDED_KEY = f"_onboarded_{user_id}"
+
+def _pokaz_onboarding():
+    """Trzystopniowy przewodnik dla nowego użytkownika."""
+    st.markdown(
+        f"""
+        <div style="
+            text-align:center;
+            padding: 40px 20px 20px 20px;
+            font-family: Inter, sans-serif;
+        ">
+          <div style="font-size:2.5rem; margin-bottom:12px;">📈</div>
+          <div style="
+            font-size:1.6rem; font-weight:700;
+            color:{KOLOR_TEKST}; margin-bottom:6px;
+          ">Witaj w StockFlow!</div>
+          <div style="
+            font-size:0.95rem; color:{KOLOR_NEUTRALNY};
+            max-width:480px; margin:0 auto 28px auto;
+          ">
+            Narzędzie do analizy technicznej i fundamentalnej akcji,
+            ETF-ów, kryptowalut i surowców. Zacznij w 3 krokach:
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3 = st.columns(3)
+    steps = [
+        ("1️⃣", "Wybierz instrument",
+         "Przejdź do strony **📈 Analiza** i wpisz symbol spółki, "
+         "ETF-u lub kryptowaluty (np. AAPL, CDR.WA, BTC-USD).",
+         KOLOR_DOBRY),
+        ("2️⃣", "Przeczytaj wynik",
+         "Aplikacja obliczy **Score 0–100** — im wyższy, tym więcej "
+         "wskaźników technicznych i fundamentalnych jest pozytywnych. "
+         "To **nie** jest porada inwestycyjna.",
+         KOLOR_AKCENTU),
+        ("3️⃣", "Obserwuj i porównuj",
+         "Dodaj spółki do **⭐ Watchlisty**, śledź zmiany, "
+         "porównuj instrumenty i uruchom **🔍 Skaner** rynku.",
+         "#3B82F6"),
+    ]
+
+    for col, (numer, tytul, opis, kolor) in zip([col1, col2, col3], steps):
+        with col:
+            st.markdown(
+                f"""
+                <div style="
+                    background: {kolor}0D;
+                    border: 1px solid {kolor}30;
+                    border-top: 3px solid {kolor};
+                    border-radius: 12px;
+                    padding: 20px 18px;
+                    font-family: Inter, sans-serif;
+                    height: 100%;
+                ">
+                  <div style="font-size:1.6rem; margin-bottom:8px;">{numer}</div>
+                  <div style="font-weight:700; font-size:0.95rem;
+                              color:{KOLOR_TEKST}; margin-bottom:8px;">
+                    {tytul}
+                  </div>
+                  <div style="font-size:0.83rem; color:{KOLOR_NEUTRALNY};
+                              line-height:1.5;">
+                    {opis}
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    st.markdown("")
+    col_btn, col_mid, col_right = st.columns([1, 2, 1])
+    with col_mid:
+        if st.button(
+            "✅ Rozumiem — przejdź do dashboardu",
+            use_container_width=True,
+            type="primary",
+        ):
+            st.session_state[_ONBOARDED_KEY] = True
+            st.rerun()
+
+    st.caption(
+        "ℹ️ StockFlow to narzędzie edukacyjne — nie stanowi porady inwestycyjnej. "
+        "Wszystkie wyniki i sygnały służą wyłącznie do nauki i analizy.",
+        help="Pełny disclaimer w zakładce 'O aplikacji'",
+    )
+    st.stop()
+
+# Pokaż onboarding tylko nowym użytkownikom (pierwsza wizyta w sesji)
+# Wykrywamy "nowego" po pustej watchliście I braku flagi sesyjnej.
+_watchlist_check = db.get_watchlist(user_id)
+_jest_nowy = (
+    not _watchlist_check
+    and not st.session_state.get(_ONBOARDED_KEY, False)
+    and user_id == "default"  # nie przerywaj onboardingiem custom userów
+)
+if _jest_nowy:
+    _pokaz_onboarding()
+    # st.stop() jest wewnątrz _pokaz_onboarding jeśli nie kliknął przycisku
 
 # ── Hero nagłówek ─────────────────────────────────────────────────────
 hora = datetime.now().hour
@@ -170,28 +289,34 @@ if not watchlist:
 else:
     # Pobierz dane watchlisty
     zmiany = []
-    with st.spinner("Sprawdzanie watchlisty…"):
-        for entry in watchlist:
-            ticker = entry["ticker"]
-            try:
-                wynik = pobierz_analize(ticker)
-            except Exception:
-                continue
-            if "error" in wynik:
-                continue
-            nowy  = wynik["total_score"]
-            stary = entry.get("last_score")
-            delta = (nowy - stary) if stary is not None else None
-            zmiany.append({
-                "ticker":   ticker,
-                "name":     wynik["name"],
-                "score":    nowy,
-                "score_st": wynik.get("score_st"),
-                "delta":    delta,
-                "price":    wynik["price"],
-                "currency": wynik["currency"],
-                "sector":   wynik.get("sector", ""),
-            })
+    prog = st.progress(0, text="Sprawdzam watchlistę…")
+    n_total = len(watchlist)
+    for i, entry in enumerate(watchlist):
+        ticker = entry["ticker"]
+        prog.progress(
+            int((i + 1) / n_total * 100),
+            text=f"Analizuję {ticker} ({i+1}/{n_total})…",
+        )
+        try:
+            wynik = pobierz_analize(ticker)
+        except Exception:
+            continue
+        if "error" in wynik:
+            continue
+        nowy  = wynik["total_score"]
+        stary = entry.get("last_score")
+        delta = (nowy - stary) if stary is not None else None
+        zmiany.append({
+            "ticker":   ticker,
+            "name":     wynik["name"],
+            "score":    nowy,
+            "score_st": wynik.get("score_st"),
+            "delta":    delta,
+            "price":    wynik["price"],
+            "currency": wynik["currency"],
+            "sector":   wynik.get("sector", ""),
+        })
+    prog.empty()
 
     if not zmiany:
         empty_state("📡", "Nie udało się pobrać danych",

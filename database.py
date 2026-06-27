@@ -117,6 +117,16 @@ def init_db():
                 scanned_at TEXT NOT NULL
             )
         """)
+        # Tabela użytkowników (FastAPI auth)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                username      TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                email         TEXT,
+                created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS user_settings (
                 user_id TEXT PRIMARY KEY,
@@ -328,6 +338,20 @@ def save_score(ticker: str, score: float, day: str | None = None):
         conn.execute(
             "INSERT OR REPLACE INTO score_history (ticker, date, score) VALUES (?, ?, ?)",
             (ticker.upper(), day, score),
+        )
+
+
+def save_score_history(ticker: str, score: float) -> None:
+    """Zapisuje wynik score do historii (jeden wpis per ticker per dzień).
+    
+    Używane przez FastAPI przy każdej analizie, żeby budować historię
+    sygnałów bez ręcznego uruchamiania schedulera.
+    """
+    today = datetime.now().date().isoformat()
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO score_history (ticker, date, score) VALUES (?, ?, ?)",
+            (ticker, today, round(score, 2)),
         )
 
 
@@ -617,6 +641,38 @@ def delete_journal_entry(entry_id: int, user_id: str = DEFAULT_USER):
             "DELETE FROM journal WHERE id = ? AND user_id = ?",
             (entry_id, user_id),
         )
+
+
+# ── Użytkownicy (FastAPI auth) ────────────────────────────────────────
+
+def create_user(username: str, password_hash: str, email: str | None = None) -> int:
+    """Tworzy nowego użytkownika. Zwraca id. Rzuca IntegrityError gdy username zajęty."""
+    with get_conn() as conn:
+        cursor = conn.execute(
+            "INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)",
+            (username, password_hash, email),
+        )
+        return cursor.lastrowid
+
+
+def get_user_by_username(username: str) -> dict | None:
+    """Pobiera użytkownika po username. Zwraca dict lub None."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> dict | None:
+    """Pobiera użytkownika po id."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        return dict(row) if row else None
 
 
 init_db()
