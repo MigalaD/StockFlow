@@ -4,14 +4,14 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
-import { AppShell } from '../components/layout/AppShell'
-import { ScoreBadge } from '../components/ui/ScoreBadge'
+import { AppShell } from '../../components/layout/AppShell'
+import { ScoreBadge } from '../../components/ui/ScoreBadge'
 import {
   Card, CardHeader, SectionHeader, Button, Input,
   Spinner, EmptyState, Tag, ChangeIndicator,
-} from '../components/ui'
-import { analysisApi, watchlistApi, type Interval, type AnalysisResult } from '../lib/api'
-import { useRecentStore, useAuthStore } from '../store'
+} from '../../components/ui'
+import { analysisApi, watchlistApi, type Interval, type AnalysisResult } from '../../lib/api'
+import { useRecentStore, useAuthStore } from '../../store'
 
 type TabId = 'chart' | 'signals' | 'details' | 'scenarios' | 'strategies' | 'pdf'
 
