@@ -4,11 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { AppShell } from '../components/layout/AppShell'
-import { ScoreBar, scoreColor } from '../components/ui/ScoreBadge'
-import { Card, CardHeader, SectionHeader, Button, Tag, EmptyState, Spinner } from '../components/ui'
-import { scannerApi, type ScanResultItem, type Market } from '../lib/api'
-import { useAuthStore, useScannerStore } from '../store'
+import { AppShell } from '../../components/layout/AppShell'
+import { ScoreBar, scoreColor } from '../../components/ui/ScoreBadge'
+import { Card, CardHeader, SectionHeader, Button, Tag, EmptyState, Spinner } from '../../components/ui'
+import { scannerApi, type ScanResultItem, type Market } from '../../lib/api'
+import { useAuthStore, useScannerStore } from '../../store'
 
 const MARKETS: { value: Market; labelKey: string }[] = [
   { value: 'usa',    labelKey: 'usa'    },
