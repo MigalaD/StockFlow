@@ -4,12 +4,12 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { AppShell } from '../components/layout/AppShell'
-import { ScoreBadge, scoreColor } from '../components/ui/ScoreBadge'
-import { Card, SectionHeader, Button, Input, EmptyState, Spinner, ChangeIndicator } from '../components/ui'
-import { watchlistApi } from '../lib/api'
-import { useAuthStore } from '../store'
-import { AuthGuard } from '../components/shared/AuthGuard'
+import { AppShell } from '../../components/layout/AppShell'
+import { ScoreBadge, scoreColor } from '../../components/ui/ScoreBadge'
+import { Card, SectionHeader, Button, Input, EmptyState, Spinner, ChangeIndicator } from '../../components/ui'
+import { watchlistApi } from '../../lib/api'
+import { useAuthStore } from '../../store'
+import { AuthGuard } from '../../components/shared/AuthGuard'
 
 function WatchlistCard({ item, onRemove }: {
   item: Awaited<ReturnType<typeof watchlistApi.get>>[number]
