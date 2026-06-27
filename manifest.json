@@ -1,0 +1,50 @@
+{
+  "name": "StockFlow – Analityka Rynkowa",
+  "short_name": "StockFlow",
+  "description": "Analiza techniczna i fundamentalna akcji, ETF-ów, kryptowalut i surowców",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1120",
+  "theme_color": "#1F2937",
+  "orientation": "portrait-primary",
+  "lang": "pl",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["finance", "business"],
+  "shortcuts": [
+    {
+      "name": "Analiza",
+      "short_name": "Analiza",
+      "description": "Analizuj instrument",
+      "url": "/analysis",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Skaner",
+      "short_name": "Skaner",
+      "description": "Skan rynku",
+      "url": "/scanner",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Watchlista",
+      "short_name": "Watchlist",
+      "description": "Twoja watchlista",
+      "url": "/watchlist",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
