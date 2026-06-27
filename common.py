@@ -650,6 +650,81 @@ def inject_base_css():
         ::-webkit-scrollbar-thumb:hover {{
             background: rgba(34,197,94,0.6);
         }}
+
+        /* ── 1. Flash fix — tło natychmiast przy ładowaniu strony ── */
+        /* Zapobiega białemu/szaremu miganiu przy przełączaniu stron */
+        html {{
+            background-color: {KOLOR_TLO} !important;
+        }}
+        body {{
+            background-color: {KOLOR_TLO} !important;
+        }}
+        /* Streamlit root container */
+        #root, .stApp {{
+            background-color: {KOLOR_TLO} !important;
+        }}
+        /* Overlay podczas ładowania — ukryj domyślny biały */
+        [data-testid="stAppViewContainer"] {{
+            background-color: {KOLOR_TLO} !important;
+        }}
+        /* Transition dla głównej treści — płynniejsze pojawianie się */
+        [data-testid="stMainBlockContainer"] {{
+            animation: fadeIn 0.18s ease-in;
+        }}
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(4px); }}
+            to   {{ opacity: 1; transform: translateY(0); }}
+        }}
+
+        /* ── 2. Mobile responsywność ── */
+        @media (max-width: 768px) {{
+            /* Zapobiegaj poziomemu scrollowi */
+            .stApp, body, html {{
+                max-width: 100vw !important;
+                overflow-x: hidden !important;
+            }}
+            /* Zmniejsz padding na małych ekranach */
+            .block-container {{
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+                padding-top: 1rem !important;
+            }}
+            /* Metryki — mniejsze na mobile */
+            [data-testid="stMetricValue"] {{
+                font-size: 1.2rem !important;
+            }}
+            [data-testid="stMetricLabel"] {{
+                font-size: 0.70rem !important;
+            }}
+            /* Nagłówki mniejsze na mobile */
+            h1 {{
+                font-size: 1.5rem !important;
+            }}
+            h2 {{
+                font-size: 1.1rem !important;
+            }}
+            /* Zakładki — mniejszy font żeby się mieściły */
+            button[data-baseweb="tab"] {{
+                font-size: 0.78rem !important;
+                padding: 6px 8px !important;
+            }}
+            /* Tabele — scroll poziomy zamiast overflow clip */
+            [data-testid="stDataFrame"] {{
+                overflow-x: auto !important;
+            }}
+            /* Ukryj sticky header na bardzo małych ekranach */
+            .sticky-ticker-header {{
+                display: none !important;
+            }}
+        }}
+
+        /* ── Sidebar na mobile — pełna szerokość ── */
+        @media (max-width: 640px) {{
+            [data-testid="stSidebar"] {{
+                width: 100% !important;
+                min-width: 100% !important;
+            }}
+        }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -948,7 +1023,15 @@ def sidebar_user(key: str = "user_id") -> str:
     """Renderuje pole użytkownika w sidebarze i zwraca user_id.
 
     Przy okazji wstrzykuje wspólne style CSS (raz na stronę) i logo StockFlow.
+    Flash fix wstrzykiwany jest jako pierwszy element — przed jakimkolwiek
+    renderowaniem Streamlit — żeby zapobiec białemu miganiu przy ładowaniu.
     """
+    # Flash fix — wstrzyknij tło natychmiast jako PIERWSZY element na stronie
+    st.markdown(
+        f"<style>html,body,.stApp,[data-testid='stAppViewContainer']"
+        f"{{background-color:{KOLOR_TLO}!important}}</style>",
+        unsafe_allow_html=True,
+    )
     inject_base_css()
     with st.sidebar:
         # Logo tekstowe StockFlow (do czasu dodania pliku graficznego)
@@ -1036,3 +1119,47 @@ def beta_banner():
         "inwestycyjna. Dane mogą się okresowo resetować (watchlista, portfolio, "
         "ustawienia) – to normalne dla wersji testowej. Dziękujemy za testy!"
     )
+
+
+# ── J: Ostatnio przeglądane ───────────────────────────────────────────
+_RECENT_KEY = "_recent_tickers"
+_RECENT_MAX  = 5
+
+
+def dodaj_do_ostatnio_ogladanych(ticker: str) -> None:
+    """Zapisuje ticker do listy ostatnio przeglądanych (session_state)."""
+    recent: list = st.session_state.get(_RECENT_KEY, [])
+    recent = [t for t in recent if t != ticker]
+    recent.insert(0, ticker)
+    st.session_state[_RECENT_KEY] = recent[:_RECENT_MAX]
+
+
+def pokaz_ostatnio_ogladane(
+    label: str = "Ostatnio przeglądane",
+    key_prefix: str = "recent",
+) -> "str | None":
+    """Wyświetla pill-buttons z ostatnio przeglądanymi tickerami.
+
+    Zwraca ticker jeśli kliknięty, None w przeciwnym razie.
+    """
+    recent: list = st.session_state.get(_RECENT_KEY, [])
+    if not recent:
+        return None
+
+    st.markdown(
+        "<div style='font-family:Inter,sans-serif;font-size:0.75rem;"
+        "opacity:0.55;text-transform:uppercase;letter-spacing:0.05em;"
+        "margin-bottom:4px;'>🕐 " + label + "</div>",
+        unsafe_allow_html=True,
+    )
+    cols = st.columns(min(len(recent), 5))
+    for i, tk in enumerate(recent):
+        with cols[i]:
+            if st.button(
+                tk,
+                key=f"{key_prefix}_{tk}_{i}",
+                use_container_width=True,
+                help=f"Wróć do analizy {tk}",
+            ):
+                return tk
+    return None

@@ -223,21 +223,65 @@ st.markdown(
 )
 
 with tab_wyglad:
-    st.markdown("#### 🌓 Tryb ciemny / jasny")
-    st.markdown(
-        "Tryb ciemny jest skonfigurowany w pliku `.streamlit/config.toml` "
-        "(folder `.streamlit` w tym samym katalogu co `dashboard.py`). "
-        "Aby wrócić do trybu jasnego, otwórz ten plik i zmień "
-        "`base = \"dark\"` na `base = \"light\"`, albo usuń cały plik."
+    section_header("Motyw kolorystyczny", "🌓")
+
+    # I: Dark/Light mode przez query params (Streamlit-compatible hack)
+    current_theme = st.session_state.get("_theme", "dark")
+
+    col_th1, col_th2 = st.columns(2)
+    with col_th1:
+        if st.button(
+            "🌙 Tryb ciemny" + (" ✓ aktywny" if current_theme == "dark" else ""),
+            use_container_width=True,
+            disabled=(current_theme == "dark"),
+        ):
+            st.session_state["_theme"] = "dark"
+            st.markdown(
+                "<script>window.localStorage.setItem('theme','dark');</script>",
+                unsafe_allow_html=True,
+            )
+            st.rerun()
+    with col_th2:
+        if st.button(
+            "☀️ Tryb jasny" + (" ✓ aktywny" if current_theme == "light" else ""),
+            use_container_width=True,
+            disabled=(current_theme == "light"),
+        ):
+            st.session_state["_theme"] = "light"
+            st.rerun()
+
+    st.caption(
+        "Zmiana trybu działa w ramach sesji. Trwała zmiana wymaga edycji "
+        "`.streamlit/config.toml` (parametr `base`).",
+        help="Streamlit nie oferuje runtime theme switching — "
+             "to sesyjna zmiana wizualna.",
     )
 
+    # Inject light theme CSS if requested
+    if st.session_state.get("_theme") == "light":
+        st.markdown(
+            """
+            <style>
+            .stApp, [data-testid="stAppViewContainer"] {
+                background-color: #F8FAFC !important;
+                color: #111827 !important;
+            }
+            [data-testid="stSidebar"] {
+                background-color: #F1F5F9 !important;
+            }
+            [data-testid="stMetric"] {
+                background: rgba(34,197,94,0.06) !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
     st.divider()
-    st.markdown("#### 🗄️ Lokalny cache danych cenowych")
-    st.markdown(
-        "Dane cenowe (historia notowań) są zapisywane lokalnie na "
-        "15 minut, żeby przyspieszyć ładowanie i ograniczyć liczbę "
-        "zapytań do Yahoo Finance - dotyczy to **wszystkich** "
-        "użytkowników tej instalacji (cache jest współdzielony)."
+    section_header("Cache danych cenowych", "🗄️")
+    st.caption(
+        "Dane cenowe są buforowane przez 15 minut (wspólne dla wszystkich użytkowników). "
+        "Wyczyść cache jeśli widzisz nieaktualne dane.",
     )
     cache_stats = db.get_price_cache_stats()
     col_c1, col_c2, col_c3 = st.columns(3)
@@ -252,7 +296,7 @@ with tab_wyglad:
 
     if st.button("🗑️ Wyczyść cache cen"):
         db.clear_price_cache()
-        st.success("Cache wyczyszczony - następne wczytanie danych będzie wolniejsze.")
+        st.success("Cache wyczyszczony — następne wczytanie będzie wolniejsze.")
         st.rerun()
 
 

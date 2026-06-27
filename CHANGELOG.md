@@ -1,8 +1,69 @@
 # Changelog
 
-Wszystkie znaczące zmiany w Analizatorze Spółek są dokumentowane w tym pliku.
+Wszystkie znaczące zmiany w StockFlow są dokumentowane w tym pliku.
 
 Format luźno wzorowany na [Keep a Changelog](https://keepachangelog.com/).
+
+---
+
+## [1.2.0] — 2026-06 — Migracja do Next.js + FastAPI
+
+### Nowe funkcje
+
+**Backend FastAPI (`backend/`)**
+- Kompletny REST API (`/api/v1/`) z dokumentacją Swagger (`/docs`)
+- JWT uwierzytelnienie (register/login/me) z bcrypt hashowaniem haseł
+- 38 endpointów: analiza, watchlist, portfolio, dziennik, skaner, PDF, auth
+- Warstwa abstrakcji bazy danych: SQLite (dev) ↔ PostgreSQL/Supabase (prod) — przełącznik `DATABASE_URL`
+- Skrypt migracji `python -m backend.core.database ./stock_app.db`
+- Endpoint `GET /api/v1/pdf/{ticker}` — generowanie raportów PDF
+- Scheduler alertów (`backend/scheduler.py`) z Telegram i email
+- Background task dla skanu rynku z polling statusu (`/scan/status`)
+- Rate limiting gotowy pod `slowapi`
+- Deployment: `Procfile` + `railway.toml` dla Railway
+
+**Frontend Next.js 14 (`frontend/`)**
+- App Router z 12 stronami: Dashboard, Analiza, Porównanie, Watchlist, Portfolio, Krypto, Skaner, Backtest, Dziennik, Ustawienia, O aplikacji, Login
+- i18n PL/EN przez `next-intl` (cookie `locale`)
+- Wykresy Lightweight Charts (OHLCV, świece/obszar, 6 interwałów)
+- Wykresy Recharts: pie chart alokacji, radar porównanie, line chart historii
+- Zustand store z persystencją: auth, ustawienia, ostatnio przeglądane, skaner
+- Typowany klient API (`src/lib/api.ts`) z auto-JWT i auto-logout 401
+- Komponenty: ScoreBadge (4 rozmiary), ScoreBar, Card, Button, Input, Tag, Spinner, EmptyState, SectionHeader, TickerTape, Sidebar, AppShell, AuthGuard, LanguageSwitcher
+- Brand tokens w Tailwind (`tailwind.config.ts`)
+- Flash fix: tło natychmiast przy ładowaniu
+- Deployment: `vercel.json` dla Vercel (edge network, region fra1)
+
+**Backtest w przeglądarce**
+- Engine po stronie klienta (bez serwera) — prosta strategia progowa score
+- KPI: zwrot, Buy&Hold, win rate, max drawdown, Sharpe ratio, alpha
+- Equity curve vs Buy&Hold (Recharts LineChart)
+- Lista transakcji z collapsible `<details>`
+
+### Zmiany UX/UI (v1.1.x)
+
+- Brand guide StockFlow: Inter font, `#22C55E` (green), `#14B8A6` (teal)
+- `section_header()` z zieloną kreską — zastąpił `st.markdown("####")`
+- `empty_state()` z ikoną i opisem zamiast `st.info("brak danych")`
+- Karty HTML dla watchlisty i portfolio (zamiast rzędów `st.metric()`)
+- Dashboard jako pełny widok z VIX, watchlistą tabelaryczną, Top5/Bottom5
+- Onboarding 3-krokowy dla nowych użytkowników
+- Flash fix (białe miganie przy przełączaniu stron)
+- Mobile responsywność (`@media` queries w CSS)
+- Sticky header z nazwą instrumentu na stronie Analizy
+- Ostatnio przeglądane (session_state) z pill-buttonami
+- Progress bar przy ładowaniu watchlisty
+- 9 → 6 zakładek na stronie Analizy
+- Dark/light mode toggle w Ustawieniach
+- Kontekst instrumentu w sidebarze Analizy (ticker, DT+ST badge)
+
+### Naprawione błędy
+
+- `OperationalError: table scan_results has no column score_st` — defensywny `ALTER TABLE` w `save_scan_results()`
+- `SyntaxError: f-string expression part cannot` — backslash w f-stringach (Python 3.11)
+- `brak_st` wykrywanie stanu po starym skanie — poprawiona logika detekcji
+- Duplicate `inject_base_css()` closing bracket
+
 Wersjonowanie: [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 
 ---

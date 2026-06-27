@@ -1,0 +1,216 @@
+{
+  "nav": {
+    "dashboard":   "Dashboard",
+    "analysis":    "Analiza",
+    "comparison":  "Porównanie",
+    "watchlist":   "Watchlista",
+    "portfolio":   "Portfolio",
+    "crypto":      "Krypto",
+    "scanner":     "Skaner",
+    "backtest":    "Backtest",
+    "journal":     "Dziennik",
+    "settings":    "Ustawienia",
+    "about":       "O aplikacji"
+  },
+
+  "common": {
+    "loading":      "Ładowanie...",
+    "error":        "Błąd",
+    "retry":        "Spróbuj ponownie",
+    "save":         "Zapisz",
+    "cancel":       "Anuluj",
+    "delete":       "Usuń",
+    "add":          "Dodaj",
+    "search":       "Szukaj",
+    "score":        "Wynik",
+    "price":        "Cena",
+    "change24h":    "Zmiana 24h",
+    "sector":       "Sektor",
+    "currency":     "Waluta",
+    "noData":       "Brak danych",
+    "loginRequired":"Zaloguj się aby kontynuować"
+  },
+
+  "score": {
+    "dt":           "Wynik DT",
+    "st":           "Wynik ST",
+    "longTerm":     "Długoterminowy",
+    "shortTerm":    "Krótkoterminowy (swing)",
+    "positive":     "Pozytywny",
+    "neutral":      "Neutralny",
+    "negative":     "Negatywny",
+    "components":   "Składowe wyniku",
+    "history":      "Historia sygnału",
+    "disclaimer":   "Wynik nie jest prognozą ani poradą inwestycyjną."
+  },
+
+  "auth": {
+    "login":        "Zaloguj się",
+    "logout":       "Wyloguj",
+    "register":     "Zarejestruj się",
+    "username":     "Nazwa użytkownika",
+    "password":     "Hasło",
+    "email":        "E-mail (opcjonalnie)",
+    "loginSuccess": "Zalogowano pomyślnie",
+    "logoutSuccess":"Wylogowano",
+    "invalidCreds": "Nieprawidłowa nazwa lub hasło",
+    "usernameTaken":"Ta nazwa jest już zajęta",
+    "welcome":      "Witaj, {name}!",
+    "passwordMin":  "Hasło musi mieć min. 8 znaków"
+  },
+
+  "dashboard": {
+    "greeting": {
+      "morning":    "Dzień dobry",
+      "afternoon":  "Witaj",
+      "evening":    "Dobry wieczór"
+    },
+    "vix": {
+      "label":      "VIX – Indeks strachu",
+      "calm":       "Spokój rynkowy",
+      "normal":     "Normalna zmienność",
+      "elevated":   "Podwyższona niepewność",
+      "fear":       "Wysoki strach / panika"
+    },
+    "watchlist":    "Watchlista",
+    "lastScan":     "Ostatni skan",
+    "top5":         "Top 5",
+    "bottom5":      "Bottom 5",
+    "noWatchlist":  "Watchlista jest pusta",
+    "addFirst":     "Dodaj pierwszy instrument",
+    "noScan":       "Skan nie był jeszcze uruchamiany",
+    "runScan":      "Uruchom skan rynku"
+  },
+
+  "analysis": {
+    "title":        "Analiza spółki",
+    "searchPlaceholder": "Wpisz symbol lub nazwę (np. AAPL, Apple)",
+    "searchHint":   "Wciśnij Enter aby wyszukać",
+    "recentlyViewed": "Ostatnio przeglądane",
+    "addToWatchlist": "Dodaj do watchlisty",
+    "tabs": {
+      "chart":      "Wykres",
+      "signals":    "Sygnały ST",
+      "details":    "Analiza",
+      "scenarios":  "Scenariusze",
+      "strategies": "Strategie",
+      "pdf":        "PDF"
+    },
+    "interval": {
+      "1m":   "1 minuta",
+      "5m":   "5 minut",
+      "15m":  "15 minut",
+      "30m":  "30 minut",
+      "1h":   "1 godzina",
+      "1d":   "1 dzień"
+    },
+    "source": {
+      "binance":  "Binance (na żywo)",
+      "yahoo":    "Yahoo Finance (~15 min opóźnienia)"
+    },
+    "signals": {
+      "title":      "Sygnały krótkoterminowe",
+      "atr":        "ATR – zasięg ruchu",
+      "stochastic": "Stochastik %K/%D",
+      "obv":        "OBV – wolumen",
+      "levels":     "Wsparcie i opór",
+      "stopLoss":   "Sugerowany stop-loss",
+      "tight":      "Ciasny (1× ATR)",
+      "wide":       "Szeroki (1.5× ATR)",
+      "swingNote":  "Dane dzienne – narzędzie dla swing-tradingu (dni/tygodnie)"
+    },
+    "redFlags":     "Red flags",
+    "noRedFlags":   "Brak ostrzeżeń",
+    "keyData":      "Kluczowe dane",
+    "downloadPdf":  "Pobierz raport PDF"
+  },
+
+  "watchlist": {
+    "title":        "Watchlista",
+    "add":          "Dodaj symbol",
+    "empty":        "Watchlista jest pusta",
+    "emptyHint":    "Dodaj spółki które chcesz obserwować",
+    "alerts":       "Alerty",
+    "alertHigh":    "Alert gdy score >",
+    "alertLow":     "Alert gdy score <",
+    "alertCrossover": "Alert crossover MA",
+    "saveAlerts":   "Zapisz alerty",
+    "remove":       "Usuń z watchlisty",
+    "addedSuccess": "{ticker} dodano do watchlisty",
+    "removedSuccess": "{ticker} usunięto z watchlisty",
+    "scoreChange":  "Zmiana score"
+  },
+
+  "portfolio": {
+    "title":        "Portfolio",
+    "addPosition":  "Dodaj pozycję",
+    "ticker":       "Symbol",
+    "shares":       "Liczba akcji/jednostek",
+    "buyPrice":     "Cena zakupu",
+    "buyDate":      "Data zakupu",
+    "notes":        "Notatki",
+    "pnl":          "P&L",
+    "currentValue": "Wartość bieżąca",
+    "allocation":   "Alokacja sektorowa",
+    "correlation":  "Macierz korelacji",
+    "empty":        "Portfolio jest puste",
+    "emptyHint":    "Dodaj pierwszą pozycję aby śledzić swoje wyniki",
+    "removePosition": "Usuń pozycję",
+    "totalPnl":     "P&L łącznie"
+  },
+
+  "scanner": {
+    "title":        "Skaner rynku",
+    "run":          "Uruchom skan",
+    "running":      "Skanowanie...",
+    "done":         "Skan zakończony",
+    "market": {
+      "usa":    "USA (53 spółki)",
+      "gpw":    "GPW (24 spółki)",
+      "europa": "Europa Zach. (33 spółki)",
+      "krypto": "Krypto (8 tokenów)",
+      "all":    "Wszystko (110)"
+    },
+    "mode": {
+      "dt": "Długoterminowy",
+      "st": "Swing (ST)"
+    },
+    "sectors":      "Siła sektorów",
+    "results":      "Wyniki skanu",
+    "disclaimer":   "Wysoki score nie oznacza 'kup' – to punkt wyjścia do analizy."
+  },
+
+  "crypto": {
+    "title":          "Kryptowaluty",
+    "dominance":      "Dominacja",
+    "marketCap":      "Kapitalizacja rynku",
+    "disclaimer":     "Score krypto jest wyłącznie techniczny. Kryptowaluty są bardzo ryzykowne.",
+    "binanceLive":    "Ceny live z Binance"
+  },
+
+  "settings": {
+    "title":          "Ustawienia",
+    "telegram":       "Alerty Telegram",
+    "email":          "Alerty e-mail",
+    "appearance":     "Wygląd",
+    "diagnostics":    "Diagnostyka",
+    "language":       "Język",
+    "theme": {
+      "dark":   "Tryb ciemny",
+      "light":  "Tryb jasny"
+    },
+    "cache": {
+      "title":  "Cache danych",
+      "clear":  "Wyczyść cache",
+      "cleared":"Cache wyczyszczony"
+    }
+  },
+
+  "errors": {
+    "notFound":       "Nie znaleziono danych dla {ticker}",
+    "networkError":   "Błąd połączenia z serwerem",
+    "analysisError":  "Błąd analizy – spróbuj ponownie za chwilę",
+    "invalidTicker":  "Nieprawidłowy symbol. Dla GPW użyj sufiksu .WA (np. CDR.WA)",
+    "rateLimited":    "Zbyt wiele zapytań – odczekaj chwilę"
+  }
+}

@@ -34,9 +34,10 @@ with st.sidebar:
         default=domyslne,
     )
     dodatkowe = st.text_input(
-        "Dodatkowe symbole oddzielone przecinkiem (opcjonalnie)",
+        "Dodatkowe symbole oddzielone przecinkiem",
         value="",
         placeholder="np. NFLX, ASML",
+        help="Wpisz symbole i wciśnij Enter. Dla GPW dodaj sufiks .WA (np. CDR.WA)",
     )
     tickery = [PRZYKLADOWE_SPOLKI[n] for n in wybrane_nazwy]
     if dodatkowe.strip():
@@ -45,11 +46,24 @@ with st.sidebar:
 st.title("🔀 Porównanie spółek")
 
 if not tickery:
-    st.info("Wybierz przynajmniej jedną spółkę w panelu po lewej.")
+    empty_state(
+        "🔀",
+        "Wybierz instrumenty do porównania",
+        "Skorzystaj z listy po lewej lub wpisz symbole ręcznie "
+        "(np. AAPL, CDR.WA, BTC-USD). Możesz porównać do 6 instrumentów naraz.",
+    )
+    st.stop()
+
+if len(tickery) == 1:
+    st.info(
+        f"Dodano **{tickery[0]}**. Dodaj przynajmniej jeden instrument więcej "
+        "aby zobaczyć porównanie.",
+        icon="👆",
+    )
     st.stop()
 
 wyniki, bledy = [], []
-with st.spinner("Pobieranie danych..."):
+with st.spinner(f"Pobieram dane dla {len(tickery)} instrumentów…"):
     for t in tickery:
         try:
             res = pobierz_analize(t)

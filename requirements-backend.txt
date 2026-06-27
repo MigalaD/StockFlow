@@ -1,0 +1,39 @@
+# StockFlow — Backend FastAPI
+# Instalacja: pip install -r requirements-backend.txt
+#
+# Uwaga: wymagania Streamlit (requirements.txt) są osobne.
+# Ten plik jest TYLKO dla backendu FastAPI / Railway / Render.
+
+# ── Rate limiting ─────────────────────────────────────────────────────
+slowapi>=0.1.9                   # rate limiting dla FastAPI (limiter per IP)
+
+# ── FastAPI core ──────────────────────────────────────────────────────
+fastapi>=0.111,<1.0
+uvicorn[standard]>=0.29,<1.0    # ASGI server (auto-reload w dev)
+python-multipart>=0.0.9          # obsługa form data
+
+# ── Walidacja ─────────────────────────────────────────────────────────
+pydantic>=2.6,<3.0               # modele requestów/odpowiedzi
+
+# ── Auth / Security ───────────────────────────────────────────────────
+python-jose[cryptography]>=3.3   # JWT
+passlib[bcrypt]>=1.7             # hashowanie haseł
+
+# ── Baza danych ───────────────────────────────────────────────────────
+# SQLite: wbudowany w Python (dev/Streamlit fallback)
+# PostgreSQL / Supabase: asyncpg + sqlalchemy
+asyncpg>=0.29                    # async PostgreSQL driver
+sqlalchemy>=2.0,<3.0             # ORM / query builder (opcjonalne)
+
+# ── Analityka (współdzielone ze Streamlit) ────────────────────────────
+yfinance>=0.2.40,<0.3
+pandas>=2.0,<3.0
+numpy>=1.24,<3.0
+requests>=2.28,<3.0
+cryptography>=42.0               # szyfrowanie sekretów
+
+# ── Dev ────────────────────────────────────────────────────────────────
+python-dotenv>=1.0               # ładowanie .env w dev
+httpx>=0.27                      # klient HTTP do testów (TestClient)
+pytest>=8.0
+pytest-asyncio>=0.23
