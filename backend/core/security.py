@@ -27,7 +27,11 @@ except ImportError:
 
 try:
     from passlib.context import CryptContext
-    _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    _pwd_context = CryptContext(
+        schemes=["bcrypt"],
+        deprecated="auto",
+        bcrypt__rounds=12,
+    )
 except ImportError:
     raise RuntimeError("Zainstaluj: pip install passlib[bcrypt]")
 
@@ -40,10 +44,20 @@ _bearer  = HTTPBearer(auto_error=False)
 # ── Hasła ─────────────────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
+    # bcrypt ma limit 72 bajtów — przytnij jeśli dłuższe
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+        password = password_bytes.decode("utf-8", errors="ignore")
     return _pwd_context.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    # Tak samo przytnij przy weryfikacji
+    plain_bytes = plain.encode("utf-8")
+    if len(plain_bytes) > 72:
+        plain_bytes = plain_bytes[:72]
+        plain = plain_bytes.decode("utf-8", errors="ignore")
     return _pwd_context.verify(plain, hashed)
 
 
