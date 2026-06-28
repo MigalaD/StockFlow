@@ -174,7 +174,7 @@ function EntryCard({ entry, onDelete }: { entry: JournalEntry; onDelete: () => v
           >
             {entry.ticker}
           </Link>
-          <Tag style={{ background: color + '18', borderColor: color + '40', color }}>
+          <Tag color={color}>
             {entry.decision}
           </Tag>
           {!expanded && (
