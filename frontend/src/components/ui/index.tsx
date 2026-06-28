@@ -114,10 +114,10 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?:   string
   error?:   string
   hint?:    string
-  prefix?:  ReactNode
+  prefixEl?: ReactNode
 }
 
-export function Input({ label, error, hint, prefix, className, ...props }: InputProps) {
+export function Input({ label, error, hint, prefixEl, className, ...props }: InputProps) {
   return (
     <div className="flex flex-col gap-1">
       {label && (
@@ -126,15 +126,15 @@ export function Input({ label, error, hint, prefix, className, ...props }: Input
         </label>
       )}
       <div className="relative">
-        {prefix && (
+        {prefixEl && (
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">
-            {prefix}
+            {prefixEl}
           </span>
         )}
         <input
           className={clsx(
             'input',
-            prefix && 'pl-8',
+            prefixEl && 'pl-8',
             error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
             className,
           )}
