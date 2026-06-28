@@ -76,7 +76,7 @@ function TickerSearch({ onSelect }: { onSelect: (ticker: string) => void }) {
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={handleKeyDown}
         hint={t('searchHint')}
-        prefix={loading ? <Spinner size="sm" /> : '🔍'}
+        prefixEl={loading ? <Spinner size="sm" /> : '🔍'}
       />
       {open && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-card z-50 overflow-hidden">
