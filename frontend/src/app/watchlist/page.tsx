@@ -8,6 +8,7 @@ import { AppShell } from '../../components/layout/AppShell'
 import { ScoreBadge, scoreColor } from '../../components/ui/ScoreBadge'
 import { Card, SectionHeader, Button, Input, EmptyState, Spinner, ChangeIndicator } from '../../components/ui'
 import { watchlistApi } from '../../lib/api'
+import toast from 'react-hot-toast'
 import { useAuthStore } from '../../store'
 import { AuthGuard } from '../../components/shared/AuthGuard'
 
