@@ -117,3 +117,20 @@ async def me(user_id: CurrentUser) -> dict:
         "user_id":  user_id,
         "username": user_id,
     }
+
+
+@router.post(
+    "/settings/telegram",
+    summary="Save Telegram settings",
+    include_in_schema=True,
+)
+async def save_telegram_settings(
+    body:    dict,
+    user_id: CurrentUser,
+) -> dict:
+    """Zapisuje ustawienia Telegram dla użytkownika."""
+    db.set_user_settings(user_id, {
+        "telegram_token":   body.get("telegram_token", ""),
+        "telegram_chat_id": body.get("telegram_chat_id", ""),
+    })
+    return {"saved": True}
