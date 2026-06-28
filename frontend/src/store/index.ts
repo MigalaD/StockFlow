@@ -69,7 +69,8 @@ export const useAuthStore = create<AuthState>()(
           getItem:    () => null,
           setItem:    () => {},
           removeItem: () => {},
-        } as Storage)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)
       ),
       partialize: (state) => ({
         token:  state.token,
@@ -123,7 +124,8 @@ export const useSettingsStore = create<SettingsState>()(
           getItem:    () => null,
           setItem:    () => {},
           removeItem: () => {},
-        } as Storage)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)
       ),
     },
   ),
@@ -155,7 +157,8 @@ export const useRecentStore = create<RecentState>()(
           getItem:    () => null,
           setItem:    () => {},
           removeItem: () => {},
-        } as Storage)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)
       ),
     },
   ),
