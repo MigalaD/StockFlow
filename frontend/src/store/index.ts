@@ -1,6 +1,6 @@
 /**
  * StockFlow Global Store (Zustand)
- * Stan uwierzytelnienia, ustawień i ostatnio przeglądanych.
+ * Poprawiona obsługa SSR — czeka na hydratację przed sprawdzeniem auth.
  */
 
 import { create } from 'zustand'
@@ -10,24 +10,31 @@ import { authApi } from '../lib/api'
 // ── Auth store ────────────────────────────────────────────────────────
 
 interface AuthState {
-  token:   string | null
-  userId:  string | null
-  isAuth:  boolean
-  login:   (username: string, password: string) => Promise<void>
-  register:(username: string, password: string, email?: string) => Promise<void>
-  logout:  () => void
+  token:        string | null
+  userId:       string | null
+  isAuth:       boolean
+  _hasHydrated: boolean
+  setHydrated:  () => void
+  login:        (username: string, password: string) => Promise<void>
+  register:     (username: string, password: string, email?: string) => Promise<void>
+  logout:       () => void
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token:  null,
-      userId: null,
-      isAuth: false,
+      token:        null,
+      userId:       null,
+      isAuth:       false,
+      _hasHydrated: false,
+
+      setHydrated: () => set({ _hasHydrated: true }),
 
       login: async (username, password) => {
         const data = await authApi.login(username, password)
-        localStorage.setItem('sf_token', data.access_token)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sf_token', data.access_token)
+        }
         set({
           token:  data.access_token,
           userId: data.user_id,
@@ -37,7 +44,9 @@ export const useAuthStore = create<AuthState>()(
 
       register: async (username, password, email) => {
         const data = await authApi.register(username, password, email)
-        localStorage.setItem('sf_token', data.access_token)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sf_token', data.access_token)
+        }
         set({
           token:  data.access_token,
           userId: data.user_id,
@@ -46,20 +55,30 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        localStorage.removeItem('sf_token')
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('sf_token')
+          localStorage.removeItem('sf_user')
+        }
         set({ token: null, userId: null, isAuth: false })
       },
     }),
     {
       name:    'sf-auth',
       storage: createJSONStorage(() =>
-        typeof window !== 'undefined' ? localStorage : ({} as Storage)
+        typeof window !== 'undefined' ? localStorage : ({
+          getItem:    () => null,
+          setItem:    () => {},
+          removeItem: () => {},
+        } as Storage)
       ),
       partialize: (state) => ({
         token:  state.token,
         userId: state.userId,
         isAuth: state.isAuth,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated()
+      },
     },
   ),
 )
@@ -93,7 +112,6 @@ export const useSettingsStore = create<SettingsState>()(
       setLocale: (locale) => {
         set({ locale })
         if (typeof document !== 'undefined') {
-          // next-intl czyta locale z cookie
           document.cookie = `locale=${locale};path=/;max-age=31536000;SameSite=Lax`
         }
       },
@@ -101,7 +119,11 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name:    'sf-settings',
       storage: createJSONStorage(() =>
-        typeof window !== 'undefined' ? localStorage : ({} as Storage)
+        typeof window !== 'undefined' ? localStorage : ({
+          getItem:    () => null,
+          setItem:    () => {},
+          removeItem: () => {},
+        } as Storage)
       ),
     },
   ),
@@ -120,18 +142,20 @@ export const useRecentStore = create<RecentState>()(
   persist(
     (set, get) => ({
       tickers: [],
-
       addTicker: (ticker) => {
         const current = get().tickers.filter(t => t !== ticker)
         set({ tickers: [ticker, ...current].slice(0, 5) })
       },
-
       clearTickers: () => set({ tickers: [] }),
     }),
     {
       name:    'sf-recent',
       storage: createJSONStorage(() =>
-        typeof window !== 'undefined' ? localStorage : ({} as Storage)
+        typeof window !== 'undefined' ? localStorage : ({
+          getItem:    () => null,
+          setItem:    () => {},
+          removeItem: () => {},
+        } as Storage)
       ),
     },
   ),
@@ -141,10 +165,10 @@ export const useRecentStore = create<RecentState>()(
 // ── Scanner store ─────────────────────────────────────────────────────
 
 interface ScannerState {
-  mode:    'dt' | 'st'
-  market:  string
-  setMode: (mode: 'dt' | 'st') => void
-  setMarket:(market: string) => void
+  mode:      'dt' | 'st'
+  market:    string
+  setMode:   (mode: 'dt' | 'st') => void
+  setMarket: (market: string) => void
 }
 
 export const useScannerStore = create<ScannerState>()((set) => ({
