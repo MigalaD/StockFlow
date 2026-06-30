@@ -62,12 +62,14 @@ const STEPS = [
 
 export default function WelcomePage() {
   const router = useRouter()
-  const { isAuth, _hasHydrated } = useAuthStore()
+  const { isAuth, _hasHydrated, sessionVerified } = useAuthStore()
 
-  // Zalogowanych przekieruj prosto do aplikacji
+  // Zalogowanych (z POTWIERDZONYM tokenem) przekieruj prosto do aplikacji.
+  // Czekamy na sessionVerified, nie tylko _hasHydrated — sama obecność
+  // tokenu w localStorage nie znaczy, że jest wciąż ważny.
   useEffect(() => {
-    if (_hasHydrated && isAuth) router.replace('/')
-  }, [isAuth, _hasHydrated, router])
+    if (_hasHydrated && sessionVerified && isAuth) router.replace('/')
+  }, [isAuth, _hasHydrated, sessionVerified, router])
 
   return (
     <div className="min-h-screen" style={{ background: '#080C16' }}>
