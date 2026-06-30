@@ -313,6 +313,9 @@ def get_alpaca_bars(ticker: str, interval: str = "1d", limit: int = 365) -> list
 
     Zwraca listę dict {timestamp, open, high, low, close, volume} albo None
     (brak klucza, ticker spoza USA, błąd). Używa darmowego feedu IEX.
+
+    WAŻNE: Alpaca wymaga jawnego parametru `start`, inaczej zwraca tylko
+    najnowszą dostępną świecę zamiast pełnej historii (mimo ustawionego limit).
     """
     ticker = ticker.upper().strip()
     if not is_alpaca_supported(ticker):
@@ -321,11 +324,33 @@ def get_alpaca_bars(ticker: str, interval: str = "1d", limit: int = 365) -> list
         return None
 
     timeframe = _ALPACA_TIMEFRAMES.get(interval, "1Day")
+
+    # Oblicz `start` tak, by zmieścić `limit` świec danego interwału.
+    # Mnożnik z zapasem (weekendy/święta dla danych dziennych, przerwy sesji dla intraday).
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    minutes_per_bar = {
+        "1m": 1, "5m": 5, "15m": 15, "30m": 30, "1h": 60, "1d": 60 * 24,
+    }.get(interval, 60 * 24)
+
+    if interval == "1d":
+        # Dane dzienne: dni kalendarzowe z zapasem na weekendy (~1.5x)
+        lookback_days = int(limit * 1.6) + 5
+    else:
+        # Dane intraday: giełda USA otwarta ~6.5h/dzień -> ~390 min/dzień
+        bars_per_trading_day = max(1, 390 // minutes_per_bar)
+        lookback_days = int(limit / bars_per_trading_day * 1.6) + 5
+        lookback_days = max(lookback_days, 2)
+
+    start = (now - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     params = {
-        "timeframe": timeframe,
-        "limit":     min(limit, 1000),
-        "feed":      "iex",        # darmowy feed (SIP wymaga płatnej subskrypcji)
+        "timeframe":  timeframe,
+        "start":      start,
+        "limit":      min(limit, 1000),
+        "feed":       "iex",        # darmowy feed (SIP wymaga płatnej subskrypcji)
         "adjustment": "raw",
+        "sort":       "asc",        # rosnąco po czasie (wykres oczekuje chronologii)
     }
 
     data = _alpaca_get(f"/stocks/{ticker}/bars", params=params)
