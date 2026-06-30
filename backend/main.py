@@ -37,15 +37,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
-# Rate limiting (slowapi)
-try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.util import get_remote_address
+# Rate limiting (slowapi) — współdzielony limiter z backend.core.limiter
+from backend.core.limiter import limiter as _limiter, RATE_LIMITING_AVAILABLE as _rate_limiting_available
+if _rate_limiting_available:
+    from slowapi import _rate_limit_exceeded_handler
     from slowapi.errors import RateLimitExceeded
-    _limiter = Limiter(key_func=get_remote_address)
-    _rate_limiting_available = True
-except ImportError:
-    _rate_limiting_available = False
 
 import database as db
 from backend.core.config import get_settings
@@ -59,6 +55,8 @@ from backend.routers.analysis import router as analysis_router
 from backend.routers.watchlist import router as watchlist_router
 from backend.routers.portfolio import router as portfolio_router
 from backend.routers.pdf import router as pdf_router
+from backend.routers.forecast import router as forecast_router, news_router
+from backend.routers.backtest import router as backtest_router
 from backend.routers.scanner_journal import (
     scan_router,
     journal_router,
@@ -74,6 +72,9 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Inicjalizacja przy starcie, sprzątanie przy zamknięciu."""
+    # KRYTYCZNE: zwaliduj konfigurację produkcyjną zanim cokolwiek wstanie
+    settings.validate_production_security()
+
     if settings.use_postgres:
         # PostgreSQL — uruchom migracje schematu
         async with get_db() as pg_db:
@@ -110,9 +111,10 @@ app = FastAPI(
     ),
     version     = settings.app_version,
     lifespan    = lifespan,
-    docs_url    = "/docs",
-    redoc_url   = "/redoc",
-    openapi_url = "/openapi.json",
+    # Dokumentacja API tylko w dev — w produkcji ukryta (nie ujawniaj struktury API)
+    docs_url    = "/docs"        if settings.environment != "production" else None,
+    redoc_url   = "/redoc"       if settings.environment != "production" else None,
+    openapi_url = "/openapi.json" if settings.environment != "production" else None,
 )
 
 # Rate limiter (opcjonalny — działa gdy slowapi zainstalowane)
@@ -135,6 +137,26 @@ app.add_middleware(
 
 # Kompresja GZIP dla dużych odpowiedzi (historia świec, wyniki skanu)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# ── Security headers ──────────────────────────────────────────────────
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Dodaje nagłówki bezpieczeństwa HTTP do każdej odpowiedzi."""
+    response = await call_next(request)
+    # Zapobiega MIME-sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Ochrona przed clickjacking (osadzaniem w iframe)
+    response.headers["X-Frame-Options"] = "DENY"
+    # Kontrola informacji w nagłówku Referer
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Wyłącz niepotrzebne API przeglądarki
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # HSTS — wymuś HTTPS (tylko w produkcji, by nie utrudniać dev na http)
+    if settings.environment == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 # ── Request timing middleware ─────────────────────────────────────────
@@ -171,6 +193,9 @@ app.include_router(analysis_router,  prefix=API_V1)
 app.include_router(watchlist_router, prefix=API_V1)
 app.include_router(portfolio_router, prefix=API_V1)
 app.include_router(pdf_router,       prefix=API_V1)
+app.include_router(forecast_router,  prefix=API_V1)
+app.include_router(news_router,      prefix=API_V1)
+app.include_router(backtest_router,  prefix=API_V1)
 app.include_router(scan_router,      prefix=API_V1)
 app.include_router(journal_router,   prefix=API_V1)
 
