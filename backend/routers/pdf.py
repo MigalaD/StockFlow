@@ -164,7 +164,7 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(239, 68, 68)
         for flag in flags:
-            pdf.cell(5, 6, "⚠")
+            pdf.cell(5, 6, "!")
             pdf.set_text_color(248, 250, 252)
             pdf.cell(0, 6, str(flag)[:90], ln=True)
             pdf.set_text_color(239, 68, 68)
