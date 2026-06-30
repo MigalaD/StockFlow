@@ -55,6 +55,8 @@ class AnalysisResponse(BaseModel):
     name:         str
     price:        float
     currency:     str
+    change_24h:   float | None = None    # zmiana ceny od poprzedniego zamknięcia
+    change_pct:   float | None = None    # zmiana procentowa
     total_score:  float
     score_st:     float | None
     asset_type:   str
@@ -211,6 +213,12 @@ class OHLCVItem(BaseModel):
     low:       float
     close:     float
     volume:    float
+    # Wskaźniki nakładkowe (opcjonalne — None gdy za mało danych)
+    bb_upper:  float | None = None
+    bb_middle: float | None = None
+    bb_lower:  float | None = None
+    ma50:      float | None = None
+    ma200:     float | None = None
 
 
 class MarketDataResponse(BaseModel):
@@ -218,6 +226,7 @@ class MarketDataResponse(BaseModel):
     interval: str
     source:   str
     candles:  list[OHLCVItem]
+    is_live:  bool = False    # czy dane są live (Binance/Alpaca) czy opóźnione (Yahoo)
 
 
 # ── Health / Info ─────────────────────────────────────────────────────
