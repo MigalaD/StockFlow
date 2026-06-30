@@ -67,6 +67,36 @@ def _components_to_list(components: dict, weights: dict) -> list[ComponentItem]:
     return result
 
 
+def _compute_overlays(closes: list[float]) -> dict:
+    """Oblicza Bollinger Bands (20,2) + MA50/MA200 dla listy cen zamknięcia.
+    Zwraca dict z listami (None gdy za mało danych w danym punkcie)."""
+    import statistics
+    n = len(closes)
+    bb_u, bb_m, bb_l, ma50, ma200 = [], [], [], [], []
+    for i in range(n):
+        # Bollinger 20
+        if i >= 19:
+            window = closes[i-19:i+1]
+            mean = sum(window) / 20
+            std  = statistics.pstdev(window)
+            bb_m.append(round(mean, 4))
+            bb_u.append(round(mean + 2*std, 4))
+            bb_l.append(round(mean - 2*std, 4))
+        else:
+            bb_m.append(None); bb_u.append(None); bb_l.append(None)
+        # MA50
+        if i >= 49:
+            ma50.append(round(sum(closes[i-49:i+1]) / 50, 4))
+        else:
+            ma50.append(None)
+        # MA200
+        if i >= 199:
+            ma200.append(round(sum(closes[i-199:i+1]) / 200, 4))
+        else:
+            ma200.append(None)
+    return {"bb_upper": bb_u, "bb_middle": bb_m, "bb_lower": bb_l, "ma50": ma50, "ma200": ma200}
+
+
 @router.get(
     "/search",
     summary="Search tickers",
@@ -122,11 +152,36 @@ async def analyze(
             detail=f"No data found for ticker '{ticker}'",
         )
 
+    # Oblicz zmianę dobową z ostatnich dwóch zamknięć (niezależnie od analyze_ticker)
+    change_24h = None
+    change_pct = None
+    live_price = None
+    try:
+        import yfinance as yf
+        hist = yf.Ticker(ticker).history(period="5d", interval="1d")
+        if hist is not None and len(hist) >= 2:
+            last = float(hist["Close"].iloc[-1])
+            prev = float(hist["Close"].iloc[-2])
+            if prev > 0:
+                change_24h = round(last - prev, 2)
+                change_pct = round((last - prev) / prev * 100, 2)
+                # Live quote z Alpaca (US stocks) — nadpisz cenę najświeższą
+                if external_data.is_alpaca_supported(ticker) and external_data.is_alpaca_configured():
+                    q = external_data.get_alpaca_quote(ticker)
+                    if q and q.get("price"):
+                        live_price = round(float(q["price"]), 2)
+                        change_24h = round(live_price - prev, 2)
+                        change_pct = round((live_price - prev) / prev * 100, 2)
+    except Exception:
+        pass
+
     response = AnalysisResponse(
         ticker       = result["ticker"],
         name         = result.get("name", ticker),
-        price        = result.get("price", 0.0),
+        price        = live_price if live_price is not None else result.get("price", 0.0),
         currency     = result.get("currency", "USD"),
+        change_24h   = change_24h,
+        change_pct   = change_pct,
         total_score  = result.get("total_score", 50.0),
         score_st     = result.get("score_st"),
         asset_type   = result.get("asset_type", "stock"),
@@ -260,10 +315,24 @@ async def candles(
     interval: Literal["1d", "1h", "30m", "15m", "5m", "1m"] = Query(
         "1d", description="Interwał świecy"
     ),
+    overlays: bool = Query(True, description="Dołącz Bollinger Bands + MA50/200"),
     _user: OptionalCurrentUser = None,
 ) -> MarketDataResponse:
     ticker = ticker.strip().upper()
     cfg    = _INTERVALS.get(interval, _INTERVALS["1d"])
+
+    def _attach_overlays(items: list[OHLCVItem]) -> list[OHLCVItem]:
+        if not overlays or len(items) < 20:
+            return items
+        closes = [it.close for it in items]
+        ov = _compute_overlays(closes)
+        for i, it in enumerate(items):
+            it.bb_upper  = ov["bb_upper"][i]
+            it.bb_middle = ov["bb_middle"][i]
+            it.bb_lower  = ov["bb_lower"][i]
+            it.ma50      = ov["ma50"][i]
+            it.ma200     = ov["ma200"][i]
+        return items
 
     # Krypto: próbuj Binance (live)
     if external_data.is_binance_supported(ticker):
@@ -286,7 +355,33 @@ async def candles(
                 ticker   = ticker,
                 interval = interval,
                 source   = "Binance",
-                candles  = candles_list,
+                candles  = _attach_overlays(candles_list),
+                is_live  = True,
+            )
+
+    # Akcje/ETF USA: próbuj Alpaca (live, IEX feed) gdy skonfigurowane
+    if external_data.is_alpaca_supported(ticker) and external_data.is_alpaca_configured():
+        bars = external_data.get_alpaca_bars(
+            ticker, interval=interval, limit=cfg["limit"]
+        )
+        if bars:
+            candles_list = [
+                OHLCVItem(
+                    timestamp = b["timestamp"],
+                    open      = b["open"],
+                    high      = b["high"],
+                    low       = b["low"],
+                    close     = b["close"],
+                    volume    = b["volume"],
+                )
+                for b in bars
+            ]
+            return MarketDataResponse(
+                ticker   = ticker,
+                interval = interval,
+                source   = "Alpaca",
+                candles  = _attach_overlays(candles_list),
+                is_live  = True,
             )
 
     # Yahoo Finance fallback
@@ -319,7 +414,8 @@ async def candles(
             ticker   = ticker,
             interval = interval,
             source   = "Yahoo Finance",
-            candles  = candles_list,
+            candles  = _attach_overlays(candles_list),
+            is_live  = False,
         )
     except Exception as e:
         raise HTTPException(
