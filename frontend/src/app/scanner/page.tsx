@@ -121,26 +121,40 @@ export default function ScannerPage() {
   const [sortCol,   setSortCol]   = useState<SortCol>('score')
   const [sortDir,   setSortDir]   = useState<'asc' | 'desc'>('desc')
   const [filterQ,   setFilterQ]   = useState('')
+  const [scanError, setScanError] = useState('')
   const pollRef = useRef<NodeJS.Timeout>()
 
   const { data: scan, mutate } = useSWR('scan-results', scannerApi.getResults)
 
   async function startScan() {
     if (!isAuth) return
-    setScanning(true); setProgress(0); setCurrent('')
+    setScanning(true); setProgress(0); setCurrent(''); setScanError('')
     try {
       await scannerApi.startScan(market as Market)
       pollRef.current = setInterval(async () => {
-        const status = await scannerApi.getStatus()
-        setProgress(status.percent)
-        setCurrent(status.current)
-        if (!status.running) {
+        try {
+          const status = await scannerApi.getStatus()
+          setProgress(status.percent)
+          setCurrent(status.current)
+          if (!status.running) {
+            clearInterval(pollRef.current)
+            setScanning(false)
+            await mutate()
+          }
+        } catch {
           clearInterval(pollRef.current)
           setScanning(false)
-          await mutate()
+          setScanError('Utracono połączenie podczas skanowania.')
         }
       }, 1500)
-    } catch { setScanning(false) }
+    } catch (err: any) {
+      setScanning(false)
+      if (err?.status === 401) {
+        setScanError('Sesja wygasła — zaloguj się ponownie, żeby uruchomić skan.')
+      } else {
+        setScanError(err?.detail ?? 'Nie udało się uruchomić skanu. Spróbuj ponownie.')
+      }
+    }
   }
 
   useEffect(() => () => clearInterval(pollRef.current), [])
@@ -245,6 +259,18 @@ export default function ScannerPage() {
               style={{ width: `${progress}%` }} />
           </div>
           <div className="text-xs text-muted mt-1">{current && `Analizuję: ${current}`}</div>
+        </div>
+      )}
+
+      {/* Scan error */}
+      {scanError && (
+        <div className="mb-4 flex items-center justify-between text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+          <span>⚠ {scanError}</span>
+          {scanError.includes('Sesja wygasła') && (
+            <Link href="/login">
+              <Button size="sm" variant="secondary">Zaloguj ponownie</Button>
+            </Link>
+          )}
         </div>
       )}
 
