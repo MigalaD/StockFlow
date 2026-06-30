@@ -1,14 +1,21 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, getLocale } from 'next-intl/server'
 import { ToastProvider } from '../components/shared/ToastProvider'
-import '../styles/globals.css'
+import './globals.css'
 
 const inter = Inter({
   subsets:  ['latin', 'latin-ext'],
   variable: '--font-inter',
   display:  'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets:  ['latin'],
+  variable: '--font-mono',
+  display:  'swap',
+  weight:   ['400', '500', '600', '700'],
 })
 
 export const metadata: Metadata = {
@@ -54,7 +61,7 @@ export default async function RootLayout({
           html, body { background-color: #0B1120; color: #F8FAFC; }
         `}} />
       </head>
-      <body className={`${inter.variable} font-sans bg-surface-lo text-white antialiased`}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans bg-surface-lo text-white antialiased`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
           <ToastProvider />

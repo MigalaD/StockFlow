@@ -1,185 +1,251 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
 import Link from 'next/link'
+import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
+import { Settings2, ArrowRight, Plus } from 'lucide-react'
 import { AppShell } from '../../components/layout/AppShell'
-import { ScoreBadge, scoreColor } from '../../components/ui/ScoreBadge'
-import { Card, SectionHeader, Button, Input, EmptyState, Spinner, ChangeIndicator } from '../../components/ui'
-import { watchlistApi } from '../../lib/api'
+import { ScoreBar, scoreColor } from '../../components/ui/ScoreBadge'
+import { SectionHeader, Button, Input, EmptyState, Spinner, Price } from '../../components/ui'
+import { watchlistApi, analysisApi, type AnalysisResult } from '../../lib/api'
 import toast from 'react-hot-toast'
-import { useAuthStore } from '../../store'
 import { AuthGuard } from '../../components/shared/AuthGuard'
 
-function WatchlistCard({ item, onRemove }: {
-  item: Awaited<ReturnType<typeof watchlistApi.get>>[number]
-  onRemove: () => void
-}) {
-  const t    = useTranslations('watchlist')
-  const [expanded, setExpanded] = useState(false)
-  const [alertHigh, setAlertHigh] = useState(String(item.alert_high ?? 70))
-  const [alertLow,  setAlertLow]  = useState(String(item.alert_low  ?? 30))
-  const [saving,    setSaving]    = useState(false)
+type WLItem = Awaited<ReturnType<typeof watchlistApi.get>>[number]
 
-  const score = item.last_score
-  const color = score != null ? scoreColor(score) : '#64748B'
+// ── Sparkline ──────────────────────────────────────────────────────────
 
-  async function saveAlerts() {
-    setSaving(true)
-    try {
-      await watchlistApi.setAlerts(item.ticker, {
-        alert_high:      Number(alertHigh),
-        alert_low:       Number(alertLow),
-        alert_crossover: item.alert_crossover,
-      })
-    } finally {
-      setSaving(false)
-    }
-  }
-
+function Sparkline({ ticker }: { ticker: string }) {
+  const { data } = useSWR(`hist-${ticker}`, () => analysisApi.history(ticker, 30),
+    { revalidateOnFocus: false })
+  if (!data || data.length < 2) return <div className="w-16 h-7" />
+  const color = scoreColor(data[data.length - 1]?.score ?? 50)
   return (
-    <div
-      className="bg-surface border border-border rounded-xl2 overflow-hidden"
-      style={{ borderLeft: `3px solid ${color}` }}
-    >
-      <div className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {score != null && <ScoreBadge score={score} size="sm" />}
-            <div>
-              <div className="font-bold text-white">{item.ticker}</div>
-              {item.added_at && (
-                <div className="text-xs text-muted">
-                  Dodano: {item.added_at.slice(0, 10)}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link href={`/analysis?ticker=${item.ticker}`}>
-              <Button variant="ghost" size="sm">Analizuj →</Button>
-            </Link>
-            <button
-              onClick={() => setExpanded(e => !e)}
-              className="text-muted hover:text-white text-sm px-2 py-1 rounded"
-            >
-              ⚙
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Alerts expander */}
-      {expanded && (
-        <div className="border-t border-border p-4 bg-surface-hi/40">
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Input
-              label={t('alertHigh')}
-              type="number"
-              value={alertHigh}
-              onChange={e => setAlertHigh(e.target.value)}
-              min={0} max={100}
-            />
-            <Input
-              label={t('alertLow')}
-              type="number"
-              value={alertLow}
-              onChange={e => setAlertLow(e.target.value)}
-              min={0} max={100}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={saveAlerts} loading={saving} size="sm">
-              {t('saveAlerts')}
-            </Button>
-            <Button onClick={onRemove} variant="danger" size="sm">
-              {t('remove')}
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+    <ResponsiveContainer width={64} height={28}>
+      <LineChart data={data.slice(-20)}>
+        <Line type="monotone" dataKey="score" stroke={color} strokeWidth={1.5} dot={false} />
+        <Tooltip
+          contentStyle={{ background:'#0F1623', border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, fontSize:10, padding:'4px 8px' }}
+          formatter={(v: number) => [`${Math.round(v)}`, 'Score']}
+          labelFormatter={() => ''}
+        />
+      </LineChart>
+    </ResponsiveContainer>
   )
 }
 
-function WatchlistContent() {
-  const t                    = useTranslations('watchlist')
-  const [newTicker, setNew]  = useState('')
-  const [adding,    setAdding] = useState(false)
-  const [addError,  setError]  = useState('')
+// ── Alerts editor (rozwijalny wiersz) ──────────────────────────────────
 
-  const { data: watchlist = [], isLoading, mutate } = useSWR(
-    'watchlist',
-    watchlistApi.get,
+function AlertsEditor({ item, onRemove, onClose }: {
+  item: WLItem; onRemove: () => void; onClose: () => void
+}) {
+  const t = useTranslations('watchlist')
+  const [high, setHigh] = useState(String(item.alert_high ?? 70))
+  const [low,  setLow]  = useState(String(item.alert_low  ?? 30))
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    try {
+      await watchlistApi.setAlerts(item.ticker, {
+        alert_high: Number(high), alert_low: Number(low),
+        alert_crossover: item.alert_crossover,
+      })
+      toast.success(`Alerty dla ${item.ticker} zapisane`)
+      onClose()
+    } catch { toast.error('Błąd zapisu alertów') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <tr style={{ background: 'rgba(11,17,32,0.5)' }}>
+      <td colSpan={7} className="px-4 py-4 border-b border-border">
+        <div className="flex items-end gap-3 flex-wrap">
+          <div className="text-2xs text-muted uppercase tracking-wider mb-2 w-full">
+            Alerty Telegram dla {item.ticker}
+          </div>
+          <Input label="Próg górny (score ≥)" type="number" value={high}
+            onChange={e => setHigh(e.target.value)} min={0} max={100} className="w-36" />
+          <Input label="Próg dolny (score ≤)" type="number" value={low}
+            onChange={e => setLow(e.target.value)} min={0} max={100} className="w-36" />
+          <Button onClick={save} loading={saving} size="sm">Zapisz alerty</Button>
+          <Button onClick={onRemove} variant="danger" size="sm">Usuń z listy</Button>
+        </div>
+      </td>
+    </tr>
   )
+}
+
+// ── Watchlist row ──────────────────────────────────────────────────────
+
+function WatchRow({ item, analysis, onRemove }: {
+  item: WLItem; analysis?: AnalysisResult; onRemove: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const score = analysis?.total_score ?? item.last_score
+  const deltaScore = analysis && item.last_score != null
+    ? analysis.total_score - item.last_score : null
+
+  return (
+    <>
+      <tr className="border-b border-border hover:bg-surface-2 transition-colors group">
+        <td className="px-4 py-3">
+          <Link href={`/analysis?ticker=${item.ticker}`} className="block">
+            <div className="font-bold text-text-hi group-hover:text-brand-green transition-colors">
+              {item.ticker}
+            </div>
+            <div className="text-2xs text-muted truncate max-w-[160px]">
+              {analysis?.name ?? '—'}
+            </div>
+          </Link>
+        </td>
+        <td className="px-4 py-3 text-right">
+          {analysis
+            ? <Price value={analysis.price} currency={analysis.currency} className="text-sm text-text-hi" />
+            : <Spinner size="sm" />}
+        </td>
+        <td className="px-4 py-3 w-32">
+          {score != null ? <ScoreBar score={score} /> : <span className="text-muted text-xs">—</span>}
+        </td>
+        <td className="px-4 py-3 w-24">
+          {analysis?.score_st != null
+            ? <ScoreBar score={analysis.score_st} width="w-12" />
+            : <span className="text-muted text-xs">—</span>}
+        </td>
+        <td className="px-4 py-3 text-right">
+          {deltaScore != null ? (
+            <span className="text-sm font-bold font-mono tabular-nums"
+              style={{ color: deltaScore >= 0 ? '#22C55E' : '#EF4444' }}>
+              {deltaScore >= 0 ? '+' : ''}{deltaScore.toFixed(1)}
+            </span>
+          ) : <span className="text-muted text-xs">—</span>}
+        </td>
+        <td className="px-4 py-3"><Sparkline ticker={item.ticker} /></td>
+        <td className="px-4 py-3">
+          <div className="flex items-center justify-end gap-1">
+            <button onClick={() => setEditing(e => !e)}
+              className="p-1.5 rounded-md text-muted hover:text-text-hi hover:bg-surface-3 transition-colors"
+              title="Alerty">
+              <Settings2 className="w-4 h-4" />
+            </button>
+            <Link href={`/analysis?ticker=${item.ticker}`}
+              className="p-1.5 rounded-md text-muted hover:text-brand-green hover:bg-surface-3 transition-colors"
+              title="Analizuj">
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </td>
+      </tr>
+      {editing && <AlertsEditor item={item} onRemove={onRemove} onClose={() => setEditing(false)} />}
+    </>
+  )
+}
+
+// ── Page ───────────────────────────────────────────────────────────────
+
+function WatchlistContent() {
+  const t = useTranslations('watchlist')
+  const [newTicker, setNew] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  const { data: watchlist = [], isLoading, mutate } = useSWR('watchlist', watchlistApi.get)
+  const [analyses, setAnalyses] = useState<Record<string, AnalysisResult>>({})
+
+  useEffect(() => {
+    if (!watchlist.length) return
+    const tickers = watchlist.map(w => w.ticker)
+    Promise.allSettled(tickers.map(t => analysisApi.analyze(t))).then(results => {
+      const map: Record<string, AnalysisResult> = {}
+      results.forEach((r, i) => { if (r.status === 'fulfilled') map[tickers[i]] = r.value })
+      setAnalyses(map)
+    })
+  }, [watchlist.map(w => w.ticker).join(',')])
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     if (!newTicker.trim()) return
     setAdding(true)
-    setError('')
     try {
       await watchlistApi.add(newTicker.trim().toUpperCase())
+      toast.success(`${newTicker.trim().toUpperCase()} dodano`)
       setNew('')
-      toast.success(`${newTicker.trim().toUpperCase()} dodano do watchlisty`)
       await mutate()
     } catch (err: any) {
       toast.error(err.detail ?? 'Błąd dodawania')
-      setError(err.detail ?? 'Błąd')
-    } finally {
-      setAdding(false)
-    }
+    } finally { setAdding(false) }
   }
 
   async function handleRemove(ticker: string) {
     await watchlistApi.remove(ticker)
-    toast.success(`${ticker} usunięto z watchlisty`)
+    toast.success(`${ticker} usunięto`)
     await mutate()
   }
 
+  const avgScore = Object.values(analyses).length
+    ? (Object.values(analyses).reduce((s, a) => s + a.total_score, 0) / Object.values(analyses).length).toFixed(0)
+    : null
+
   return (
     <AppShell>
-      <h1 className="text-xl font-bold mb-5">{t('title')}</h1>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-xl font-bold">★ Watchlista</h1>
+          {watchlist.length > 0 && (
+            <p className="text-sm text-muted mt-0.5">
+              {watchlist.length} {watchlist.length === 1 ? 'instrument' : 'instrumentów'}
+              {avgScore && <> · średni score <span className="font-mono font-semibold" style={{ color: scoreColor(+avgScore) }}>{avgScore}</span></>}
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* Add form */}
-      <form onSubmit={handleAdd} className="flex gap-2 mb-6 max-w-md">
+      <form onSubmit={handleAdd} className="flex gap-2 mb-5 max-w-md">
         <Input
-          placeholder="np. AAPL, CDR.WA, BTC-USD"
+          placeholder="Dodaj instrument: AAPL, CDR.WA, BTC-USD…"
           value={newTicker}
           onChange={e => setNew(e.target.value.toUpperCase())}
-          error={addError}
           hint="Dla GPW użyj sufiksu .WA"
           className="flex-1"
         />
-        <Button type="submit" loading={adding} className="shrink-0">
-          {t('add')}
+        <Button type="submit" loading={adding} icon={<Plus className="w-4 h-4" />} className="shrink-0 h-fit">
+          Dodaj
         </Button>
       </form>
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : watchlist.length === 0 ? (
-        <EmptyState
-          icon="★"
-          title={t('empty')}
-          desc={t('emptyHint')}
-          action={
-            <Link href="/analysis">
-              <Button>Przejdź do Analizy</Button>
-            </Link>
-          }
-        />
+        <EmptyState icon="★" title="Watchlista jest pusta"
+          desc="Dodaj instrumenty które chcesz obserwować — będziesz widzieć ich score, ceny i zmiany w jednym miejscu."
+          action={<Link href="/analysis"><Button>Przejdź do Analizy</Button></Link>} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {watchlist.map(item => (
-            <WatchlistCard
-              key={item.ticker}
-              item={item}
-              onRemove={() => handleRemove(item.ticker)}
-            />
-          ))}
+        <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr style={{ background: '#0B1120' }}>
+                {[
+                  ['Instrument','left'],['Cena','right'],['Score DT','left'],
+                  ['ST','left'],['Δ Score','right'],['30 dni','left'],['','right'],
+                ].map(([h, align]) => (
+                  <th key={h as string}
+                    className="px-4 py-2.5 text-2xs uppercase tracking-widest text-muted font-semibold border-b border-border"
+                    style={{ textAlign: align as 'left' | 'right' }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {watchlist.map(item => (
+                <WatchRow key={item.ticker} item={item}
+                  analysis={analyses[item.ticker]}
+                  onRemove={() => handleRemove(item.ticker)} />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </AppShell>
@@ -187,9 +253,5 @@ function WatchlistContent() {
 }
 
 export default function WatchlistPage() {
-  return (
-    <AuthGuard>
-      <WatchlistContent />
-    </AuthGuard>
-  )
+  return <AuthGuard><WatchlistContent /></AuthGuard>
 }

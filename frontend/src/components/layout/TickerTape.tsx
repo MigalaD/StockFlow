@@ -49,7 +49,7 @@ export function TickerTape() {
             results.push({
               ticker:    ticker,
               price:     data.price,
-              change24h: 0, // FastAPI nie zwraca change24h — todo: dodać do schematu
+              change24h: data.change_pct ?? 0,
               currency:  data.currency,
             })
           }
@@ -78,9 +78,15 @@ export function TickerTape() {
 
   return (
     <div
-      className="h-[34px] border-b border-border overflow-hidden flex items-center shrink-0"
-      style={{ backgroundColor: '#111827' }}
+      className="h-[36px] border-b border-border overflow-hidden flex items-center shrink-0 relative"
+      style={{ backgroundColor: '#0B1120' }}
     >
+      {/* Fade edges */}
+      <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none"
+        style={{ background: 'linear-gradient(90deg, #0B1120, transparent)' }} />
+      <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none"
+        style={{ background: 'linear-gradient(270deg, #0B1120, transparent)' }} />
+
       <style>{`
         @keyframes ticker {
           from { transform: translateX(0); }
@@ -88,11 +94,14 @@ export function TickerTape() {
         }
         .ticker-inner {
           display: flex;
-          animation: ticker 32s linear infinite;
+          animation: ticker 40s linear infinite;
           will-change: transform;
           white-space: nowrap;
         }
         .ticker-inner:hover { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) {
+          .ticker-inner { animation: none; }
+        }
       `}</style>
 
       <div className="ticker-inner">
@@ -103,16 +112,18 @@ export function TickerTape() {
           return (
             <div
               key={i}
-              className="flex items-center gap-2 px-5 border-r border-border"
-              style={{ fontSize: 11 }}
+              className="flex items-center gap-2 px-5 h-[36px] border-r"
+              style={{ fontSize: 11.5, borderColor: 'rgba(255,255,255,0.04)' }}
             >
-              <span className="text-muted font-medium">{item.ticker}</span>
-              <span className="text-white tabular-nums">
+              <span className="text-text-lo font-semibold tracking-wide">{item.ticker}</span>
+              <span className="text-text-hi font-mono tabular-nums">
                 {formatPrice(item.price, item.currency)}
               </span>
               {item.change24h !== 0 && (
-                <span style={{ color, fontWeight: 600 }}>
-                  {positive ? '▲' : '▼'} {Math.abs(item.change24h).toFixed(2)}%
+                <span className="font-mono font-semibold tabular-nums flex items-center gap-0.5"
+                  style={{ color }}>
+                  <span className="text-[0.85em]">{positive ? '▲' : '▼'}</span>
+                  {Math.abs(item.change24h).toFixed(2)}%
                 </span>
               )}
             </div>

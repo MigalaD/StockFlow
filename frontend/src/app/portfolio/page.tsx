@@ -55,7 +55,7 @@ function AddPositionForm({ onAdded }: { onAdded: () => void }) {
   )
 
   return (
-    <div className="bg-surface border border-border rounded-xl2 p-4 mb-4">
+    <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-4">
       <div className="flex items-center justify-between mb-3">
         <div className="font-semibold text-sm text-white">➕ Nowa pozycja</div>
         <button onClick={() => setOpen(false)} className="text-muted hover:text-white text-sm">✕</button>
@@ -89,7 +89,7 @@ function PositionCard({ pos, onRemove }: { pos: PositionItem; onRemove: () => vo
   const pct     = ((pos.current_price - pos.buy_price) / pos.buy_price * 100)
 
   return (
-    <div className="bg-surface border border-border rounded-xl2 p-4"
+    <div className="bg-surface-1 border border-border rounded-xl2 p-4"
       style={{ borderLeft: `3px solid ${pnlColor}` }}>
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -124,7 +124,7 @@ function PositionCard({ pos, onRemove }: { pos: PositionItem; onRemove: () => vo
           { label:'Wartość',  value:`${pos.current_value.toFixed(0)}`, sub:pos.currency     },
           { label:'Udział',   value:'—',                               sub:'w portfolio'    },
         ].map(m => (
-          <div key={m.label} className="bg-surface-hi rounded-lg p-2">
+          <div key={m.label} className="bg-surface-2 rounded-lg p-2">
             <div className="text-[10px] text-muted uppercase tracking-wider">{m.label}</div>
             <div className="font-bold tabular-nums text-sm text-white mt-0.5">{m.value}</div>
             <div className="text-[10px] text-muted">{m.sub}</div>
@@ -138,7 +138,7 @@ function PositionCard({ pos, onRemove }: { pos: PositionItem; onRemove: () => vo
           <span>Zakup: {pos.buy_price.toFixed(2)}</span>
           <span>Teraz: {pos.current_price.toFixed(2)}</span>
         </div>
-        <div className="h-1.5 rounded-full bg-surface-hi overflow-hidden">
+        <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
           <div className="h-full rounded-full" style={{
             width: `${Math.min(Math.max((pos.current_price / pos.buy_price) * 50, 0), 100)}%`,
             background: pnlColor,
@@ -250,7 +250,7 @@ function PortfolioContent() {
           <div className="space-y-4">
             {/* Alokacja pie */}
             {allocationData.length > 0 && (
-              <div className="bg-surface border border-border rounded-xl2 p-4">
+              <div className="bg-surface-1 border border-border rounded-xl2 p-4">
                 <SectionHeader title="Alokacja sektorowa" icon="🥧" />
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
@@ -272,7 +272,7 @@ function PortfolioContent() {
 
             {/* P&L bar chart */}
             {pnlChartData.length > 0 && (
-              <div className="bg-surface border border-border rounded-xl2 p-4">
+              <div className="bg-surface-1 border border-border rounded-xl2 p-4">
                 <SectionHeader title="P&L per pozycja" icon="📊" />
                 <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={pnlChartData} margin={{ top:4, right:4, bottom:4, left:4 }}>

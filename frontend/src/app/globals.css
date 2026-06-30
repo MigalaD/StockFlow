@@ -1,0 +1,327 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════
+   StockFlow Design System v2 — profesjonalna platforma analityczna
+   Inspiracje: Bloomberg Terminal (gęstość danych, mono numerics)
+              + Robinhood/Vault (czytelność, zaufanie, sparklines)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    /* ── Typografia ── */
+    --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: var(--font-mono), 'JetBrains Mono', 'SF Mono', monospace;
+
+    /* ── Skala warstw tła (surface elevation) ──
+       Głębia przez warstwy, nie cienie — kluczowe w dark UI */
+    --bg-base:    #080C16;   /* najgłębsze tło aplikacji */
+    --bg-sunken:  #0B1120;   /* zagłębienia, tła tabel */
+    --surface-1:  #0F1623;   /* podstawowa karta */
+    --surface-2:  #141C2B;   /* podniesiona karta / hover */
+    --surface-3:  #1C2638;   /* najwyższa warstwa / aktywne */
+
+    /* ── Akcenty semantyczne ── */
+    --accent:        #22C55E;  /* primary green */
+    --accent-green:  #22C55E;
+    --accent-teal:   #14B8A6;
+    --accent-blue:   #3B82F6;
+    --accent-amber:  #F59E0B;
+    --accent-red:    #EF4444;
+    --accent-violet: #8B5CF6;
+
+    /* ── Kolory danych finansowych ── */
+    --gain:       #22C55E;
+    --gain-bg:    rgba(34,197,94,0.12);
+    --loss:       #EF4444;
+    --loss-bg:    rgba(239,68,68,0.12);
+    --neutral:    #F59E0B;
+
+    /* ── Tekst ── */
+    --text-hi:    #F8FAFC;   /* nagłówki, ważne liczby */
+    --text-mid:   #CBD5E1;   /* tekst podstawowy */
+    --text-lo:    #94A3B8;   /* tekst pomocniczy */
+    --text-muted: #64748B;   /* etykiety, placeholdery */
+
+    /* ── Obramowania ── */
+    --border:     rgba(255,255,255,0.06);
+    --border-hi:  rgba(255,255,255,0.10);
+    --border-accent: rgba(34,197,94,0.30);
+
+    /* ── Cienie (subtelne, dla podniesienia) ── */
+    --shadow-sm:  0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md:  0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-lg:  0 8px 24px rgba(0,0,0,0.5);
+    --shadow-glow: 0 0 0 1px rgba(34,197,94,0.2), 0 0 20px rgba(34,197,94,0.08);
+
+    /* ── Promienie ── */
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 18px;
+
+    /* Legacy aliasy (kompatybilność) */
+    --color-green:   #22C55E;
+    --color-teal:    #14B8A6;
+    --color-blue:    #3B82F6;
+    --color-red:     #EF4444;
+    --color-amber:   #F59E0B;
+    --color-bg:      #080C16;
+    --color-surface: #0F1623;
+    --color-hi:      #141C2B;
+    --color-text:    #F8FAFC;
+    --color-muted:   #64748B;
+    --color-border:  rgba(255,255,255,0.06);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--bg-base);
+    color: var(--text-mid);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background-color: var(--bg-base); }
+
+  /* Liczby finansowe — zawsze tabular dla wyrównania kolumn */
+  .tnum, [data-numeric] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'zero' 1;
+  }
+
+  h1, h2, h3, h4 {
+    color: var(--text-hi);
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  ::selection { background: rgba(34,197,94,0.25); color: #fff; }
+}
+
+/* ── Scrollbar — cienki, dyskretny ── */
+::-webkit-scrollbar         { width: 8px; height: 8px; }
+::-webkit-scrollbar-track   { background: transparent; }
+::-webkit-scrollbar-thumb   {
+  background: rgba(148,163,184,0.18);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.32); background-clip: padding-box; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KOMPONENTY
+   ═══════════════════════════════════════════════════════════════════════ */
+@layer components {
+
+  /* ── Karty z elevation ── */
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 1.25rem;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .card-interactive {
+    cursor: pointer;
+  }
+  .card-interactive:hover {
+    background: var(--surface-2);
+    border-color: var(--border-hi);
+  }
+  .card-hi {
+    background: var(--surface-2);
+    border: 1px solid var(--border-hi);
+    border-radius: var(--r-lg);
+    padding: 1.25rem;
+  }
+
+  /* ── Przyciski ── */
+  .btn-primary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    background: linear-gradient(135deg, #22C55E, #16A34A);
+    color: #fff; font-weight: 600;
+    border-radius: var(--r-md);
+    padding: 0.5rem 1rem; font-size: 0.875rem;
+    border: none; cursor: pointer;
+    box-shadow: 0 1px 3px rgba(22,163,74,0.4);
+    transition: all 0.15s;
+  }
+  .btn-primary:hover { box-shadow: 0 2px 12px rgba(34,197,94,0.4); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-secondary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    border: 1px solid var(--border-accent);
+    color: var(--accent-green); font-weight: 600;
+    border-radius: var(--r-md);
+    padding: 0.5rem 1rem; font-size: 0.875rem;
+    background: rgba(34,197,94,0.04); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.5); }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    color: var(--text-lo);
+    border-radius: var(--r-md);
+    padding: 0.375rem 0.75rem; font-size: 0.875rem;
+    background: transparent; border: none; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-ghost:hover { color: var(--text-hi); background: var(--surface-2); }
+
+  /* ── Input ── */
+  .input {
+    width: 100%;
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-hi);
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  }
+  .input::placeholder { color: var(--text-muted); }
+  .input:focus {
+    outline: none;
+    border-color: var(--accent-green);
+    background: var(--surface-1);
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+  }
+
+  /* ── Tag / pill ── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem; font-weight: 500;
+    letter-spacing: 0.01em;
+    border: 1px solid var(--border);
+    color: var(--text-lo);
+    background: var(--surface-1);
+  }
+
+  /* ── Nagłówek sekcji ── */
+  .section-header {
+    border-left: 3px solid var(--accent-green);
+    padding-left: 0.75rem;
+    margin: 1rem 0;
+  }
+  .section-header h2 { font-weight: 600; font-size: 1rem; color: var(--text-hi); }
+  .section-header p  { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.125rem; }
+
+  /* ── Tabela danych — Bloomberg-style density ── */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    text-align: left;
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 0.625rem 0.75rem;
+    background: var(--bg-sunken);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+  }
+  .data-table td {
+    padding: 0.6875rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8125rem;
+  }
+  .data-table tr { transition: background 0.12s; }
+  .data-table tbody tr:hover { background: var(--surface-2); }
+
+  /* ── Numeric cell — wyrównane liczby finansowe ── */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── Stat tile ── */
+  .stat-tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 1rem 1.125rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-tile::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent-green); opacity: 0.8;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════════════ */
+@layer utilities {
+  .font-mono { font-family: var(--font-mono); }
+
+  .text-gain { color: var(--gain); }
+  .text-loss { color: var(--loss); }
+  .text-neutral { color: var(--neutral); }
+  .text-hi  { color: var(--text-hi); }
+  .text-mid { color: var(--text-mid); }
+  .text-lo  { color: var(--text-lo); }
+
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+
+  .bg-gain { background: var(--gain-bg); }
+  .bg-loss { background: var(--loss-bg); }
+
+  .surface-1 { background: var(--surface-1); }
+  .surface-2 { background: var(--surface-2); }
+  .surface-3 { background: var(--surface-3); }
+
+  /* Logo gradient */
+  .text-logo {
+    background: linear-gradient(100deg, #22C55E 10%, #14B8A6 90%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow na aktywnych elementach */
+  .glow-green { box-shadow: var(--shadow-glow); }
+
+  /* Animacje */
+  .ticker-tape { animation: ticker 36s linear infinite; will-change: transform; white-space: nowrap; }
+  .ticker-tape:hover { animation-play-state: paused; }
+
+  .animate-fade-in { animation: fadeIn 0.25s ease-out; }
+  .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+  .animate-pulse-dot { animation: pulseDot 2s ease-in-out infinite; }
+
+  /* Skeleton loading shimmer */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-1) 25%, var(--surface-2) 50%, var(--surface-1) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Reduced motion — respektuj preferencje */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .ticker-tape { animation: none; }
+}

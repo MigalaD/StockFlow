@@ -53,6 +53,31 @@ class Settings:
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")  # 24h
     )
 
+    def validate_production_security(self) -> None:
+        """Twardo waliduje krytyczne ustawienia w produkcji.
+        Wywoływane przy starcie — aplikacja NIE wstanie z niebezpieczną konfiguracją.
+        """
+        if self.environment != "production":
+            return
+        problems = []
+        # SECRET_KEY musi być ustawiony i mocny
+        if self.secret_key == "dev-secret-change-in-production-min32chars":
+            problems.append("SECRET_KEY nie został ustawiony (używa domyślnego dev klucza)")
+        if len(self.secret_key) < 32:
+            problems.append("SECRET_KEY jest za krótki (min. 32 znaki)")
+        # DATABASE_URL wymagany w produkcji
+        if not self.database_url:
+            problems.append("DATABASE_URL nie został ustawiony")
+        # ALLOWED_ORIGINS nie może być pusty/wildcard w produkcji
+        if not self.allowed_origins_str or self.allowed_origins_str == "*":
+            problems.append("ALLOWED_ORIGINS musi być konkretną listą domen (nie pusty, nie *)")
+        if problems:
+            raise RuntimeError(
+                "KRYTYCZNE BŁĘDY KONFIGURACJI PRODUKCYJNEJ:\n  - "
+                + "\n  - ".join(problems)
+                + "\n\nUstaw te zmienne środowiskowe przed uruchomieniem w produkcji."
+            )
+
     # ── CORS ─────────────────────────────────────────────────────────
     # W dev: allow all. W produkcji: ustaw ALLOWED_ORIGINS
     allowed_origins_str: str = os.getenv(

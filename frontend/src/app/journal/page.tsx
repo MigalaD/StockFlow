@@ -64,8 +64,8 @@ function AddEntryForm({ onAdded }: { onAdded: () => void }) {
   }
 
   return (
-    <div className="bg-surface border border-border rounded-xl2 p-5 mb-5">
-      <div className="font-semibold text-sm text-white mb-4">✏️ Nowy wpis</div>
+    <div className="bg-surface-1 border border-border rounded-xl2 p-5 mb-5">
+      <div className="font-semibold text-sm text-text-hi mb-4">✏️ Nowy wpis</div>
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           <Input
@@ -157,20 +157,20 @@ function EntryCard({ entry, onDelete }: { entry: JournalEntry; onDelete: () => v
 
   return (
     <div
-      className="bg-surface border border-border rounded-xl2 overflow-hidden"
+      className="bg-surface-1 border border-border rounded-xl2 overflow-hidden"
       style={{ borderLeft: `3px solid ${color}` }}
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-surface-hi/30 transition-colors"
+        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-surface-2/30 transition-colors"
         onClick={() => setExpanded(e => !e)}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <span className="text-xs text-muted tabular-nums shrink-0">{entry.entry_date}</span>
+          <span className="text-xs text-muted tabular-nums font-mono shrink-0">{entry.entry_date}</span>
           <Link
             href={`/analysis?ticker=${entry.ticker}`}
             onClick={e => e.stopPropagation()}
-            className="font-bold text-white hover:text-brand-green transition-colors shrink-0"
+            className="font-bold text-text-hi hover:text-brand-green transition-colors shrink-0"
           >
             {entry.ticker}
           </Link>
@@ -186,14 +186,14 @@ function EntryCard({ entry, onDelete }: { entry: JournalEntry; onDelete: () => v
 
         <div className="flex items-center gap-3 shrink-0">
           {entry.score != null && (
-            <span className="text-sm font-bold tabular-nums" style={{
+            <span className="text-sm font-bold tabular-nums font-mono" style={{
               color: entry.score >= 60 ? '#22C55E' : entry.score >= 40 ? '#F59E0B' : '#EF4444'
             }}>
               {Math.round(entry.score)}/100
             </span>
           )}
           {entry.price != null && (
-            <span className="text-xs text-muted tabular-nums">{entry.price.toFixed(2)}</span>
+            <span className="text-xs text-muted tabular-nums font-mono">{entry.price.toFixed(2)}</span>
           )}
           <span className="text-muted text-xs">{expanded ? '▲' : '▼'}</span>
         </div>
@@ -207,8 +207,8 @@ function EntryCard({ entry, onDelete }: { entry: JournalEntry; onDelete: () => v
           </p>
           <div className="flex items-center justify-between">
             <div className="flex gap-4 text-xs text-muted">
-              {entry.score != null && <span>Score: <strong className="text-white">{Math.round(entry.score)}</strong></span>}
-              {entry.price != null && <span>Cena: <strong className="text-white tabular-nums">{entry.price.toFixed(2)}</strong></span>}
+              {entry.score != null && <span>Score: <strong className="text-text-hi">{Math.round(entry.score)}</strong></span>}
+              {entry.price != null && <span>Cena: <strong className="text-text-hi tabular-nums">{entry.price.toFixed(2)}</strong></span>}
               {entry.created_at && <span>Zapisano: {entry.created_at.slice(0, 16).replace('T', ' ')}</span>}
             </div>
             <button
@@ -249,9 +249,9 @@ function JournalStats({ entries }: { entries: JournalEntry[] }) {
         { label: 'Kupno',         value: counts['Kupno'] ?? 0,       color: '#22C55E' },
         { label: 'Avg Score',     value: avgScore ? `${avgScore.toFixed(1)}` : '—', color: '#14B8A6' },
       ].map(s => (
-        <div key={s.label} className="bg-surface border border-border rounded-xl2 p-3 text-center">
+        <div key={s.label} className="bg-surface-1 border border-border rounded-xl2 p-3 text-center">
           <div className="text-[10px] text-muted uppercase tracking-wider mb-1">{s.label}</div>
-          <div className="text-2xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</div>
+          <div className="text-2xl font-bold tabular-nums font-mono" style={{ color: s.color }}>{s.value}</div>
         </div>
       ))}
     </div>

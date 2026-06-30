@@ -20,6 +20,8 @@ export interface AnalysisResult {
   name:         string
   price:        number
   currency:     string
+  change_24h:   number | null
+  change_pct:   number | null
   total_score:  number
   score_st:     number | null
   asset_type:   string
@@ -41,6 +43,11 @@ export interface OHLCVCandle {
   low:       number
   close:     number
   volume:    number
+  bb_upper?:  number | null
+  bb_middle?: number | null
+  bb_lower?:  number | null
+  ma50?:      number | null
+  ma200?:     number | null
 }
 
 export interface MarketData {
@@ -48,6 +55,7 @@ export interface MarketData {
   interval: string
   source:   string
   candles:  OHLCVCandle[]
+  is_live:  boolean
 }
 
 export interface WatchlistItem {
@@ -259,9 +267,9 @@ export const analysisApi = {
     return data
   },
 
-  candles: async (ticker: string, interval: Interval = '1d'): Promise<MarketData> => {
+  candles: async (ticker: string, interval: Interval = '1d', overlays = true): Promise<MarketData> => {
     const { data } = await api.get<MarketData>(`/analyze/${ticker}/candles`, {
-      params: { interval },
+      params: { interval, overlays },
     })
     return data
   },
@@ -366,6 +374,145 @@ export const scannerApi = {
     elapsed_s: number | null
   }> => {
     const { data } = await api.get('/scan/status')
+    return data
+  },
+}
+
+
+export interface ForecastData {
+  ticker:  string
+  horizon: number
+  monte_carlo: {
+    dates:       string[]
+    percentiles: { '5': number[]; '25': number[]; '50': number[]; '75': number[]; '95': number[] }
+    stats: {
+      current_price:         number
+      mu_annualized_pct:     number
+      sigma_annualized_pct:  number
+      prob_up_pct:           number
+      median_final:          number
+      p5_final:              number
+      p95_final:             number
+      horizon_days:          number
+    }
+  }
+  trend: {
+    dates:    string[]
+    forecast: number[]
+    lower_90: number[]
+    upper_90: number[]
+    slope_pct_per_day: number
+  } | null
+  interpretation: string
+}
+
+export const forecastApi = {
+  get: async (ticker: string, horizon = 30): Promise<ForecastData> => {
+    const { data } = await api.get<ForecastData>(`/forecast/${ticker}`, {
+      params: { horizon },
+    })
+    return data
+  },
+}
+
+
+export interface NewsItem {
+  title:     string
+  link:      string
+  publisher: string
+  published: string
+}
+
+export const newsApi = {
+  get: async (ticker: string, limit = 8): Promise<NewsItem[]> => {
+    const { data } = await api.get<{ news: NewsItem[] }>(`/news/${ticker}`, {
+      params: { limit },
+    })
+    return data.news
+  },
+}
+
+
+export interface BacktestResult {
+  ticker:         string
+  period:         string
+  buy_threshold:  number
+  sell_threshold: number
+  equity_curve:   { date: string; strategy: number; buyhold: number }[]
+  trades: {
+    entry_date:  string
+    exit_date:   string
+    entry_price: number
+    exit_price:  number
+    return_pct:  number
+    still_open:  boolean
+  }[]
+  metrics: {
+    total_return:        number
+    buyhold_return:      number
+    num_trades:          number
+    win_rate:            number
+    max_drawdown:        number
+    final_value:         number
+    buyhold_final_value: number
+    sharpe:              number
+    sortino:             number
+    still_open:          boolean
+  }
+}
+
+export interface GridResult {
+  ticker:         string
+  cells:          { buy: number; sell: number; return: number }[]
+  best:           { buy: number; sell: number; return: number }
+  buyhold_return: number
+}
+
+export interface WalkForwardResult {
+  ticker:  string
+  windows: {
+    okres_od:           string
+    okres_do:           string
+    'strategia_%':      number
+    'kup_i_trzymaj_%':  number
+    lepsza_niz_bh:      boolean
+    liczba_transakcji:  number
+    'max_obsuniecie_%': number
+  }[]
+  summary: { n_windows: number; wins: number; win_rate_pct: number }
+}
+
+export const backtestApi = {
+  run: async (ticker: string, opts: {
+    period?: string; buy?: number; sell?: number; capital?: number
+  } = {}): Promise<BacktestResult> => {
+    const { data } = await api.get<BacktestResult>(`/backtest/${ticker}`, {
+      params: {
+        period: opts.period ?? '2y',
+        buy_threshold: opts.buy ?? 65,
+        sell_threshold: opts.sell ?? 35,
+        initial_capital: opts.capital ?? 10000,
+      },
+    })
+    return data
+  },
+  grid: async (ticker: string, period = '2y'): Promise<GridResult> => {
+    const { data } = await api.get<GridResult>(`/backtest/${ticker}/grid`, {
+      params: { period },
+    })
+    return data
+  },
+  walkForward: async (ticker: string, opts: {
+    period?: string; buy?: number; sell?: number; windows?: number
+  } = {}): Promise<WalkForwardResult> => {
+    const { data } = await api.get<WalkForwardResult>(`/backtest/${ticker}/walkforward`, {
+      params: {
+        period: opts.period ?? '5y',
+        buy_threshold: opts.buy ?? 65,
+        sell_threshold: opts.sell ?? 35,
+        n_windows: opts.windows ?? 4,
+      },
+    })
     return data
   },
 }

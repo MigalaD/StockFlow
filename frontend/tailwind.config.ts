@@ -1,93 +1,73 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
-  content: [
-    './src/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
+  content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
   darkMode: 'class',
   theme: {
     extend: {
-      // ── StockFlow Brand Tokens ──────────────────────────────────────
       colors: {
         brand: {
           green:   '#22C55E',
           'green-dark': '#16A34A',
           teal:    '#14B8A6',
           blue:    '#3B82F6',
+          violet:  '#8B5CF6',
         },
+        // Surface elevation scale
+        base:    '#080C16',
+        sunken:  '#0B1120',
         surface: {
-          DEFAULT: '#111827',   // karty, sidebar
-          hi:      '#1E293B',   // hover states
-          lo:      '#0B1120',   // główne tło
+          DEFAULT: '#0F1623',
+          1:  '#0F1623',
+          2:  '#141C2B',
+          3:  '#1C2638',
+          hi: '#141C2B',
+          lo: '#0B1120',
         },
         border: {
-          DEFAULT: 'rgba(255,255,255,0.07)',
-          hi:      'rgba(255,255,255,0.12)',
+          DEFAULT: 'rgba(255,255,255,0.06)',
+          hi:      'rgba(255,255,255,0.10)',
         },
+        gain:    '#22C55E',
+        loss:    '#EF4444',
+        // Text scale
+        'text-hi':    '#F8FAFC',
+        'text-mid':   '#CBD5E1',
+        'text-lo':    '#94A3B8',
+        muted:        '#64748B',
         score: {
           positive: '#22C55E',
           neutral:  '#F59E0B',
           negative: '#EF4444',
         },
       },
-
-      // ── Typography ─────────────────────────────────────────────────
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+        sans: ['var(--font-inter)', '-apple-system', 'sans-serif'],
+        mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
       },
       fontSize: {
-        '2xs': ['0.65rem', { lineHeight: '1rem' }],
+        '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
       },
-      fontVariantNumeric: {
-        'tabular':  'tabular-nums',
-      },
-
-      // ── Spacing ────────────────────────────────────────────────────
-      spacing: {
-        '18': '4.5rem',
-        '22': '5.5rem',
-      },
-
-      // ── Border radius ──────────────────────────────────────────────
       borderRadius: {
         'xl2': '14px',
         'xl3': '18px',
       },
-
-      // ── Animations ─────────────────────────────────────────────────
-      animation: {
-        'ticker':     'ticker 28s linear infinite',
-        'fade-in':    'fadeIn 0.18s ease-in',
-        'slide-up':   'slideUp 0.2s ease-out',
-        'pulse-slow': 'pulse 3s ease-in-out infinite',
-      },
-      keyframes: {
-        ticker: {
-          from: { transform: 'translateX(0)' },
-          to:   { transform: 'translateX(-50%)' },
-        },
-        fadeIn: {
-          from: { opacity: '0', transform: 'translateY(4px)' },
-          to:   { opacity: '1', transform: 'translateY(0)' },
-        },
-        slideUp: {
-          from: { opacity: '0', transform: 'translateY(8px)' },
-          to:   { opacity: '1', transform: 'translateY(0)' },
-        },
-      },
-
-      // ── Shadows ────────────────────────────────────────────────────
       boxShadow: {
-        'card':  '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
-        'green': '0 0 20px rgba(34,197,94,0.15)',
+        'card':  '0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
+        'lg-dark': '0 8px 24px rgba(0,0,0,0.5)',
+        'glow':  '0 0 0 1px rgba(34,197,94,0.2), 0 0 20px rgba(34,197,94,0.08)',
       },
-
-      // ── Background ─────────────────────────────────────────────────
       backgroundImage: {
         'brand-gradient': 'linear-gradient(135deg, #22C55E, #16A34A)',
         'teal-gradient':  'linear-gradient(135deg, #14B8A6, #0D9488)',
-        'card-gradient':  'linear-gradient(145deg, #111827, #0F172A)',
+      },
+      animation: {
+        'fade-in':   'fadeIn 0.25s ease-out',
+        'slide-up':  'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
+      },
+      keyframes: {
+        fadeIn:  { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+        slideUp: { from: { opacity: '0', transform: 'translateY(12px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
       },
     },
   },

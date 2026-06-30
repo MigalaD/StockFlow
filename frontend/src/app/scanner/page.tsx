@@ -54,7 +54,7 @@ function SectorHeatmap({ results, mode }: { results: ScanResultItem[]; mode: 'dt
               </div>
               <span className="text-xs font-bold tabular-nums" style={{ color }}>{avg}</span>
             </div>
-            <div className="h-2 rounded-full bg-surface overflow-hidden">
+            <div className="h-2 rounded-full bg-surface-1 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{ width: `${avg}%`, background: `linear-gradient(90deg, ${color}, ${color}99)` }}
@@ -92,7 +92,7 @@ function ScoreDistribution({ results }: { results: ScanResultItem[] }) {
         {counts.map(b => (
           <div key={b.label} className="flex items-center gap-2">
             <span className="text-[10px] text-muted w-12 tabular-nums">{b.label}</span>
-            <div className="flex-1 h-4 bg-surface rounded overflow-hidden">
+            <div className="flex-1 h-4 bg-surface-1 rounded overflow-hidden">
               <div
                 className="h-full rounded transition-all duration-500"
                 style={{ width: `${(b.count / max) * 100}%`, background: b.color }}
@@ -193,7 +193,7 @@ export default function ScannerPage() {
         <h1 className="text-xl font-bold mr-1">🔍 Skaner rynku</h1>
 
         {/* Mode */}
-        <div className="flex bg-surface-hi rounded-lg p-0.5 border border-border">
+        <div className="flex bg-surface-2 rounded-lg p-0.5 border border-border">
           {(['dt','st'] as const).map(m => (
             <button key={m} onClick={() => setMode(m)}
               className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
@@ -240,7 +240,7 @@ export default function ScannerPage() {
       {/* Progress */}
       {scanning && (
         <div className="mb-3">
-          <div className="h-1.5 bg-surface-hi rounded-full overflow-hidden">
+          <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
             <div className="h-full bg-brand-green rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }} />
           </div>
@@ -273,7 +273,7 @@ export default function ScannerPage() {
         {/* Table */}
         <div>
           {!scan || allResults.length === 0 ? (
-            <div className="bg-surface border border-border rounded-xl2">
+            <div className="bg-surface-1 border border-border rounded-xl2">
               <EmptyState icon="🔍" title="Brak wyników skanu"
                 desc="Uruchom skan aby zobaczyć ranking instrumentów"
                 action={isAuth
@@ -282,7 +282,7 @@ export default function ScannerPage() {
                 } />
             </div>
           ) : (
-            <div className="bg-surface border border-border rounded-xl2 overflow-hidden">
+            <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
@@ -303,7 +303,7 @@ export default function ScannerPage() {
                 <tbody>
                   {sorted.map((r, i) => (
                     <tr key={r.ticker}
-                      className="border-b border-border hover:bg-surface-hi/40 transition-colors"
+                      className="border-b border-border hover:bg-surface-2/40 transition-colors"
                       style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(11,17,32,0.3)' }}>
                       <td className="px-3 py-2.5 text-xs text-muted tabular-nums">{i + 1}</td>
                       <td className="px-3 py-2.5">
@@ -343,7 +343,7 @@ export default function ScannerPage() {
 
         {/* Right panel */}
         <div className="space-y-4">
-          <div className="bg-surface border border-border rounded-xl2 overflow-hidden">
+          <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
             <div className="px-4 py-3 border-b border-border">
               <span className="font-semibold text-sm text-white">Siła sektorów</span>
             </div>
@@ -353,7 +353,7 @@ export default function ScannerPage() {
           </div>
 
           {sorted.length > 0 && (
-            <div className="bg-surface border border-border rounded-xl2 p-4">
+            <div className="bg-surface-1 border border-border rounded-xl2 p-4">
               <ScoreDistribution results={sorted} />
             </div>
           )}

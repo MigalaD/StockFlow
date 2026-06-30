@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from 'recharts'
 import { AppShell } from '../../components/layout/AppShell'
 import { ScoreBadge, scoreColor } from '../../components/ui/ScoreBadge'
-import { Button, Input, EmptyState, Spinner, SectionHeader, Tag } from '../../components/ui'
+import { Button, Input, EmptyState, Spinner, SectionHeader, Tag, Price } from '../../components/ui'
 import { analysisApi, type AnalysisResult } from '../../lib/api'
 
 const MAX_INSTRUMENTS = 6
@@ -26,8 +26,8 @@ function CompareHeader({
         return (
           <div
             key={r.ticker}
-            className="bg-surface border border-border rounded-xl2 p-4 text-center"
-            style={{ borderTop: `3px solid ${color}` }}
+            className="bg-surface-1 border border-border rounded-xl2 p-4 text-center hover:bg-surface-2 transition-colors"
+            style={{ borderTop: `2px solid ${color}` }}
           >
             <div className="flex justify-end mb-1">
               <button
@@ -35,12 +35,12 @@ function CompareHeader({
                 className="text-muted hover:text-red-400 text-xs transition-colors"
               >✕</button>
             </div>
-            <div className="font-bold text-white mb-0.5">{r.ticker}</div>
+            <div className="font-bold text-text-hi mb-0.5 font-mono">{r.ticker}</div>
             <div className="text-xs text-muted mb-3 truncate">{r.name}</div>
             <ScoreBadge score={r.total_score} size="lg" showLabel />
-            <div className="mt-3 text-2xl font-bold tabular-nums text-white">
-              {r.price.toFixed(2)}
-              <span className="text-xs text-muted ml-1">{r.currency}</span>
+            <div className="mt-3">
+              <Price value={r.price} currency={r.currency}
+                className="text-2xl font-bold text-text-hi" />
             </div>
             {r.sector && <Tag className="mt-2 text-muted">{r.sector}</Tag>}
           </div>
@@ -66,7 +66,7 @@ function RadarComparison({ results }: { results: AnalysisResult[] }) {
   })
 
   return (
-    <div className="bg-surface border border-border rounded-xl2 p-4">
+    <div className="bg-surface-1 border border-border rounded-xl2 p-4">
       <SectionHeader title="Porównanie składowych" icon="🕸" />
       <ResponsiveContainer width="100%" height={300}>
         <RadarChart data={data}>
@@ -97,7 +97,7 @@ function RadarComparison({ results }: { results: AnalysisResult[] }) {
             formatter={(v) => <span style={{ color: '#94A3B8', fontSize: 11 }}>{v}</span>}
           />
           <Tooltip
-            contentStyle={{ background: '#111827', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8 }}
+            contentStyle={{ background: '#0F1623', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
             labelStyle={{ color: '#F8FAFC', fontWeight: 600 }}
           />
         </RadarChart>
@@ -142,7 +142,7 @@ function ScoreHistoryComparison({ tickers }: { tickers: string[] }) {
   })
 
   return (
-    <div className="bg-surface border border-border rounded-xl2 p-4">
+    <div className="bg-surface-1 border border-border rounded-xl2 p-4">
       <SectionHeader title="Historia score (90 dni)" icon="📈" />
       {loading ? (
         <div className="flex justify-center py-8"><Spinner /></div>
@@ -152,7 +152,7 @@ function ScoreHistoryComparison({ tickers }: { tickers: string[] }) {
             <XAxis dataKey="date" tick={{ fill: '#64748B', fontSize: 10 }} tickLine={false} />
             <YAxis domain={[0, 100]} tick={{ fill: '#64748B', fontSize: 10 }} tickLine={false} width={28} />
             <Tooltip
-              contentStyle={{ background: '#111827', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8 }}
+              contentStyle={{ background: '#0F1623', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
               labelStyle={{ color: '#F8FAFC' }}
             />
             <Legend
@@ -183,7 +183,7 @@ function ComponentsTable({ results }: { results: AnalysisResult[] }) {
   )
 
   return (
-    <div className="bg-surface border border-border rounded-xl2 overflow-hidden">
+    <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden p-4">
       <SectionHeader title="Tabela składowych" icon="📊" />
       <table className="w-full border-collapse">
         <thead>
@@ -209,13 +209,13 @@ function ComponentsTable({ results }: { results: AnalysisResult[] }) {
             const maxScore = validScores.length ? Math.max(...validScores) : null
 
             return (
-              <tr key={key} className="border-b border-border hover:bg-surface-hi/30">
-                <td className="px-4 py-2.5 text-xs font-medium text-white">{key}</td>
+              <tr key={key} className="border-b border-border hover:bg-surface-2">
+                <td className="px-4 py-2.5 text-xs font-medium text-text-mid">{key}</td>
                 {scores.map((score, i) => (
                   <td key={i} className="px-4 py-2.5 text-center">
                     {score != null ? (
                       <span
-                        className="font-bold tabular-nums text-sm"
+                        className="font-bold font-mono tabular-nums text-sm"
                         style={{
                           color: scoreColor(score),
                           fontWeight: score === maxScore ? 700 : 400,
@@ -236,13 +236,13 @@ function ComponentsTable({ results }: { results: AnalysisResult[] }) {
           })}
           {/* Podsumowanie */}
           <tr className="border-t-2" style={{ borderColor: 'rgba(255,255,255,0.12)', background: '#0B1120' }}>
-            <td className="px-4 py-3 text-xs font-bold text-white uppercase tracking-wide">Score DT</td>
+            <td className="px-4 py-3 text-xs font-bold text-text-hi uppercase tracking-wide">Score DT</td>
             {results.map((r, i) => {
               const isTop = r.total_score === Math.max(...results.map(x => x.total_score))
               return (
                 <td key={r.ticker} className="px-4 py-3 text-center">
                   <span
-                    className="text-base font-bold tabular-nums"
+                    className="text-base font-bold font-mono tabular-nums"
                     style={{ color: COMPARE_COLORS[i] }}
                   >
                     {Math.round(r.total_score)}
