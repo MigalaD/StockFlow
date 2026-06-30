@@ -188,7 +188,7 @@ function DiagnosticsSection() {
         <span className="text-xs text-muted font-mono">{API_URL}</span>
       </div>
       {status && (
-        <div className="bg-surface-hi rounded-lg p-3 text-sm space-y-1">
+        <div className="bg-surface-2 rounded-lg p-3 text-sm space-y-1">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full"
               style={{ background: status.status === 'ok' ? '#22C55E' : '#EF4444' }} />
@@ -228,7 +228,7 @@ function SettingsContent() {
           <AccountSection  key="account"  />,
           <DiagnosticsSection key="diag" />,
         ].map((section, i) => (
-          <div key={i} className="bg-surface border border-border rounded-xl2 p-5">
+          <div key={i} className="bg-surface-1 border border-border rounded-xl2 p-5">
             {section}
           </div>
         ))}

@@ -10,7 +10,7 @@ const FEATURES = [
   { icon:'🔍', title:'Skaner',   desc:'Automatyczny skan USA, GPW, Europy i kryptowalut z rankingiem.' },
   { icon:'⭐', title:'Watchlista', desc:'Obserwuj instrumenty i otrzymuj alerty gdy score zmienia się znacząco.' },
   { icon:'💼', title:'Portfolio', desc:'Śledzenie P&L, alokacja sektorowa, macierz korelacji.' },
-  { icon:'🧪', title:'Backtest', desc:'Prostyktest strategii score na danych historycznych.' },
+  { icon:'🧪', title:'Backtest', desc:'Test strategii score score na danych historycznych.' },
 ]
 
 const STACK = [
@@ -35,7 +35,7 @@ export default function AboutPage() {
           <span style={{ color:'#14B8A6' }}>Flow</span>
         </div>
         <div className="text-muted text-sm mb-4">
-          Narzędzie edukacyjne do analizy rynkowej · v1.1
+          Narzędzie edukacyjne do analizy rynkowej · v1.2
         </div>
         <div className="flex justify-center gap-2 flex-wrap">
           {['Edukacyjny','Bez reklam','Open-core','PL/EN'].map(tag => (
@@ -65,9 +65,9 @@ export default function AboutPage() {
           <SectionHeader title="Funkcje" icon="✨" />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {FEATURES.map(f => (
-              <div key={f.title} className="bg-surface border border-border rounded-xl2 p-4">
+              <div key={f.title} className="bg-surface-1 border border-border rounded-xl2 p-4 hover:bg-surface-2 transition-colors">
                 <div className="text-2xl mb-2">{f.icon}</div>
-                <div className="font-semibold text-sm text-white mb-1">{f.title}</div>
+                <div className="font-semibold text-sm text-text-hi mb-1">{f.title}</div>
                 <div className="text-xs text-muted leading-relaxed">{f.desc}</div>
               </div>
             ))}
@@ -77,7 +77,7 @@ export default function AboutPage() {
         {/* Score explanation */}
         <div>
           <SectionHeader title="Jak działa Score?" icon="🧮" />
-          <div className="bg-surface border border-border rounded-xl2 p-5 space-y-3 text-sm text-muted leading-relaxed">
+          <div className="bg-surface-1 border border-border rounded-xl2 p-5 space-y-3 text-sm text-muted leading-relaxed">
             <p>
               Score DT (Długoterminowy) to ważona suma punktów z 8–12 wskaźników technicznych
               i fundamentalnych. Każdy wskaźnik dostaje 0–100 punktów zależnie od swojego stanu.
