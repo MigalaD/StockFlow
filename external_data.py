@@ -295,3 +295,55 @@ def is_alpaca_supported(ticker: str) -> bool:
     """
     t = ticker.upper().strip()
     return t.isalnum() and 1 <= len(t) <= 5
+
+
+# Mapowanie interwałów aplikacji -> timeframe Alpaca
+_ALPACA_TIMEFRAMES = {
+    "1m":  "1Min",
+    "5m":  "5Min",
+    "15m": "15Min",
+    "30m": "30Min",
+    "1h":  "1Hour",
+    "1d":  "1Day",
+}
+
+
+def get_alpaca_bars(ticker: str, interval: str = "1d", limit: int = 365) -> list[dict] | None:
+    """Pobiera historyczne bary OHLCV z Alpaca dla akcji/ETF-u USA (live, IEX feed).
+
+    Zwraca listę dict {timestamp, open, high, low, close, volume} albo None
+    (brak klucza, ticker spoza USA, błąd). Używa darmowego feedu IEX.
+    """
+    ticker = ticker.upper().strip()
+    if not is_alpaca_supported(ticker):
+        return None
+    if not is_alpaca_configured():
+        return None
+
+    timeframe = _ALPACA_TIMEFRAMES.get(interval, "1Day")
+    params = {
+        "timeframe": timeframe,
+        "limit":     min(limit, 1000),
+        "feed":      "iex",        # darmowy feed (SIP wymaga płatnej subskrypcji)
+        "adjustment": "raw",
+    }
+
+    data = _alpaca_get(f"/stocks/{ticker}/bars", params=params)
+    if not data or "bars" not in data or not data["bars"]:
+        return None
+
+    try:
+        bars = []
+        for b in data["bars"]:
+            bars.append({
+                "timestamp": b["t"],                 # ISO 8601 string
+                "open":      float(b["o"]),
+                "high":      float(b["h"]),
+                "low":       float(b["l"]),
+                "close":     float(b["c"]),
+                "volume":    float(b["v"]),
+            })
+        return bars
+    except (KeyError, ValueError, TypeError) as e:
+        log.warning("Alpaca: nieoczekiwany format bars: %s", e)
+        return None
