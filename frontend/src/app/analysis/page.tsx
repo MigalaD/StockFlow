@@ -200,12 +200,12 @@ function PriceChart({
       if (showMA) {
         const has50 = data.candles.some(c => c.ma50 != null)
         if (has50) {
-          const ma50 = chart.addLineSeries({ color: '#F59E0B', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false })
+          const ma50 = chart.addLineSeries({ color: '#F59E0B', lineWidth: 2, priceLineVisible: false, lastValueVisible: false })
           ma50.setData(data.candles.filter(c => c.ma50 != null).map(c => ({ time: toTime(c.timestamp), value: c.ma50! })))
         }
         const has200 = data.candles.some(c => c.ma200 != null)
         if (has200) {
-          const ma200 = chart.addLineSeries({ color: '#3B82F6', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false })
+          const ma200 = chart.addLineSeries({ color: '#3B82F6', lineWidth: 2, priceLineVisible: false, lastValueVisible: false })
           ma200.setData(data.candles.filter(c => c.ma200 != null).map(c => ({ time: toTime(c.timestamp), value: c.ma200! })))
         }
       }
