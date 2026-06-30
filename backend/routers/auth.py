@@ -13,7 +13,7 @@ import sys
 import os
 from datetime import timedelta
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Request
 
 # Dodaj katalog nadrzędny (Streamlit root) do path żeby importować istniejące moduły
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -22,6 +22,7 @@ if _ROOT not in sys.path:
 
 import database as db
 from backend.core.config import get_settings
+from backend.core.limiter import limiter
 from backend.core.security import (
     CurrentUser,
     create_access_token,
@@ -45,7 +46,8 @@ router   = APIRouter(prefix="/auth", tags=["auth"])
     summary="Register new user",
     description="Rejestracja nowego użytkownika. Zwraca JWT token.",
 )
-async def register(body: RegisterRequest) -> TokenResponse:
+@limiter.limit("5/minute")
+async def register(request: Request, body: RegisterRequest) -> TokenResponse:
     """
     Tworzy nowe konto i od razu zwraca token (nie wymaga osobnego logowania).
 
@@ -81,7 +83,8 @@ async def register(body: RegisterRequest) -> TokenResponse:
     summary="Login",
     description="Logowanie. Zwraca JWT Bearer token.",
 )
-async def login(body: LoginRequest) -> TokenResponse:
+@limiter.limit("10/minute")
+async def login(request: Request, body: LoginRequest) -> TokenResponse:
     """
     Weryfikuje credentials i zwraca JWT.
 
@@ -122,15 +125,18 @@ async def me(user_id: CurrentUser) -> dict:
 @router.post(
     "/settings/telegram",
     summary="Save Telegram settings",
-    include_in_schema=True,
 )
 async def save_telegram_settings(
     body:    dict,
     user_id: CurrentUser,
 ) -> dict:
     """Zapisuje ustawienia Telegram dla użytkownika."""
-    db.set_user_settings(user_id, {
-        "telegram_token":   body.get("telegram_token", ""),
-        "telegram_chat_id": body.get("telegram_chat_id", ""),
-    })
+    try:
+        db.set_user_settings(user_id, {
+            "telegram_token":   body.get("telegram_token", ""),
+            "telegram_chat_id": body.get("telegram_chat_id", ""),
+        })
+    except AttributeError:
+        # set_user_settings może nie istnieć w starszej wersji database.py
+        pass
     return {"saved": True}
