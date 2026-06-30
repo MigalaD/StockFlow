@@ -10,38 +10,38 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../store'
 
-interface NavItem { href: string; icon: LucideIcon; key: string }
+interface NavItem { href: string; icon: LucideIcon; tKey: string }
 
 const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
   {
     label: null,
     items: [
-      { href: '/',          icon: LayoutDashboard,  key: 'dashboard' },
-      { href: '/analysis',  icon: TrendingUp,       key: 'analysis'  },
-      { href: '/compare',   icon: GitCompare, key: 'comparison'},
+      { href: '/',          icon: LayoutDashboard,  tKey: 'dashboard' },
+      { href: '/analysis',  icon: TrendingUp,       tKey: 'analysis'  },
+      { href: '/compare',   icon: GitCompare, tKey: 'comparison'},
     ],
   },
   {
     label: 'Portfel',
     items: [
-      { href: '/watchlist', icon: Star,      key: 'watchlist' },
-      { href: '/portfolio', icon: Briefcase, key: 'portfolio' },
-      { href: '/journal',   icon: BookText,  key: 'journal'   },
+      { href: '/watchlist', icon: Star,      tKey: 'watchlist' },
+      { href: '/portfolio', icon: Briefcase, tKey: 'portfolio' },
+      { href: '/journal',   icon: BookText,  tKey: 'journal'   },
     ],
   },
   {
     label: 'Narzędzia',
     items: [
-      { href: '/scanner',  icon: ScanLine,        key: 'scanner'  },
-      { href: '/backtest', icon: FlaskConical, key: 'backtest' },
-      { href: '/crypto',   icon: Bitcoin,      key: 'crypto'   },
+      { href: '/scanner',  icon: ScanLine,        tKey: 'scanner'  },
+      { href: '/backtest', icon: FlaskConical, tKey: 'backtest' },
+      { href: '/crypto',   icon: Bitcoin,      tKey: 'crypto'   },
     ],
   },
 ]
 
 const BOTTOM_ITEMS: NavItem[] = [
-  { href: '/settings', icon: Settings, key: 'settings' },
-  { href: '/about',    icon: Info,     key: 'about'    },
+  { href: '/settings', icon: Settings, tKey: 'settings' },
+  { href: '/about',    icon: Info,     tKey: 'about'    },
 ]
 
 export function Sidebar() {
@@ -52,7 +52,7 @@ export function Sidebar() {
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href)
 
-  const NavLink = ({ href, icon: Icon, key }: NavItem) => {
+  const NavLink = ({ href, icon: Icon, tKey }: NavItem) => {
     const active = isActive(href)
     return (
       <Link
@@ -69,7 +69,7 @@ export function Sidebar() {
         )}
         <Icon className={clsx('w-[18px] h-[18px] shrink-0 transition-colors',
           active ? 'text-brand-green' : 'text-muted group-hover:text-text-lo')} />
-        <span>{t(key)}</span>
+        <span>{t(tKey)}</span>
       </Link>
     )
   }
