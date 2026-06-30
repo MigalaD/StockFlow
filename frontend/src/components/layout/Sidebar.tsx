@@ -4,24 +4,45 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
+import {
+  LayoutDashboard, TrendingUp, GitCompare, Star, Briefcase,
+  Bitcoin, ScanLine, FlaskConical, BookText, Settings, Info, LogOut, type LucideIcon,
+} from 'lucide-react'
 import { useAuthStore } from '../../store'
 
-const NAV_ITEMS = [
-  { href: '/',          icon: '⊞', key: 'dashboard'  },
-  { href: '/analysis',  icon: '↗', key: 'analysis'   },
-  { href: '/compare',   icon: '⇆', key: 'comparison' },
-  { href: '/watchlist', icon: '★', key: 'watchlist'  },
-  { href: '/portfolio', icon: '◈', key: 'portfolio'  },
-  { href: '/crypto',    icon: '₿', key: 'crypto'     },
-  { href: '/scanner',   icon: '⊙', key: 'scanner'    },
-  { href: '/backtest',  icon: '⚗', key: 'backtest'   },
-  { href: '/journal',   icon: '📓', key: 'journal'   },
-] as const
+interface NavItem { href: string; icon: LucideIcon; key: string }
 
-const BOTTOM_ITEMS = [
-  { href: '/settings', icon: '⚙', key: 'settings' },
-  { href: '/about',    icon: 'ℹ', key: 'about'    },
-] as const
+const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
+  {
+    label: null,
+    items: [
+      { href: '/',          icon: LayoutDashboard,  key: 'dashboard' },
+      { href: '/analysis',  icon: TrendingUp,       key: 'analysis'  },
+      { href: '/compare',   icon: GitCompare, key: 'comparison'},
+    ],
+  },
+  {
+    label: 'Portfel',
+    items: [
+      { href: '/watchlist', icon: Star,      key: 'watchlist' },
+      { href: '/portfolio', icon: Briefcase, key: 'portfolio' },
+      { href: '/journal',   icon: BookText,  key: 'journal'   },
+    ],
+  },
+  {
+    label: 'Narzędzia',
+    items: [
+      { href: '/scanner',  icon: ScanLine,        key: 'scanner'  },
+      { href: '/backtest', icon: FlaskConical, key: 'backtest' },
+      { href: '/crypto',   icon: Bitcoin,      key: 'crypto'   },
+    ],
+  },
+]
+
+const BOTTOM_ITEMS: NavItem[] = [
+  { href: '/settings', icon: Settings, key: 'settings' },
+  { href: '/about',    icon: Info,     key: 'about'    },
+]
 
 export function Sidebar() {
   const t        = useTranslations('nav')
@@ -31,91 +52,83 @@ export function Sidebar() {
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href)
 
+  const NavLink = ({ href, icon: Icon, key }: NavItem) => {
+    const active = isActive(href)
+    return (
+      <Link
+        href={href}
+        className={clsx(
+          'group flex items-center gap-3 px-3 py-2 rounded-lg mb-0.5 text-sm transition-all relative',
+          active ? 'text-text-hi font-semibold' : 'text-text-lo hover:text-text-hi hover:bg-surface-2',
+        )}
+        style={active ? { background: 'rgba(34,197,94,0.10)' } : undefined}
+      >
+        {active && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
+            style={{ background: '#22C55E' }} />
+        )}
+        <Icon className={clsx('w-[18px] h-[18px] shrink-0 transition-colors',
+          active ? 'text-brand-green' : 'text-muted group-hover:text-text-lo')} />
+        <span>{t(key)}</span>
+      </Link>
+    )
+  }
+
   return (
-    <aside
-      className="w-[220px] shrink-0 flex flex-col h-full border-r border-border"
-      style={{ backgroundColor: '#111827' }}
-    >
+    <aside className="w-[228px] shrink-0 flex flex-col h-full border-r border-border bg-surface-1">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-border">
-        <Link href="/" className="block">
-          <div className="font-bold text-xl tracking-tight">
-            <span style={{ color: '#22C55E' }}>Stock</span>
-            <span style={{ color: '#14B8A6' }}>Flow</span>
+      <div className="px-5 py-[18px] border-b border-border">
+        <Link href="/" className="block group">
+          <div className="font-bold text-xl tracking-tight flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #22C55E, #14B8A6)' }}>
+              <TrendingUp className="w-4 h-4 text-white" strokeWidth={2.5} />
+            </div>
+            <span className="text-logo">StockFlow</span>
           </div>
-          <div className="text-[10px] text-muted tracking-[0.12em] uppercase mt-0.5">
+          <div className="text-2xs text-muted tracking-[0.14em] uppercase mt-1 ml-9">
             Market Analytics
           </div>
         </Link>
       </div>
 
-      {/* Main nav */}
+      {/* Nav groups */}
       <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
-        {NAV_ITEMS.map(({ href, icon, key }) => {
-          const active = isActive(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5',
-                'text-sm transition-all',
-                active
-                  ? 'font-semibold'
-                  : 'text-muted hover:text-white hover:bg-surface-hi',
-              )}
-              style={active ? {
-                color:           '#F8FAFC',
-                background:      'rgba(34,197,94,0.12)',
-                borderLeft:      '3px solid #22C55E',
-                paddingLeft:     '9px',
-              } : undefined}
-            >
-              <span className="text-base w-5 text-center">{icon}</span>
-              <span>{t(key)}</span>
-            </Link>
-          )
-        })}
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
+            {group.label && (
+              <div className="px-3 mb-1.5 text-2xs font-semibold text-muted uppercase tracking-widest">
+                {group.label}
+              </div>
+            )}
+            {group.items.map(item => <NavLink key={item.href} {...item} />)}
+          </div>
+        ))}
 
-        <div className="border-t border-border mt-2 pt-2">
-          {BOTTOM_ITEMS.map(({ href, icon, key }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg mb-0.5 text-sm text-muted hover:text-white hover:bg-surface-hi transition-all"
-            >
-              <span className="text-base w-5 text-center">{icon}</span>
-              <span>{t(key)}</span>
-            </Link>
-          ))}
+        <div className="border-t border-border mt-4 pt-3">
+          {BOTTOM_ITEMS.map(item => <NavLink key={item.href} {...item} />)}
         </div>
       </nav>
 
       {/* User block */}
       <div className="px-3 pb-4">
         {isAuth ? (
-          <div className="bg-surface-hi rounded-lg p-3 flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
-              style={{ background: 'rgba(34,197,94,0.2)', color: '#22C55E' }}
-            >
+          <div className="bg-surface-2 border border-border rounded-xl p-3 flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 font-mono"
+              style={{ background: 'rgba(34,197,94,0.15)', color: '#22C55E' }}>
               {userId?.[0]?.toUpperCase() ?? 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-white truncate">{userId}</div>
-              <button
-                onClick={logout}
-                className="text-[10px] text-muted hover:text-red-400 transition-colors"
-              >
-                Wyloguj
-              </button>
+              <div className="text-sm font-semibold text-text-hi truncate">{userId}</div>
+              <div className="text-2xs text-muted">Zalogowany</div>
             </div>
+            <button onClick={logout} title="Wyloguj"
+              className="p-1.5 rounded-md text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors">
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         ) : (
-          <Link
-            href="/login"
-            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold border border-brand-green text-brand-green hover:bg-brand-green/10 transition-all"
-          >
+          <Link href="/login" className="btn-secondary w-full">
             Zaloguj się
           </Link>
         )}
