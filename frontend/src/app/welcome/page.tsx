@@ -1,361 +1,264 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import useSWR from 'swr'
 import Link from 'next/link'
-import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
-import { useAuthStore, useRecentStore } from '../store'
-import { AppShell } from '../components/layout/AppShell'
-import { ScoreBar, scoreColor } from '../components/ui/ScoreBadge'
-import { SectionHeader, EmptyState, Button, Tag, Spinner } from '../components/ui'
-import { analysisApi, watchlistApi, scannerApi } from '../lib/api'
-import type { WatchlistItem, ScanResultItem, AnalysisResult } from '../lib/api'
+import { useRouter } from 'next/navigation'
+import {
+  TrendingUp, BarChart3, ScanLine, FlaskConical, Bell,
+  ArrowRight, Check, LineChart as LineChartIcon,
+} from 'lucide-react'
+import { useAuthStore } from '../../store'
 
-// ── VIX Widget ─────────────────────────────────────────────────────────
+// ── Mini animated score ring (hero signature) ─────────────────────────
 
-function VixWidget() {
-  const { data, isLoading } = useSWR(
-    'vix', () => analysisApi.analyze('^VIX'),
-    { refreshInterval: 300_000 }
-  )
-  if (isLoading) return (
-    <div className="rounded-xl2 p-4 border border-border bg-surface-1 animate-pulse h-[90px]" />
-  )
-  const vix = data?.price ?? 18.4
-  const color = vix < 15 ? '#22C55E' : vix < 25 ? '#F59E0B' : vix < 35 ? '#E07800' : '#EF4444'
-  const label = vix < 15 ? '😌 Spokój' : vix < 25 ? '😐 Normalna zmienność' : vix < 35 ? '😟 Niepewność' : '😱 Panika'
-  return (
-    <div className="rounded-xl2 p-4 border" style={{ background: color + '14', borderColor: color + '40' }}>
-      <div className="text-[10px] text-muted uppercase tracking-widest mb-1">VIX – Indeks strachu</div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold tabular-nums" style={{ color }}>{vix.toFixed(1)}</span>
-      </div>
-      <div className="text-xs mt-1" style={{ color, opacity: 0.8 }}>{label}</div>
-    </div>
-  )
-}
+function HeroScoreRing({ value }: { value: number }) {
+  const [shown, setShown] = useState(0)
+  useEffect(() => {
+    const start = Date.now()
+    const dur = 1400
+    const tick = () => {
+      const t = Math.min(1, (Date.now() - start) / dur)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setShown(Math.round(value * eased))
+      if (t < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, [value])
 
-// ── Stat card ──────────────────────────────────────────────────────────
-
-function StatCard({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
-  return (
-    <div className="bg-surface-1 border border-border rounded-xl2 p-4" style={{ borderTop: `3px solid ${color}` }}>
-      <div className="text-[10px] uppercase tracking-widest text-muted mb-1">{label}</div>
-      <div className="text-2xl font-bold tabular-nums" style={{ color }}>{value}</div>
-      <div className="text-xs text-muted mt-1">{sub}</div>
-    </div>
-  )
-}
-
-// ── Mini sparkline ─────────────────────────────────────────────────────
-
-function ScoreSparkline({ ticker }: { ticker: string }) {
-  const { data } = useSWR(
-    `history-${ticker}`,
-    () => analysisApi.history(ticker, 30),
-    { revalidateOnFocus: false }
-  )
-  if (!data || data.length < 2) return null
-  const color = scoreColor(data[data.length - 1]?.score ?? 50)
-  return (
-    <ResponsiveContainer width={64} height={28}>
-      <LineChart data={data.slice(-20)}>
-        <Line type="monotone" dataKey="score" stroke={color} strokeWidth={1.5} dot={false} />
-        <Tooltip
-          contentStyle={{ background: '#111827', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, fontSize: 10 }}
-          formatter={(v: number) => [`${Math.round(v)}/100`, 'Score']}
-          labelFormatter={(l) => String(l).slice(5)}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  )
-}
-
-// ── Watchlist table row ────────────────────────────────────────────────
-
-function WatchlistRow({ item, analysis }: {
-  item:     WatchlistItem
-  analysis: AnalysisResult | undefined
-}) {
-  const deltaScore = analysis && item.last_score != null
-    ? analysis.total_score - item.last_score
-    : null
+  const r = 86
+  const circ = 2 * Math.PI * r
+  const offset = circ - (shown / 100) * circ
+  const color = shown >= 60 ? '#22C55E' : shown >= 40 ? '#F59E0B' : '#EF4444'
 
   return (
-    <tr className="border-b border-border hover:bg-surface-2/40 transition-colors">
-      <td className="px-4 py-3">
-        <Link href={`/analysis?ticker=${item.ticker}`}
-          className="font-bold text-white hover:text-brand-green transition-colors">
-          {item.ticker}
-        </Link>
-        <div className="text-xs text-muted truncate max-w-[140px]">{analysis?.name ?? '—'}</div>
-      </td>
-      <td className="px-4 py-3 text-sm tabular-nums text-white">
-        {analysis ? `${analysis.price.toFixed(2)} ${analysis.currency}` : <Spinner size="sm" />}
-      </td>
-      <td className="px-4 py-3">
-        {analysis ? <ScoreBar score={analysis.total_score} /> : '—'}
-      </td>
-      <td className="px-4 py-3">
-        {analysis?.score_st != null ? <ScoreBar score={analysis.score_st} /> : <span className="text-muted text-xs">—</span>}
-      </td>
-      <td className="px-4 py-3">
-        {deltaScore != null ? (
-          <span className="text-sm font-semibold tabular-nums"
-            style={{ color: deltaScore >= 0 ? '#22C55E' : '#EF4444' }}>
-            {deltaScore >= 0 ? '+' : ''}{deltaScore.toFixed(1)}
-          </span>
-        ) : '—'}
-      </td>
-      <td className="px-4 py-3">
-        <ScoreSparkline ticker={item.ticker} />
-      </td>
-      <td className="px-4 py-3">
-        <Link href={`/analysis?ticker=${item.ticker}`}>
-          <button className="text-xs text-muted hover:text-brand-green transition-colors">→</button>
-        </Link>
-      </td>
-    </tr>
-  )
-}
-
-// ── Scan mini row ──────────────────────────────────────────────────────
-
-function ScanRow({ rank, item }: { rank: number; item: ScanResultItem }) {
-  const color = scoreColor(item.score)
-  return (
-    <div className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-2/30 transition-colors border-b border-border last:border-0">
-      <div className="flex items-center gap-2.5">
-        <span className="text-[10px] text-muted w-4 tabular-nums">{rank}</span>
-        <Link href={`/analysis?ticker=${item.ticker}`}>
-          <span className="text-sm font-bold text-white hover:text-brand-green transition-colors">
-            {item.ticker}
-          </span>
-        </Link>
-        {item.sector && <Tag className="hidden md:inline-flex text-[10px]">{item.sector}</Tag>}
-      </div>
-      <ScoreBar score={item.score} width="w-16" />
-    </div>
-  )
-}
-
-// ── Recently viewed ────────────────────────────────────────────────────
-
-function RecentlyViewed() {
-  const { tickers } = useRecentStore()
-  if (!tickers.length) return null
-  return (
-    <div className="mb-4">
-      <div className="text-[10px] text-muted uppercase tracking-widest mb-2">🕐 Ostatnio przeglądane</div>
-      <div className="flex gap-2 flex-wrap">
-        {tickers.map(ticker => (
-          <Link key={ticker} href={`/analysis?ticker=${ticker}`}>
-            <span className="text-xs px-3 py-1.5 rounded-full border border-border text-muted
-              hover:border-brand-green hover:text-brand-green transition-colors cursor-pointer">
-              {ticker}
-            </span>
-          </Link>
-        ))}
+    <div className="relative w-56 h-56">
+      <svg viewBox="0 0 200 200" className="w-full h-full -rotate-90">
+        <circle cx="100" cy="100" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+        <circle cx="100" cy="100" r={r} fill="none" stroke={color} strokeWidth="8"
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-6xl font-bold font-mono tabular-nums" style={{ color }}>{shown}</span>
+        <span className="text-2xs uppercase tracking-[0.2em] text-muted mt-1">Score / 100</span>
       </div>
     </div>
   )
 }
 
-// ── Dashboard ──────────────────────────────────────────────────────────
+const FEATURES = [
+  { icon: BarChart3,   title: 'Score 0–100',     desc: 'Każdy instrument oceniony przez kilkanaście wskaźników technicznych i fundamentalnych — jeden czytelny wynik.' },
+  { icon: LineChartIcon, title: 'Wykresy pro',    desc: 'Świece, Bollinger, średnie kroczące, zoom i dane live. To czego potrzebujesz do analizy w jednym miejscu.' },
+  { icon: ScanLine,       title: 'Skaner rynku',    desc: 'Przeskanuj USA, GPW, Europę i krypto. Ranking instrumentów po sile w sekundy.' },
+  { icon: FlaskConical, title: 'Backtest',        desc: 'Sprawdź jak strategia score zachowywała się historycznie — equity curve, Sharpe, walk-forward.' },
+  { icon: TrendingUp,  title: 'Scenariusze',     desc: 'Symulacja Monte Carlo pokazuje zakres możliwych ścieżek ceny, nie jedną fałszywą prognozę.' },
+  { icon: Bell,        title: 'Alerty Telegram', desc: 'Dostań powiadomienie gdy score instrumentu przekroczy ustawiony przez Ciebie próg.' },
+]
 
-export default function DashboardPage() {
-  const { isAuth, userId, _hasHydrated } = useAuthStore()
-  const { tickers: recentTickers } = useRecentStore()
+const STEPS = [
+  { n: '01', title: 'Wpisz symbol',   desc: 'AAPL, CD Projekt, Bitcoin — cokolwiek chcesz przeanalizować.' },
+  { n: '02', title: 'Zobacz score',   desc: 'Natychmiastowa ocena z rozbiciem na składowe i sygnały.' },
+  { n: '03', title: 'Podejmij decyzję', desc: 'Pełen obraz: wykres, scenariusze, strategie — wszystko po polsku.' },
+]
+
+export default function WelcomePage() {
   const router = useRouter()
+  const { isAuth, _hasHydrated } = useAuthStore()
 
-  // Niezalogowanych gości przekieruj na landing page
+  // Zalogowanych przekieruj prosto do aplikacji
   useEffect(() => {
-    if (_hasHydrated && !isAuth) router.replace('/welcome')
-  }, [_hasHydrated, isAuth, router])
-
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Dzień dobry' : hour < 18 ? 'Witaj' : 'Dobry wieczór'
-
-  const { data: watchlist = [], isLoading: wlLoading } = useSWR(
-    isAuth ? 'watchlist' : null,
-    watchlistApi.get,
-  )
-
-  const [analyses, setAnalyses] = useState<Record<string, AnalysisResult>>({})
-
-  useEffect(() => {
-    if (!watchlist.length) return
-    const tickers = watchlist.slice(0, 8).map(w => w.ticker)
-    Promise.allSettled(tickers.map(t => analysisApi.analyze(t))).then(results => {
-      const map: Record<string, AnalysisResult> = {}
-      results.forEach((r, i) => {
-        if (r.status === 'fulfilled') map[tickers[i]] = r.value
-      })
-      setAnalyses(map)
-    })
-  }, [watchlist.map(w => w.ticker).join(',')])
-
-  const { data: scan } = useSWR('scan-results', scannerApi.getResults, { refreshInterval: 0 })
-
-  const avgScore = Object.values(analyses).length > 0
-    ? (Object.values(analyses).reduce((s, a) => s + a.total_score, 0) / Object.values(analyses).length).toFixed(1)
-    : null
-
-  const topScan    = scan?.results.slice(0, 5) ?? []
-  const bottomScan = [...(scan?.results ?? [])].sort((a,b) => a.score - b.score).slice(0, 5)
-  const biggestChanges = watchlist
-    .filter(w => w.last_score != null && analyses[w.ticker])
-    .map(w => ({ ticker: w.ticker, delta: analyses[w.ticker].total_score - (w.last_score ?? 0) }))
-    .filter(x => Math.abs(x.delta) >= 2)
-    .sort((a,b) => Math.abs(b.delta) - Math.abs(a.delta))
-    .slice(0, 3)
+    if (_hasHydrated && isAuth) router.replace('/')
+  }, [isAuth, _hasHydrated, router])
 
   return (
-    <AppShell>
-      {/* Header */}
-      <div className="flex items-start justify-between mb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {greeting},{' '}
-            <span style={{ color: '#22C55E' }}>{isAuth ? userId : 'Inwestorze'}</span> 👋
-          </h1>
-          <div className="text-sm text-muted mt-1">
-            {new Date().toLocaleDateString('pl-PL', {
-              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-            })}
-          </div>
-        </div>
-        {!isAuth && (
-          <Link href="/login">
-            <Button variant="secondary" size="sm">Zaloguj się</Button>
-          </Link>
-        )}
-      </div>
+    <div className="min-h-screen" style={{ background: '#080C16' }}>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        <VixWidget />
-        <StatCard label="Watchlista" value={String(watchlist.length)} sub="obserwowanych" color="#3B82F6" />
-        <StatCard label="Avg Score DT" value={avgScore ?? '—'} sub="watchlista" color="#22C55E" />
-        <StatCard label="Ostatni skan" value={String(scan?.total ?? 0)} sub={scan?.scanned_at ? scan.scanned_at.slice(0,10) : 'brak skanu'} color="#14B8A6" />
-      </div>
-
-      {/* Alerts row — największe zmiany */}
-      {biggestChanges.length > 0 && (
-        <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-5">
-          <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">🔔 Największe zmiany score od ostatniej wizyty</div>
-          <div className="flex gap-3 flex-wrap">
-            {biggestChanges.map(({ ticker, delta }) => {
-              const color = delta > 0 ? '#22C55E' : '#EF4444'
-              return (
-                <Link key={ticker} href={`/analysis?ticker=${ticker}`}>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer hover:opacity-80"
-                    style={{ borderColor: color + '40', background: color + '0D' }}>
-                    <span className="font-bold text-white text-sm">{ticker}</span>
-                    <span className="font-bold text-sm" style={{ color }}>
-                      {delta > 0 ? '+' : ''}{delta.toFixed(1)} pkt
-                    </span>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Recently viewed */}
-      <RecentlyViewed />
-
-      {/* Main grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-4">
-
-        {/* Watchlist table */}
-        <div>
-          <SectionHeader title="Watchlista" icon="★"
-            action={<Link href="/watchlist"><Button variant="ghost" size="sm">Zarządzaj →</Button></Link>} />
-
-          {wlLoading ? (
-            <div className="flex justify-center py-12"><Spinner size="lg" /></div>
-          ) : !isAuth ? (
-            <EmptyState icon="🔐" title="Zaloguj się"
-              desc="Zaloguj się aby zobaczyć swoją watchlistę i analizy"
-              action={<Link href="/login"><Button size="sm">Zaloguj się</Button></Link>} />
-          ) : watchlist.length === 0 ? (
-            <EmptyState icon="★" title="Watchlista jest pusta"
-              desc="Dodaj spółki które chcesz obserwować"
-              action={<Link href="/analysis"><Button size="sm">Przejdź do Analizy</Button></Link>} />
-          ) : (
-            <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#0B1120' }}>
-                    {['Instrument','Cena','Score DT','Score ST','Δ Score','30d',''].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-left text-[10px] uppercase tracking-widest text-muted font-medium border-b border-border">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {watchlist.map(item => (
-                    <WatchlistRow key={item.ticker} item={item} analysis={analyses[item.ticker]} />
-                  ))}
-                </tbody>
-              </table>
+      {/* Nav */}
+      <nav className="sticky top-0 z-50 border-b border-border"
+        style={{ background: 'rgba(8,12,22,0.8)', backdropFilter: 'blur(12px)' }}>
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #22C55E, #14B8A6)' }}>
+              <TrendingUp className="w-5 h-5 text-white" strokeWidth={2.5} />
             </div>
-          )}
+            <span className="font-bold text-lg text-logo">StockFlow</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-sm text-text-lo hover:text-text-hi transition-colors">
+              Zaloguj się
+            </Link>
+            <Link href="/login" className="btn-primary text-sm">
+              Zacznij za darmo
+            </Link>
+          </div>
         </div>
+      </nav>
 
-        {/* Right: scan results */}
-        <div className="space-y-4">
-          {/* Top 5 */}
-          <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="font-semibold text-sm text-white">🟢 Top 5 skanu</span>
-              <Link href="/scanner">
-                <Button variant="ghost" size="sm">Skan →</Button>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 opacity-40 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at 70% 30%, rgba(34,197,94,0.12), transparent 55%), radial-gradient(ellipse at 20% 70%, rgba(20,184,166,0.10), transparent 50%)' }} />
+
+        <div className="relative max-w-6xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center">
+          <div className="animate-slide-up">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-2xs font-semibold uppercase tracking-wider mb-6"
+              style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse-dot" />
+              Analityka rynkowa po polsku
+            </div>
+
+            <h1 className="text-5xl font-bold text-text-hi leading-[1.1] tracking-tight mb-5">
+              Analizuj rynki<br/>
+              <span className="text-logo">bez chaosu danych.</span>
+            </h1>
+
+            <p className="text-lg text-text-lo leading-relaxed mb-8 max-w-lg">
+              StockFlow zamienia dziesiątki wskaźników w jeden czytelny wynik.
+              Akcje, ETF-y, kryptowaluty i surowce — przeanalizowane w sekundy,
+              wyjaśnione prostym językiem.
+            </p>
+
+            <div className="flex items-center gap-3 mb-8">
+              <Link href="/login" className="btn-primary text-base px-6 py-3">
+                Rozpocznij analizę <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link href="/login" className="btn-ghost text-base px-5 py-3">
+                Mam już konto
               </Link>
             </div>
-            {topScan.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-muted">
-                Brak wyników — uruchom skan rynku
-              </div>
-            ) : topScan.map((r, i) => <ScanRow key={r.ticker} rank={i + 1} item={r} />)}
-          </div>
 
-          {/* Bottom 5 */}
-          {bottomScan.length > 0 && (
-            <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
-              <div className="px-4 py-3 border-b border-border">
-                <span className="font-semibold text-sm text-white">🔴 Bottom 5 skanu</span>
-              </div>
-              {bottomScan.map((r, i) => <ScanRow key={r.ticker} rank={i + 1} item={r} />)}
-            </div>
-          )}
-
-          {/* Quick links */}
-          <div className="bg-surface-1 border border-border rounded-xl2 p-4">
-            <div className="text-[10px] text-muted uppercase tracking-widest mb-3">Szybkie akcje</div>
-            <div className="space-y-2">
-              {[
-                { href: '/analysis',  icon: '📈', label: 'Analizuj instrument'   },
-                { href: '/scanner',   icon: '🔍', label: 'Uruchom skan rynku'    },
-                { href: '/portfolio', icon: '💼', label: 'Sprawdź portfolio'      },
-                { href: '/compare',   icon: '🔀', label: 'Porównaj instrumenty'  },
-              ].map(({ href, icon, label }) => (
-                <Link key={href} href={href}>
-                  <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer">
-                    <span className="text-base">{icon}</span>
-                    <span className="text-sm text-white">{label}</span>
-                    <span className="ml-auto text-muted text-xs">→</span>
-                  </div>
-                </Link>
+            <div className="flex items-center gap-5 text-2xs text-muted">
+              {['Bez karty', 'Bez reklam', 'Dane szyfrowane'].map(item => (
+                <span key={item} className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-brand-green" /> {item}
+                </span>
               ))}
             </div>
           </div>
+
+          {/* Hero visual — signature score ring */}
+          <div className="flex justify-center lg:justify-end animate-fade-in">
+            <div className="relative">
+              <div className="absolute -inset-8 rounded-full opacity-20 blur-3xl"
+                style={{ background: 'radial-gradient(circle, #22C55E, transparent 70%)' }} />
+              <div className="relative bg-surface-1 border border-border rounded-2xl p-8 shadow-lg-dark">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <div className="font-bold text-text-hi font-mono">AAPL</div>
+                    <div className="text-2xs text-muted">Apple Inc.</div>
+                  </div>
+                  <span className="flex items-center gap-1 font-mono font-semibold text-sm px-2 py-0.5 rounded-md"
+                    style={{ color: '#22C55E', background: 'rgba(34,197,94,0.12)' }}>
+                    ▲ +1.24%
+                  </span>
+                </div>
+                <div className="flex justify-center mb-6">
+                  <HeroScoreRing value={72} />
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { label: 'Trend', score: 78 },
+                    { label: 'Momentum', score: 65 },
+                    { label: 'Wartość', score: 71 },
+                  ].map(c => (
+                    <div key={c.label} className="flex items-center gap-3">
+                      <span className="text-2xs text-muted w-16">{c.label}</span>
+                      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <div className="h-full rounded-full" style={{ width: `${c.score}%`, background: '#22C55E' }} />
+                      </div>
+                      <span className="text-2xs font-mono font-bold w-6 text-right" style={{ color: '#22C55E' }}>{c.score}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </AppShell>
+      </section>
+
+      {/* Features */}
+      <section className="max-w-6xl mx-auto px-6 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-text-hi tracking-tight mb-3">
+            Wszystko czego potrzebujesz do analizy
+          </h2>
+          <p className="text-text-lo max-w-xl mx-auto">
+            Profesjonalne narzędzia, które wcześniej wymagały kilku osobnych platform — teraz w jednym miejscu.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {FEATURES.map(({ icon: Icon, title, desc }) => (
+            <div key={title}
+              className="bg-surface-1 border border-border rounded-xl2 p-6 hover:bg-surface-2 hover:border-border-hi transition-all">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+                style={{ background: 'rgba(34,197,94,0.1)' }}>
+                <Icon className="w-5 h-5 text-brand-green" />
+              </div>
+              <h3 className="font-semibold text-text-hi mb-2">{title}</h3>
+              <p className="text-sm text-text-lo leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="max-w-6xl mx-auto px-6 py-16">
+        <div className="bg-surface-1 border border-border rounded-2xl p-10">
+          <h2 className="text-2xl font-bold text-text-hi tracking-tight mb-10 text-center">
+            Od symbolu do decyzji w trzech krokach
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {STEPS.map((s, i) => (
+              <div key={s.n} className="relative">
+                <div className="text-5xl font-bold font-mono mb-3" style={{ color: 'rgba(34,197,94,0.25)' }}>
+                  {s.n}
+                </div>
+                <h3 className="font-semibold text-text-hi mb-2">{s.title}</h3>
+                <p className="text-sm text-text-lo leading-relaxed">{s.desc}</p>
+                {i < STEPS.length - 1 && (
+                  <ArrowRight className="hidden md:block absolute top-6 -right-4 w-5 h-5 text-muted" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="max-w-6xl mx-auto px-6 py-16">
+        <div className="relative overflow-hidden rounded-2xl p-12 text-center border border-border"
+          style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(20,184,166,0.06))' }}>
+          <div className="absolute inset-0 opacity-30 pointer-events-none"
+            style={{ background: 'radial-gradient(circle at 50% 0%, rgba(34,197,94,0.15), transparent 60%)' }} />
+          <div className="relative">
+            <h2 className="text-3xl font-bold text-text-hi tracking-tight mb-3">
+              Zacznij analizować już dziś
+            </h2>
+            <p className="text-text-lo mb-8 max-w-md mx-auto">
+              Bezpłatne konto. Bez karty kredytowej. Pierwszą analizę zrobisz w mniej niż minutę.
+            </p>
+            <Link href="/login" className="btn-primary text-base px-8 py-3 inline-flex">
+              Utwórz darmowe konto <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border mt-8">
+        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-brand-green" />
+            <span className="font-semibold text-text-mid text-sm">StockFlow</span>
+            <span className="text-2xs text-muted ml-2">© 2026</span>
+          </div>
+          <p className="text-2xs text-muted text-center md:text-right max-w-md">
+            StockFlow jest narzędziem edukacyjnym i nie stanowi porady inwestycyjnej.
+            Inwestycje wiążą się z ryzykiem utraty kapitału.
+          </p>
+        </div>
+      </footer>
+    </div>
   )
 }
