@@ -24,6 +24,20 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
     email:    str | None = Field(None, max_length=255)
 
+    @field_validator("email")
+    @classmethod
+    def validate_email_format(cls, v: str | None) -> str | None:
+        """Email jest opcjonalny, ale jeśli podany — musi mieć sensowny format.
+        Prosty regex (nie pełny RFC 5322) — wystarczy by odrzucić oczywiste błędy
+        jak 'abc' czy 'a@b'. Bez zależności email-validator."""
+        if v is None or v.strip() == "":
+            return None
+        v = v.strip()
+        import re
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
+            raise ValueError("Nieprawidłowy format adresu e-mail")
+        return v
+
     model_config = {"json_schema_extra": {"example": {
         "username": "damian", "password": "haslo1234", "email": "damian@example.com"
     }}}
@@ -217,6 +231,7 @@ class OHLCVItem(BaseModel):
     bb_upper:  float | None = None
     bb_middle: float | None = None
     bb_lower:  float | None = None
+    ma20:      float | None = None
     ma50:      float | None = None
     ma200:     float | None = None
 
