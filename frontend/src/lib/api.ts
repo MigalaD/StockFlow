@@ -46,6 +46,7 @@ export interface OHLCVCandle {
   bb_upper?:  number | null
   bb_middle?: number | null
   bb_lower?:  number | null
+  ma20?:      number | null
   ma50?:      number | null
   ma200?:     number | null
 }
@@ -194,11 +195,31 @@ function createApiClient(): AxiosInstance {
   // Response interceptor — normalizuj błędy
   instance.interceptors.response.use(
     (response) => response,
-    (error: AxiosError<{ detail: string }>) => {
+    (error: AxiosError<{ detail: unknown }>) => {
       const status = error.response?.status ?? 0
-      const detail = error.response?.data?.detail ?? error.message
 
-      // Auto-logout przy 401
+      // Wyciągnij czytelny komunikat błędu
+      let detail: string
+      const rawDetail = error.response?.data?.detail
+
+      if (status === 0) {
+        // Brak odpowiedzi — błąd sieci, timeout, serwer niedostępny
+        detail = error.code === 'ECONNABORTED'
+          ? 'Przekroczono czas oczekiwania. Serwer może się wybudzać — spróbuj ponownie za chwilę.'
+          : 'Nie można połączyć się z serwerem. Sprawdź połączenie lub spróbuj ponownie za chwilę.'
+      } else if (status >= 500) {
+        detail = 'Serwer napotkał błąd. Spróbuj ponownie za chwilę.'
+      } else if (Array.isArray(rawDetail)) {
+        // 422 z Pydantic — detail to tablica obiektów {loc, msg, type}
+        const first = rawDetail[0] as { msg?: string } | undefined
+        detail = first?.msg ?? 'Nieprawidłowe dane wejściowe.'
+      } else if (typeof rawDetail === 'string') {
+        detail = rawDetail
+      } else {
+        detail = error.message || 'Wystąpił nieoczekiwany błąd.'
+      }
+
+      // Auto-logout przy 401 (poza endpointami auth)
       if (status === 401 && typeof window !== 'undefined') {
         const isAuthEndpoint = error.config?.url?.includes('/auth/')
         if (!isAuthEndpoint) {
