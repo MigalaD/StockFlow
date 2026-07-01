@@ -854,7 +854,7 @@ function AnalysisContent() {
       </div>
 
       {!ticker ? (
-        <div className="max-w-3xl">
+        <div>
           <div className="text-center py-8">
             <div className="text-4xl mb-3 opacity-50">📈</div>
             <h2 className="text-lg font-semibold text-text-hi mb-1">Analiza instrumentu</h2>
@@ -889,18 +889,18 @@ function AnalysisContent() {
           ].map(group => (
             <div key={group.label} className="mb-5">
               <div className="text-2xs text-muted uppercase tracking-widest mb-2">{group.label}</div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
                 {group.items.map(({ t, n }) => (
                   <button
                     key={t}
                     onClick={() => setTicker(t)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-1 border border-border
-                               hover:bg-surface-2 hover:border-border-hi transition-all group"
+                    className="flex flex-col items-start gap-0.5 px-4 py-3 rounded-xl bg-surface-1 border border-border
+                               hover:bg-surface-2 hover:border-border-hi transition-all group text-left"
                   >
                     <span className="font-bold font-mono text-sm text-text-hi group-hover:text-brand-green transition-colors">
                       {t}
                     </span>
-                    <span className="text-xs text-muted">{n}</span>
+                    <span className="text-xs text-muted truncate w-full">{n}</span>
                   </button>
                 ))}
               </div>
