@@ -10,25 +10,54 @@ import { authApi } from '../lib/api'
 // ── Auth store ────────────────────────────────────────────────────────
 
 interface AuthState {
-  token:        string | null
-  userId:       string | null
-  isAuth:       boolean
-  _hasHydrated: boolean
-  setHydrated:  () => void
-  login:        (username: string, password: string) => Promise<void>
-  register:     (username: string, password: string, email?: string) => Promise<void>
-  logout:       () => void
+  token:            string | null
+  userId:           string | null
+  isAuth:           boolean
+  _hasHydrated:     boolean
+  sessionVerified:  boolean   // czy token został potwierdzony jako ważny przez backend
+  setHydrated:      () => void
+  verifySession:    () => Promise<void>
+  login:            (username: string, password: string) => Promise<void>
+  register:         (username: string, password: string, email?: string) => Promise<void>
+  logout:           () => void
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
-      token:        null,
-      userId:       null,
-      isAuth:       false,
-      _hasHydrated: false,
+    (set, get) => ({
+      token:           null,
+      userId:          null,
+      isAuth:          false,
+      _hasHydrated:    false,
+      sessionVerified: false,
 
       setHydrated: () => set({ _hasHydrated: true }),
+
+      // Weryfikuje token względem backendu (/auth/me).
+      // Token w localStorage może być nieważny (wygasł, albo SECRET_KEY
+      // został zrotowany) — sama jego OBECNOŚĆ nie znaczy, że jest ważny.
+      // Bez tej weryfikacji isAuth kłamie: mówi "zalogowany" mimo że
+      // każde żądanie do API i tak dostanie 401.
+      verifySession: async () => {
+        const { token } = get()
+        if (!token) {
+          set({ sessionVerified: true })
+          return
+        }
+        try {
+          await authApi.me()
+          // Token zweryfikowany jako ważny
+          set({ sessionVerified: true })
+        } catch {
+          // Token nieważny — wyloguj cicho, bez przekierowania
+          // (przekierowanie zrobi AuthGuard / strony, które tego potrzebują)
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('sf_token')
+            localStorage.removeItem('sf_user')
+          }
+          set({ token: null, userId: null, isAuth: false, sessionVerified: true })
+        }
+      },
 
       login: async (username, password) => {
         const data = await authApi.login(username, password)
@@ -36,6 +65,7 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem('sf_token', data.access_token)
         }
         set({
+          sessionVerified: true,
           token:  data.access_token,
           userId: data.user_id,
           isAuth: true,
@@ -48,9 +78,10 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem('sf_token', data.access_token)
         }
         set({
-          token:  data.access_token,
-          userId: data.user_id,
-          isAuth: true,
+          token:           data.access_token,
+          userId:          data.user_id,
+          isAuth:          true,
+          sessionVerified: true,
         })
       },
 
@@ -59,7 +90,7 @@ export const useAuthStore = create<AuthState>()(
           localStorage.removeItem('sf_token')
           localStorage.removeItem('sf_user')
         }
-        set({ token: null, userId: null, isAuth: false })
+        set({ token: null, userId: null, isAuth: false, sessionVerified: true })
       },
     }),
     {
@@ -79,6 +110,10 @@ export const useAuthStore = create<AuthState>()(
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated()
+        // Po odczytaniu tokenu z localStorage — zweryfikuj go względem backendu.
+        // Bez tego isAuth może błędnie mówić "zalogowany" mimo nieważnego tokenu
+        // (np. po rotacji SECRET_KEY na backendzie).
+        state?.verifySession()
       },
     },
   ),

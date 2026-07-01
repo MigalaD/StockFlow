@@ -118,29 +118,48 @@ export default function ScannerPage() {
   const [scanning,  setScanning]  = useState(false)
   const [progress,  setProgress]  = useState(0)
   const [current,   setCurrent]   = useState('')
+  const [scanDone,  setScanDone]  = useState(0)
+  const [scanTotal, setScanTotal] = useState(0)
   const [sortCol,   setSortCol]   = useState<SortCol>('score')
   const [sortDir,   setSortDir]   = useState<'asc' | 'desc'>('desc')
   const [filterQ,   setFilterQ]   = useState('')
+  const [scanError, setScanError] = useState('')
   const pollRef = useRef<NodeJS.Timeout>()
 
   const { data: scan, mutate } = useSWR('scan-results', scannerApi.getResults)
 
   async function startScan() {
     if (!isAuth) return
-    setScanning(true); setProgress(0); setCurrent('')
+    setScanning(true); setProgress(0); setCurrent(''); setScanError('')
+    setScanDone(0); setScanTotal(0)
     try {
       await scannerApi.startScan(market as Market)
       pollRef.current = setInterval(async () => {
-        const status = await scannerApi.getStatus()
-        setProgress(status.percent)
-        setCurrent(status.current)
-        if (!status.running) {
+        try {
+          const status = await scannerApi.getStatus()
+          setProgress(status.percent)
+          setCurrent(status.current)
+          setScanDone(status.total ? Math.round(status.percent / 100 * status.total) : 0)
+          setScanTotal(status.total)
+          if (!status.running) {
+            clearInterval(pollRef.current)
+            setScanning(false)
+            await mutate()
+          }
+        } catch {
           clearInterval(pollRef.current)
           setScanning(false)
-          await mutate()
+          setScanError('Utracono połączenie podczas skanowania.')
         }
       }, 1500)
-    } catch { setScanning(false) }
+    } catch (err: any) {
+      setScanning(false)
+      if (err?.status === 401) {
+        setScanError('Sesja wygasła — zaloguj się ponownie, żeby uruchomić skan.')
+      } else {
+        setScanError(err?.detail ?? 'Nie udało się uruchomić skanu. Spróbuj ponownie.')
+      }
+    }
   }
 
   useEffect(() => () => clearInterval(pollRef.current), [])
@@ -239,12 +258,41 @@ export default function ScannerPage() {
 
       {/* Progress */}
       {scanning && (
-        <div className="mb-3">
+        <div className="mb-4 bg-surface-1 border border-border rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse-dot" />
+              <span className="font-semibold text-text-hi">Skanowanie w toku…</span>
+            </div>
+            <span className="text-xs font-mono text-muted tabular-nums">
+              {scanTotal > 0 ? `${scanDone} / ${scanTotal}` : '…'}
+              {progress > 0 && ` · ${Math.round(progress)}%`}
+            </span>
+          </div>
           <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
             <div className="h-full bg-brand-green rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }} />
           </div>
-          <div className="text-xs text-muted mt-1">{current && `Analizuję: ${current}`}</div>
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-muted">
+              {current ? `Analizuję: ${current}` : 'Przygotowuję dane…'}
+            </span>
+            <span className="text-2xs text-muted">
+              {progress < 100 && 'To może potrwać do ~minuty — analizujemy każdy instrument osobno.'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Scan error */}
+      {scanError && (
+        <div className="mb-4 flex items-center justify-between text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+          <span>⚠ {scanError}</span>
+          {scanError.includes('Sesja wygasła') && (
+            <Link href="/login">
+              <Button size="sm" variant="secondary">Zaloguj ponownie</Button>
+            </Link>
+          )}
         </div>
       )}
 

@@ -198,6 +198,11 @@ function PriceChart({
 
       // MA overlay
       if (showMA) {
+        const has20 = data.candles.some(c => c.ma20 != null)
+        if (has20) {
+          const ma20 = chart.addLineSeries({ color: '#22C55E', lineWidth: 1, priceLineVisible: false, lastValueVisible: false })
+          ma20.setData(data.candles.filter(c => c.ma20 != null).map(c => ({ time: toTime(c.timestamp), value: c.ma20! })))
+        }
         const has50 = data.candles.some(c => c.ma50 != null)
         if (has50) {
           const ma50 = chart.addLineSeries({ color: '#F59E0B', lineWidth: 2, priceLineVisible: false, lastValueVisible: false })
@@ -258,7 +263,7 @@ function PriceChart({
         <span>·</span>
         <span className="font-mono">{data.candles.length} świec</span>
         {showBollinger && <><span>·</span><span style={{ color: '#8B5CF6' }}>Bollinger (20,2)</span></>}
-        {showMA && <><span>·</span><span style={{ color: '#F59E0B' }}>MA50</span><span style={{ color: '#3B82F6' }}>MA200</span></>}
+        {showMA && <><span>·</span><span style={{ color: '#22C55E' }}>MA20</span><span style={{ color: '#F59E0B' }}>MA50</span><span style={{ color: '#3B82F6' }}>MA200</span></>}
         <span>·</span>
         <span>Scroll = zoom · Drag = przesuń</span>
       </div>
@@ -508,6 +513,19 @@ function StrategiesTab({ analysis }: { analysis: AnalysisResult }) {
 
 // ── Components table ──────────────────────────────────────────────────
 
+// Ładne nazwy składowych — znane skróty wielkimi literami, reszta kapitalizowana.
+const COMPONENT_LABELS: Record<string, string> = {
+  rsi: 'RSI', macd: 'MACD', volume: 'Wolumen', volatility: 'Zmienność',
+  momentum: 'Momentum', sentiment: 'Sentyment', valuation: 'Wycena',
+  dividend: 'Dywidenda', fundamentals: 'Fundamenty', trend: 'Trend',
+  rsi_st: 'RSI (ST)', stoch_st: 'Stochastik (ST)', momentum_st: 'Momentum (ST)',
+  volume_st: 'Wolumen (ST)', obv_st: 'OBV (ST)', bb_st: 'Bollinger (ST)',
+}
+function componentLabel(key: string): string {
+  if (COMPONENT_LABELS[key]) return COMPONENT_LABELS[key]
+  return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')
+}
+
 function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
   return (
     <div className="space-y-5">
@@ -519,7 +537,7 @@ function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
           {analysis.components.map(comp => (
             <div key={comp.key} className="bg-surface-2 rounded-xl p-3">
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs font-medium text-white">{comp.key}</span>
+                <span className="text-sm font-bold text-text-hi">{componentLabel(comp.key)}</span>
                 <div className="flex items-center gap-2">
                   <Tag>{(comp.weight * 100).toFixed(0)}%</Tag>
                   <span className="text-xs font-bold tabular-nums"
@@ -547,7 +565,7 @@ function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
             {analysis.components_st.map(comp => (
               <div key={comp.key} className="bg-surface-2 rounded-xl p-3">
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-medium text-white">{comp.key}</span>
+                  <span className="text-sm font-bold text-text-hi">{componentLabel(comp.key)}</span>
                   <span className="text-xs font-bold tabular-nums"
                     style={{ color: scoreColor(comp.score) }}>
                     {Math.round(comp.score)}
@@ -836,18 +854,70 @@ function AnalysisContent() {
       </div>
 
       {!ticker ? (
-        <EmptyState
-          icon="📈"
-          title="Analiza instrumentu"
-          desc="Wpisz symbol spółki, ETF-u lub kryptowaluty powyżej."
-        />
+        <div className="max-w-3xl">
+          <div className="text-center py-8">
+            <div className="text-4xl mb-3 opacity-50">📈</div>
+            <h2 className="text-lg font-semibold text-text-hi mb-1">Analiza instrumentu</h2>
+            <p className="text-sm text-text-lo">
+              Wpisz symbol powyżej, albo wybierz jeden z popularnych instrumentów:
+            </p>
+          </div>
+
+          {[
+            {
+              label: '🇺🇸 Akcje USA',
+              items: [
+                { t: 'AAPL', n: 'Apple' }, { t: 'MSFT', n: 'Microsoft' },
+                { t: 'NVDA', n: 'NVIDIA' }, { t: 'TSLA', n: 'Tesla' },
+                { t: 'AMZN', n: 'Amazon' }, { t: 'GOOGL', n: 'Alphabet' },
+              ],
+            },
+            {
+              label: '🇵🇱 GPW',
+              items: [
+                { t: 'CDR.WA', n: 'CD Projekt' }, { t: 'PKO.WA', n: 'PKO BP' },
+                { t: 'PKN.WA', n: 'Orlen' }, { t: 'PZU.WA', n: 'PZU' },
+              ],
+            },
+            {
+              label: '₿ Krypto',
+              items: [
+                { t: 'BTC-USD', n: 'Bitcoin' }, { t: 'ETH-USD', n: 'Ethereum' },
+                { t: 'SOL-USD', n: 'Solana' },
+              ],
+            },
+          ].map(group => (
+            <div key={group.label} className="mb-5">
+              <div className="text-2xs text-muted uppercase tracking-widest mb-2">{group.label}</div>
+              <div className="flex flex-wrap gap-2">
+                {group.items.map(({ t, n }) => (
+                  <button
+                    key={t}
+                    onClick={() => setTicker(t)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-1 border border-border
+                               hover:bg-surface-2 hover:border-border-hi transition-all group"
+                  >
+                    <span className="font-bold font-mono text-sm text-text-hi group-hover:text-brand-green transition-colors">
+                      {t}
+                    </span>
+                    <span className="text-xs text-muted">{n}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : isLoading ? (
         <div className="flex items-center justify-center h-48"><Spinner size="lg" /></div>
       ) : error || !analysis ? (
         <EmptyState
           icon="⚠️"
-          title="Nie znaleziono danych"
-          desc={`Brak danych dla ${ticker}. Sprawdź czy symbol jest poprawny.`}
+          title={error && (error as any).status >= 500 || (error as any)?.status === 0
+            ? 'Problem z połączeniem'
+            : 'Nie znaleziono danych'}
+          desc={error && ((error as any).status >= 500 || (error as any).status === 0)
+            ? ((error as any).detail ?? 'Serwer chwilowo niedostępny. Spróbuj ponownie za chwilę.')
+            : `Brak danych dla ${ticker}. Sprawdź czy symbol jest poprawny.`}
           action={<Button onClick={() => setTicker('')} variant="ghost">Szukaj ponownie</Button>}
         />
       ) : (
@@ -998,7 +1068,7 @@ function AnalysisContent() {
                       border:      `1px solid ${showMA ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.06)'}`,
                     }}
                   >
-                    MA 50/200
+                    MA 20/50/200
                   </button>
 
                   <div className="w-px h-5 bg-border mx-1" />

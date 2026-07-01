@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
@@ -19,7 +20,7 @@ function VixWidget() {
     { refreshInterval: 300_000 }
   )
   if (isLoading) return (
-    <div className="rounded-xl2 p-4 border border-border bg-surface animate-pulse h-[90px]" />
+    <div className="rounded-xl2 p-4 border border-border bg-surface-1 animate-pulse h-[90px]" />
   )
   const vix = data?.price ?? 18.4
   const color = vix < 15 ? '#22C55E' : vix < 25 ? '#F59E0B' : vix < 35 ? '#E07800' : '#EF4444'
@@ -39,7 +40,7 @@ function VixWidget() {
 
 function StatCard({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
   return (
-    <div className="bg-surface border border-border rounded-xl2 p-4" style={{ borderTop: `3px solid ${color}` }}>
+    <div className="bg-surface-1 border border-border rounded-xl2 p-4" style={{ borderTop: `3px solid ${color}` }}>
       <div className="text-[10px] uppercase tracking-widest text-muted mb-1">{label}</div>
       <div className="text-2xl font-bold tabular-nums" style={{ color }}>{value}</div>
       <div className="text-xs text-muted mt-1">{sub}</div>
@@ -82,7 +83,7 @@ function WatchlistRow({ item, analysis }: {
     : null
 
   return (
-    <tr className="border-b border-border hover:bg-surface-hi/40 transition-colors">
+    <tr className="border-b border-border hover:bg-surface-2/40 transition-colors">
       <td className="px-4 py-3">
         <Link href={`/analysis?ticker=${item.ticker}`}
           className="font-bold text-white hover:text-brand-green transition-colors">
@@ -124,7 +125,7 @@ function WatchlistRow({ item, analysis }: {
 function ScanRow({ rank, item }: { rank: number; item: ScanResultItem }) {
   const color = scoreColor(item.score)
   return (
-    <div className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-hi/30 transition-colors border-b border-border last:border-0">
+    <div className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-2/30 transition-colors border-b border-border last:border-0">
       <div className="flex items-center gap-2.5">
         <span className="text-[10px] text-muted w-4 tabular-nums">{rank}</span>
         <Link href={`/analysis?ticker=${item.ticker}`}>
@@ -164,8 +165,14 @@ function RecentlyViewed() {
 // ── Dashboard ──────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { isAuth, userId } = useAuthStore()
+  const { isAuth, userId, _hasHydrated, sessionVerified } = useAuthStore()
   const { tickers: recentTickers } = useRecentStore()
+  const router = useRouter()
+
+  // Niezalogowanych gości przekieruj na landing page
+  useEffect(() => {
+    if (_hasHydrated && sessionVerified && !isAuth) router.replace('/welcome')
+  }, [_hasHydrated, sessionVerified, isAuth, router])
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Dzień dobry' : hour < 18 ? 'Witaj' : 'Dobry wieczór'
@@ -236,7 +243,7 @@ export default function DashboardPage() {
 
       {/* Alerts row — największe zmiany */}
       {biggestChanges.length > 0 && (
-        <div className="bg-surface border border-border rounded-xl2 p-4 mb-5">
+        <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-5">
           <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">🔔 Największe zmiany score od ostatniej wizyty</div>
           <div className="flex gap-3 flex-wrap">
             {biggestChanges.map(({ ticker, delta }) => {
@@ -279,7 +286,7 @@ export default function DashboardPage() {
               desc="Dodaj spółki które chcesz obserwować"
               action={<Link href="/analysis"><Button size="sm">Przejdź do Analizy</Button></Link>} />
           ) : (
-            <div className="bg-surface border border-border rounded-xl2 overflow-hidden">
+            <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
               <table className="w-full border-collapse">
                 <thead>
                   <tr style={{ backgroundColor: '#0B1120' }}>
@@ -303,7 +310,7 @@ export default function DashboardPage() {
         {/* Right: scan results */}
         <div className="space-y-4">
           {/* Top 5 */}
-          <div className="bg-surface border border-border rounded-xl2 overflow-hidden">
+          <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <span className="font-semibold text-sm text-white">🟢 Top 5 skanu</span>
               <Link href="/scanner">
@@ -319,7 +326,7 @@ export default function DashboardPage() {
 
           {/* Bottom 5 */}
           {bottomScan.length > 0 && (
-            <div className="bg-surface border border-border rounded-xl2 overflow-hidden">
+            <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
               <div className="px-4 py-3 border-b border-border">
                 <span className="font-semibold text-sm text-white">🔴 Bottom 5 skanu</span>
               </div>
@@ -328,7 +335,7 @@ export default function DashboardPage() {
           )}
 
           {/* Quick links */}
-          <div className="bg-surface border border-border rounded-xl2 p-4">
+          <div className="bg-surface-1 border border-border rounded-xl2 p-4">
             <div className="text-[10px] text-muted uppercase tracking-widest mb-3">Szybkie akcje</div>
             <div className="space-y-2">
               {[
@@ -338,7 +345,7 @@ export default function DashboardPage() {
                 { href: '/compare',   icon: '🔀', label: 'Porównaj instrumenty'  },
               ].map(({ href, icon, label }) => (
                 <Link key={href} href={href}>
-                  <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-hi transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer">
                     <span className="text-base">{icon}</span>
                     <span className="text-sm text-white">{label}</span>
                     <span className="ml-auto text-muted text-xs">→</span>
