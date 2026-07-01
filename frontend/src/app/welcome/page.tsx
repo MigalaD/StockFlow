@@ -109,7 +109,7 @@ export default function WelcomePage() {
               Analityka rynkowa po polsku
             </div>
 
-            <h1 className="text-5xl font-bold text-text-hi leading-[1.1] tracking-tight mb-5">
+            <h1 className="text-4xl lg:text-5xl font-bold text-text-hi leading-[1.1] tracking-tight mb-5">
               Analizuj rynki<br/>
               <span className="text-logo">bez chaosu danych.</span>
             </h1>
