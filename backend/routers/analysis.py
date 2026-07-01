@@ -72,7 +72,7 @@ def _compute_overlays(closes: list[float]) -> dict:
     Zwraca dict z listami (None gdy za mało danych w danym punkcie)."""
     import statistics
     n = len(closes)
-    bb_u, bb_m, bb_l, ma50, ma200 = [], [], [], [], []
+    bb_u, bb_m, bb_l, ma20, ma50, ma200 = [], [], [], [], [], []
     for i in range(n):
         # Bollinger 20
         if i >= 19:
@@ -84,6 +84,11 @@ def _compute_overlays(closes: list[float]) -> dict:
             bb_l.append(round(mean - 2*std, 4))
         else:
             bb_m.append(None); bb_u.append(None); bb_l.append(None)
+        # MA20
+        if i >= 19:
+            ma20.append(round(sum(closes[i-19:i+1]) / 20, 4))
+        else:
+            ma20.append(None)
         # MA50
         if i >= 49:
             ma50.append(round(sum(closes[i-49:i+1]) / 50, 4))
@@ -94,7 +99,7 @@ def _compute_overlays(closes: list[float]) -> dict:
             ma200.append(round(sum(closes[i-199:i+1]) / 200, 4))
         else:
             ma200.append(None)
-    return {"bb_upper": bb_u, "bb_middle": bb_m, "bb_lower": bb_l, "ma50": ma50, "ma200": ma200}
+    return {"bb_upper": bb_u, "bb_middle": bb_m, "bb_lower": bb_l, "ma20": ma20, "ma50": ma50, "ma200": ma200}
 
 
 @router.get(
@@ -330,6 +335,7 @@ async def candles(
             it.bb_upper  = ov["bb_upper"][i]
             it.bb_middle = ov["bb_middle"][i]
             it.bb_lower  = ov["bb_lower"][i]
+            it.ma20      = ov["ma20"][i]
             it.ma50      = ov["ma50"][i]
             it.ma200     = ov["ma200"][i]
         return items
