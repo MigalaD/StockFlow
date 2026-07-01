@@ -118,6 +118,8 @@ export default function ScannerPage() {
   const [scanning,  setScanning]  = useState(false)
   const [progress,  setProgress]  = useState(0)
   const [current,   setCurrent]   = useState('')
+  const [scanDone,  setScanDone]  = useState(0)
+  const [scanTotal, setScanTotal] = useState(0)
   const [sortCol,   setSortCol]   = useState<SortCol>('score')
   const [sortDir,   setSortDir]   = useState<'asc' | 'desc'>('desc')
   const [filterQ,   setFilterQ]   = useState('')
@@ -129,6 +131,7 @@ export default function ScannerPage() {
   async function startScan() {
     if (!isAuth) return
     setScanning(true); setProgress(0); setCurrent(''); setScanError('')
+    setScanDone(0); setScanTotal(0)
     try {
       await scannerApi.startScan(market as Market)
       pollRef.current = setInterval(async () => {
@@ -136,6 +139,8 @@ export default function ScannerPage() {
           const status = await scannerApi.getStatus()
           setProgress(status.percent)
           setCurrent(status.current)
+          setScanDone(status.total ? Math.round(status.percent / 100 * status.total) : 0)
+          setScanTotal(status.total)
           if (!status.running) {
             clearInterval(pollRef.current)
             setScanning(false)
@@ -253,12 +258,29 @@ export default function ScannerPage() {
 
       {/* Progress */}
       {scanning && (
-        <div className="mb-3">
+        <div className="mb-4 bg-surface-1 border border-border rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse-dot" />
+              <span className="font-semibold text-text-hi">Skanowanie w toku…</span>
+            </div>
+            <span className="text-xs font-mono text-muted tabular-nums">
+              {scanTotal > 0 ? `${scanDone} / ${scanTotal}` : '…'}
+              {progress > 0 && ` · ${Math.round(progress)}%`}
+            </span>
+          </div>
           <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
             <div className="h-full bg-brand-green rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }} />
           </div>
-          <div className="text-xs text-muted mt-1">{current && `Analizuję: ${current}`}</div>
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-muted">
+              {current ? `Analizuję: ${current}` : 'Przygotowuję dane…'}
+            </span>
+            <span className="text-2xs text-muted">
+              {progress < 100 && 'To może potrwać do ~minuty — analizujemy każdy instrument osobno.'}
+            </span>
+          </div>
         </div>
       )}
 
