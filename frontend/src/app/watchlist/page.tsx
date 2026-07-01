@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
-import { Settings2, ArrowRight, Plus } from 'lucide-react'
+import { Settings2, ArrowRight, Plus, Trash2, Check, X } from 'lucide-react'
 import { AppShell } from '../../components/layout/AppShell'
 import { ScoreBar, scoreColor } from '../../components/ui/ScoreBadge'
 import { SectionHeader, Button, Input, EmptyState, Spinner, Price } from '../../components/ui'
@@ -83,7 +83,8 @@ function AlertsEditor({ item, onRemove, onClose }: {
 function WatchRow({ item, analysis, onRemove }: {
   item: WLItem; analysis?: AnalysisResult; onRemove: () => void
 }) {
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing]   = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const score = analysis?.total_score ?? item.last_score
   const deltaScore = analysis && item.last_score != null
     ? analysis.total_score - item.last_score : null
@@ -125,16 +126,39 @@ function WatchRow({ item, analysis, onRemove }: {
         <td className="px-4 py-3"><Sparkline ticker={item.ticker} /></td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-1">
-            <button onClick={() => setEditing(e => !e)}
-              className="p-1.5 rounded-md text-muted hover:text-text-hi hover:bg-surface-3 transition-colors"
-              title="Alerty">
-              <Settings2 className="w-4 h-4" />
-            </button>
-            <Link href={`/analysis?ticker=${item.ticker}`}
-              className="p-1.5 rounded-md text-muted hover:text-brand-green hover:bg-surface-3 transition-colors"
-              title="Analizuj">
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            {confirming ? (
+              <div className="flex items-center gap-1 animate-fade-in">
+                <span className="text-2xs text-muted mr-1">Usunąć?</span>
+                <button onClick={onRemove}
+                  className="p-1.5 rounded-md text-red-400 hover:bg-red-500/15 transition-colors"
+                  title="Potwierdź usunięcie">
+                  <Check className="w-4 h-4" />
+                </button>
+                <button onClick={() => setConfirming(false)}
+                  className="p-1.5 rounded-md text-muted hover:text-text-hi hover:bg-surface-3 transition-colors"
+                  title="Anuluj">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <button onClick={() => setEditing(e => !e)}
+                  className="p-1.5 rounded-md text-muted hover:text-text-hi hover:bg-surface-3 transition-colors"
+                  title="Alerty">
+                  <Settings2 className="w-4 h-4" />
+                </button>
+                <Link href={`/analysis?ticker=${item.ticker}`}
+                  className="p-1.5 rounded-md text-muted hover:text-brand-green hover:bg-surface-3 transition-colors"
+                  title="Analizuj">
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <button onClick={() => setConfirming(true)}
+                  className="p-1.5 rounded-md text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  title="Usuń z watchlisty">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
           </div>
         </td>
       </tr>
