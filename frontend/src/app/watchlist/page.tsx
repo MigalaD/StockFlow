@@ -11,7 +11,6 @@ import { ScoreBar, scoreColor } from '../../components/ui/ScoreBadge'
 import { SectionHeader, Button, Input, EmptyState, Spinner, Price } from '../../components/ui'
 import { watchlistApi, analysisApi, type AnalysisResult } from '../../lib/api'
 import toast from 'react-hot-toast'
-import { AuthGuard } from '../../components/shared/AuthGuard'
 
 type WLItem = Awaited<ReturnType<typeof watchlistApi.get>>[number]
 
@@ -277,5 +276,5 @@ function WatchlistContent() {
 }
 
 export default function WatchlistPage() {
-  return <AuthGuard><WatchlistContent /></AuthGuard>
+  return <WatchlistContent />
 }

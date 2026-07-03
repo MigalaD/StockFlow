@@ -134,6 +134,14 @@ export default function ScannerPage() {
     setScanDone(0); setScanTotal(0)
     try {
       await scannerApi.startScan(market as Market)
+
+      // Flaga: czy backend potwierdził już że skan wystartował.
+      // Background task potrzebuje chwili — pierwszy poll może zwrócić
+      // running=false ZANIM skan się rozkręci. Bez tej ochrony panel
+      // znikał od razu, a backend i tak skanował (stąd 409 przy 2. kliknięciu).
+      let seenRunning = false
+      const startedAt = Date.now()
+
       pollRef.current = setInterval(async () => {
         try {
           const status = await scannerApi.getStatus()
@@ -141,21 +149,58 @@ export default function ScannerPage() {
           setCurrent(status.current)
           setScanDone(status.total ? Math.round(status.percent / 100 * status.total) : 0)
           setScanTotal(status.total)
-          if (!status.running) {
+
+          if (status.running) {
+            seenRunning = true
+          }
+
+          // Zakończ TYLKO jeśli:
+          //  - widzieliśmy już running=true i teraz jest false (realny koniec), LUB
+          //  - minęło >5s a backend nigdy nie ruszył (coś poszło nie tak)
+          const graceElapsed = Date.now() - startedAt > 5000
+          if (!status.running && (seenRunning || graceElapsed)) {
             clearInterval(pollRef.current)
             setScanning(false)
-            await mutate()
+            if (!seenRunning && graceElapsed) {
+              setScanError('Skan nie wystartował. Spróbuj ponownie.')
+            } else {
+              await mutate()
+            }
           }
         } catch {
           clearInterval(pollRef.current)
           setScanning(false)
           setScanError('Utracono połączenie podczas skanowania.')
         }
-      }, 1500)
+      }, 1200)
     } catch (err: any) {
       setScanning(false)
       if (err?.status === 401) {
         setScanError('Sesja wygasła — zaloguj się ponownie, żeby uruchomić skan.')
+      } else if (err?.status === 409) {
+        // Skan już trwa — nie błąd, po prostu podłącz się do istniejącego postępu
+        setScanError('')
+        let seenRunning = false
+        const startedAt = Date.now()
+        pollRef.current = setInterval(async () => {
+          try {
+            const status = await scannerApi.getStatus()
+            setProgress(status.percent)
+            setCurrent(status.current)
+            setScanDone(status.total ? Math.round(status.percent / 100 * status.total) : 0)
+            setScanTotal(status.total)
+            if (status.running) seenRunning = true
+            const graceElapsed = Date.now() - startedAt > 5000
+            if (!status.running && (seenRunning || graceElapsed)) {
+              clearInterval(pollRef.current)
+              setScanning(false)
+              await mutate()
+            }
+          } catch {
+            clearInterval(pollRef.current)
+            setScanning(false)
+          }
+        }, 1200)
       } else {
         setScanError(err?.detail ?? 'Nie udało się uruchomić skanu. Spróbuj ponownie.')
       }
