@@ -90,6 +90,7 @@ export interface Portfolio {
   total_value:           number
   total_pnl:             number
   total_pnl_pct:         number
+  base_currency:         string
   allocation_by_sector:  Record<string, number>
   warnings:              string[]
 }
@@ -395,6 +396,35 @@ export const scannerApi = {
     elapsed_s: number | null
   }> => {
     const { data } = await api.get('/scan/status')
+    return data
+  },
+}
+
+
+// ── Growth (spółki wzrostowe) ─────────────────────────────────────────
+
+export interface GrowthStock {
+  ticker:       string
+  name:         string
+  display_name: string
+  description:  string
+  category:     string
+  price:        number
+  currency:     string
+  score:        number
+  score_st:     number | null
+  sector:       string
+}
+
+export interface GrowthResponse {
+  stocks:     GrowthStock[]
+  categories: string[]
+  count:      number
+}
+
+export const growthApi = {
+  get: async (): Promise<GrowthResponse> => {
+    const { data } = await api.get<GrowthResponse>('/growth')
     return data
   },
 }
