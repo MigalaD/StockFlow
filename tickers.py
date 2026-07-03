@@ -119,16 +119,31 @@ SKANER_WSZYSTKIE = SKANER_USA + SKANER_GPW + SKANER_EUROPA
 # Format: nazwa wyświetlana -> (ticker, krótki opis "czemu warto śledzić")
 # ----------------------------------------------------------------------
 SPOLKI_WZROSTOWE = {
-    "Reddit (RDDT)": ("RDDT", "Niedawne IPO (2024) - platforma social media z rosnącymi przychodami z reklam i danych do AI."),
-    "Arm Holdings (ARM)": ("ARM", "Projektant architektur procesorów - kluczowy dla rynku mobile i coraz bardziej AI/chipów."),
+    # ── AI / Półprzewodniki ──
+    "Arm Holdings (ARM)": ("ARM", "Projektant architektur procesorów - kluczowy dla mobile i coraz bardziej AI/chipów."),
     "Astera Labs (ALAB)": ("ALAB", "Chipy do połączeń w centrach danych AI - mała spółka, duża ekspozycja na boom AI."),
-    "CrowdStrike (CRWD)": ("CRWD", "Cyberbezpieczeństwo w modelu SaaS - szybko rosnące przychody, wysoka wycena."),
-    "Snowflake (SNOW)": ("SNOW", "Platforma danych w chmurze - silny wzrost przychodów, wciąż niska/ brak rentowności."),
     "Palantir (PLTR)": ("PLTR", "Analiza danych dla rządu i biznesu - duża zmienność, silny sentyment AI."),
-    "Affirm (AFRM)": ("AFRM", "Fintech BNPL (buy now pay later) - wzrostowa, ale wrażliwa na stopy procentowe."),
+    "Super Micro (SMCI)": ("SMCI", "Serwery i infrastruktura pod AI - gwałtowny wzrost, wysoka zmienność."),
+    "Marvell (MRVL)": ("MRVL", "Półprzewodniki do centrów danych i infrastruktury - ekspozycja na AI."),
+    # ── Cyberbezpieczeństwo ──
+    "CrowdStrike (CRWD)": ("CRWD", "Cyberbezpieczeństwo w modelu SaaS - szybko rosnące przychody, wysoka wycena."),
+    "Zscaler (ZS)": ("ZS", "Bezpieczeństwo sieci w chmurze (zero-trust) - rosnący rynek."),
+    # ── Chmura / Dane / SaaS ──
+    "Snowflake (SNOW)": ("SNOW", "Platforma danych w chmurze - silny wzrost przychodów, niska rentowność."),
+    "Datadog (DDOG)": ("DDOG", "Monitoring aplikacji i infrastruktury chmurowej - stały wzrost."),
+    "Cloudflare (NET)": ("NET", "Infrastruktura i bezpieczeństwo internetu - szeroka ekspozycja na ruch sieciowy."),
     "Klaviyo (KVYO)": ("KVYO", "Marketing/CRM dla e-commerce - niedawne IPO, rosnąca baza klientów."),
-    "Allegro (ALE.WA)": ("ALE.WA", "Największy polski e-commerce - po debiucie giełdowym, ekspansja regionalna."),
+    # ── Fintech / Internet ──
+    "Reddit (RDDT)": ("RDDT", "Niedawne IPO (2024) - social media z rosnącymi przychodami z reklam i danych do AI."),
+    "Affirm (AFRM)": ("AFRM", "Fintech BNPL (buy now pay later) - wzrostowa, wrażliwa na stopy procentowe."),
+    "Block (XYZ)": ("XYZ", "Fintech (Square, Cash App) - płatności i ekosystem finansowy."),
+    "Shopify (SHOP)": ("SHOP", "Platforma e-commerce dla sprzedawców - lider w swoim segmencie."),
+    # ── Polskie wzrostowe (GPW) ──
+    "Allegro (ALE.WA)": ("ALE.WA", "Największy polski e-commerce - ekspansja regionalna."),
     "Pepco Group (PCO.WA)": ("PCO.WA", "Szybko rosnąca sieć dyskontowa w Europie - ekspansja w wielu krajach."),
+    "Text (TXT.WA)": ("TXT.WA", "Polski SaaS (dawniej LiveChat) - oprogramowanie do obsługi klienta, wysokie marże."),
+    "XTB (XTB.WA)": ("XTB.WA", "Broker/fintech - dynamiczny wzrost bazy klientów detalicznych."),
+    "Dino Polska (DNP.WA)": ("DNP.WA", "Sieć supermarketów - konsekwentny, szybki wzrost liczby sklepów."),
 }
 
 
