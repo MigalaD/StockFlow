@@ -58,6 +58,7 @@ from backend.routers.pdf import router as pdf_router
 from backend.routers.forecast import router as forecast_router, news_router
 from backend.routers.backtest import router as backtest_router
 from backend.routers.growth import growth_router
+from backend.routers.dividends import dividends_router
 from backend.routers.scanner_journal import (
     scan_router,
     journal_router,
@@ -200,6 +201,7 @@ app.include_router(backtest_router,  prefix=API_V1)
 app.include_router(scan_router,      prefix=API_V1)
 app.include_router(journal_router,   prefix=API_V1)
 app.include_router(growth_router,    prefix=API_V1)
+app.include_router(dividends_router, prefix=API_V1)
 
 
 # ── Root endpoints ────────────────────────────────────────────────────
