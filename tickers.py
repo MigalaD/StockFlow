@@ -85,6 +85,17 @@ SKANER_GPW = [
     "KRU.WA", "ALR.WA", "CCC.WA", "ZAB.WA", "BDX.WA", "KTY.WA",
 ]
 
+# Spółki dywidendowe GPW — kandydaci do panelu "Dywidendy".
+# Kuratorowana lista spółek znanych z regularnych wypłat. Nie każda
+# musi płacić co roku — panel sam wykryje status z historii wypłat
+# (spółki bez dywidend dostają status "nie wypłaca", nie błąd).
+SPOLKI_DYWIDENDOWE_GPW = [
+    "PKO.WA", "PZU.WA", "PEO.WA", "PKN.WA", "KGH.WA", "SPL.WA",
+    "KTY.WA", "ACP.WA", "LPP.WA", "WPL.WA", "OPL.WA", "PGE.WA",
+    "MBK.WA", "BHW.WA", "ALR.WA", "KRU.WA", "GPW.WA", "ATT.WA",
+    "TPE.WA", "ENA.WA", "CPS.WA", "ASE.WA", "NEU.WA", "BDX.WA",
+]
+
 # Europa Zachodnia - Niemcy (DAX), UK (FTSE), Francja (CAC40), Holandia
 SKANER_EUROPA = [
     # Niemcy
