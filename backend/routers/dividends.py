@@ -1,257 +1,163 @@
 # Copyright (c) 2026 Damian Migała / StockFlow
 
 """
-Score dywidendowy — dla panelu "Dywidendy".
+Router: /dividends — panel spółek dywidendowych (GPW).
 
-Kluczowa decyzja projektowa (potwierdzona sondą danych GPW):
-liczymy WSZYSTKO Z HISTORII WYPŁAT (stock.dividends), która jest
-niezawodna, a NIE z pola .info['dividendYield'] — bo .info bywa
-niespójne i czasem błędne (np. KGHM pokazywał 0.45% i payout 0%).
+Analizuje kuratorowaną listę polskich spółek dywidendowych, licząc
+dedykowany score dywidendowy Z HISTORII WYPŁAT (nie z zawodnego .info).
 
-Trzy filary score (0-100):
-  1. Bezpieczeństwo (40%) — czy dywidenda się utrzyma (payout ratio)
-  2. Ciągłość i wzrost (35%) — regularność i trend wypłat z historii
-  3. Atrakcyjność (25%) — stopa dywidendy wyliczona z historii + ceny
+Zwraca ranking posortowany po score dywidendowym, z podziałem na:
+  - spółki płacące (z pełnym profilem)
+  - spółki niewypłacające (osobno, jako informacja — nie błąd)
 
-Przypadki brzegowe (znalezione w sondzie):
-  - Spółka nie płaci dywidend (np. Dino) -> status "NIE_PLACI", nie błąd
-  - Payout > 100% (np. Orlen) -> flaga ostrzegawcza, obniżony score
-  - Brak/niepełne dane -> status "BRAK_DANYCH", pomijana w rankingu
-
-Polski kontekst: obliczamy też stopę NETTO po podatku Belki (19%).
+Score i logika: patrz dividends.py (moduł w root repo).
 """
 
 from __future__ import annotations
 
+import os
+import sys
+import time
 import logging
-from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-log = logging.getLogger("stockflow.dividends")
+from fastapi import APIRouter
 
-PODATEK_BELKI = 0.19   # 19% podatek od zysków kapitałowych (dywidend) w PL
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
+import dividends as div_engine
+from tickers import SPOLKI_DYWIDENDOWE_GPW
+from backend.core.security import OptionalCurrentUser
 
-def _roczne_dywidendy(dividends) -> dict[int, float]:
-    """Grupuje serię wypłat (pandas Series z DatetimeIndex) na sumy roczne.
-    Zwraca {rok: suma_wyplat_w_roku}."""
-    roczne: dict[int, float] = {}
-    for data, kwota in dividends.items():
-        rok = data.year
-        roczne[rok] = roczne.get(rok, 0.0) + float(kwota)
-    return roczne
+log = logging.getLogger("stockflow.dividends_router")
 
+dividends_router = APIRouter(prefix="/dividends", tags=["dividends"])
 
-def analyze_dividend(ticker: str, dividends, current_price: float | None,
-                     currency: str = "PLN") -> dict:
-    """
-    Główna funkcja: analizuje profil dywidendowy spółki z historii wypłat.
+# Cache wyników w pamięci: (timestamp, payload). TTL 15 min.
+_cache: tuple[float, dict] | None = None
+_CACHE_TTL_S = 15 * 60
 
-    Argumenty:
-      ticker         — symbol (do logów)
-      dividends      — pandas Series wypłat (z yfinance stock.dividends)
-      current_price  — aktualna cena (do wyliczenia stopy); może być None
-      currency       — waluta instrumentu
-
-    Zwraca dict ze statusem, score i szczegółami. Status:
-      "OK"          — pełny profil dywidendowy
-      "NIE_PLACI"   — spółka nie wypłaca dywidend (nie błąd!)
-      "BRAK_DANYCH" — za mało danych do oceny
-    """
-    # Brak historii = spółka nie płaci albo brak danych
-    if dividends is None or len(dividends) == 0:
-        return {
-            "ticker": ticker, "status": "NIE_PLACI",
-            "score": None, "yield_brutto": None, "yield_netto": None,
-            "lata_ciaglosci": 0, "ostatnia_wyplata": None,
-            "payout_ratio": None, "flagi": [],
-            "opis": "Spółka nie wypłaca dywidendy",
-        }
-
-    roczne = _roczne_dywidendy(dividends)
-    biezacy_rok = datetime.now(timezone.utc).year
-
-    # Dywidenda z ostatnich 12 miesięcy (do wyliczenia stopy)
-    # Bierzemy sumę z ostatniego pełnego roku wypłat.
-    lata_z_wyplatami = sorted([r for r in roczne if roczne[r] > 0], reverse=True)
-    if not lata_z_wyplatami:
-        return {
-            "ticker": ticker, "status": "NIE_PLACI",
-            "score": None, "yield_brutto": None, "yield_netto": None,
-            "lata_ciaglosci": 0, "ostatnia_wyplata": None,
-            "payout_ratio": None, "flagi": [],
-            "opis": "Spółka nie wypłaca dywidendy",
-        }
-
-    # Ostatnia znacząca dywidenda roczna (pomijamy bieżący rok jeśli niepełny)
-    ostatni_pelny_rok = lata_z_wyplatami[0]
-    if ostatni_pelny_rok == biezacy_rok and len(lata_z_wyplatami) > 1:
-        # bieżący rok może być niepełny — użyj do stopy, ale porównuj z poprzednim
-        dywidenda_roczna = roczne[ostatni_pelny_rok]
-    else:
-        dywidenda_roczna = roczne[ostatni_pelny_rok]
-
-    ostatnia_data = str(dividends.index[-1].date())
-
-    flagi: list[str] = []
-
-    # ── FILAR 1: Bezpieczeństwo (0-100, waga 40%) ──
-    # Bazujemy na payout ratio jeśli dostępny (z info, przekazany osobno),
-    # ale głównie oceniamy przez pryzmat stabilności wypłat.
-    # Tu payout przyjdzie z zewnątrz (info) — ale nie ufamy mu bezkrytycznie.
-    bezpieczenstwo = 60.0  # bazowa wartość neutralna
-
-    # ── FILAR 2: Ciągłość i wzrost (0-100, waga 35%) ──
-    lata_ciaglosci = _policz_ciaglosc(roczne, biezacy_rok)
-    ciaglosc_score = min(100, 40 + lata_ciaglosci * 6)  # 10 lat -> 100
-
-    # Trend wzrostowy: porównaj średnią z ostatnich 3 lat do wcześniejszych 3
-    trend = _ocen_trend(roczne, biezacy_rok)
-    if trend == "rosnacy":
-        ciaglosc_score = min(100, ciaglosc_score + 10)
-        flagi.append(("pozytyw", "Rosnąca dywidenda"))
-    elif trend == "malejacy":
-        ciaglosc_score = max(0, ciaglosc_score - 15)
-        flagi.append(("ostrzezenie", "Malejąca dywidenda"))
-
-    if lata_ciaglosci >= 10:
-        flagi.append(("pozytyw", f"{lata_ciaglosci} lat nieprzerwanych wypłat"))
-
-    # ── FILAR 3: Atrakcyjność (0-100, waga 25%) ──
-    yield_brutto = None
-    yield_netto = None
-    atrakcyjnosc = 50.0
-    if current_price and current_price > 0:
-        yield_brutto = round(dywidenda_roczna / current_price * 100, 2)
-        yield_netto = round(yield_brutto * (1 - PODATEK_BELKI), 2)
-
-        if 3 <= yield_brutto <= 7:
-            atrakcyjnosc = 85  # słodki punkt — atrakcyjna ale zdrowa
-        elif 1 <= yield_brutto < 3:
-            atrakcyjnosc = 60  # niska ale bezpieczna
-        elif 7 < yield_brutto <= 10:
-            atrakcyjnosc = 65
-            flagi.append(("ostrzezenie", "Bardzo wysoka stopa — sprawdź trwałość"))
-        elif yield_brutto > 10:
-            atrakcyjnosc = 40
-            flagi.append(("ostrzezenie", "Ekstremalnie wysoka stopa — ryzyko cięcia"))
-        else:
-            atrakcyjnosc = 45
-
-    # ── Score końcowy ──
-    score = round(
-        bezpieczenstwo * 0.40 +
-        ciaglosc_score * 0.35 +
-        atrakcyjnosc   * 0.25,
-        1
-    )
-
-    return {
-        "ticker": ticker,
-        "status": "OK",
-        "score": score,
-        "yield_brutto": yield_brutto,
-        "yield_netto": yield_netto,
-        "lata_ciaglosci": lata_ciaglosci,
-        "ostatnia_wyplata": ostatnia_data,
-        "dywidenda_roczna": round(dywidenda_roczna, 2),
-        "trend": trend,
-        "payout_ratio": None,   # uzupełniane z info na poziomie routera
-        "flagi": flagi,
-        "opis": _opis_slowny(score, lata_ciaglosci, trend),
-        "_filary": {
-            "bezpieczenstwo": round(bezpieczenstwo, 0),
-            "ciaglosc": round(ciaglosc_score, 0),
-            "atrakcyjnosc": round(atrakcyjnosc, 0),
-        },
-    }
+# Czytelne nazwy spółek (fallback gdy yfinance nie zwróci longName)
+_NAZWY = {
+    "PKO.WA": "PKO BP", "PZU.WA": "PZU", "PEO.WA": "Bank Pekao",
+    "PKN.WA": "Orlen", "KGH.WA": "KGHM", "SPL.WA": "Santander BP",
+    "KTY.WA": "Grupa Kęty", "ACP.WA": "Asseco Poland", "LPP.WA": "LPP",
+    "WPL.WA": "Wirtualna Polska", "OPL.WA": "Orange Polska", "PGE.WA": "PGE",
+    "MBK.WA": "mBank", "BHW.WA": "Bank Handlowy", "ALR.WA": "Alior Bank",
+    "KRU.WA": "Kruk", "GPW.WA": "GPW", "ATT.WA": "Grupa Azoty",
+    "TPE.WA": "Tauron", "ENA.WA": "Enea", "CPS.WA": "Cyfrowy Polsat",
+    "ASE.WA": "Asseco SEE", "NEU.WA": "Neuca", "BDX.WA": "Budimex",
+}
 
 
-def zastosuj_payout(profil: dict, payout_ratio: float | None) -> dict:
-    """Nakłada payout ratio (z info) na profil — koryguje filar bezpieczeństwa.
-    Wywoływane osobno, bo payout pochodzi z .info które bywa zawodne,
-    więc traktujemy je jako korektę, nie fundament."""
-    if profil["status"] != "OK" or payout_ratio is None:
+def _analyze_one(ticker: str) -> dict | None:
+    """Pobiera dane z yfinance i liczy profil dywidendowy jednej spółki."""
+    try:
+        import yfinance as yf
+        t = yf.Ticker(ticker)
+
+        # Historia wypłat — niezawodne źródło (endpoint chart)
+        dividends = t.dividends
+
+        # Cena bieżąca — do wyliczenia stopy. Próbujemy z fast_info (szybkie),
+        # potem z historii jako fallback.
+        current_price = None
+        try:
+            fi = t.fast_info
+            current_price = fi.get("lastPrice") or fi.get("last_price")
+        except Exception:
+            pass
+        if not current_price:
+            try:
+                hist = t.history(period="5d")
+                if not hist.empty:
+                    current_price = float(hist["Close"].iloc[-1])
+            except Exception:
+                pass
+
+        # Payout ratio z .info — traktowane jako korekta, nie fundament
+        # (bywa zawodne, więc łapiemy błąd i idziemy dalej bez niego)
+        payout = None
+        try:
+            info = t.info or {}
+            payout = info.get("payoutRatio")
+        except Exception:
+            pass
+
+        profil = div_engine.analyze_dividend(
+            ticker, dividends, current_price, currency="PLN"
+        )
+        profil = div_engine.zastosuj_payout(profil, payout)
+
+        # Dodaj czytelną nazwę
+        profil["nazwa"] = _NAZWY.get(ticker, ticker.replace(".WA", ""))
+        profil["cena"] = round(current_price, 2) if current_price else None
+
+        # Usuń pole techniczne z odpowiedzi (wewnętrzne filary zostają, przydają się w UI)
         return profil
 
-    profil["payout_ratio"] = round(payout_ratio, 3)
-    bezp = profil["_filary"]["bezpieczenstwo"]
-
-    if payout_ratio > 1.0:
-        bezp = 25
-        profil["flagi"].insert(0, ("ostrzezenie", "Dywidenda niepokryta zyskiem (payout >100%)"))
-    elif payout_ratio > 0.8:
-        bezp = 55
-        profil["flagi"].append(("neutralny", "Wysoki payout ratio"))
-    elif payout_ratio > 0.4:
-        bezp = 80
-        profil["flagi"].append(("pozytyw", "Zdrowy payout ratio"))
-    elif payout_ratio > 0:
-        bezp = 70
-
-    profil["_filary"]["bezpieczenstwo"] = bezp
-    # Przelicz score z nowym bezpieczeństwem
-    profil["score"] = round(
-        bezp * 0.40 +
-        profil["_filary"]["ciaglosc"] * 0.35 +
-        profil["_filary"]["atrakcyjnosc"] * 0.25,
-        1
-    )
-    return profil
+    except Exception as e:
+        log.warning("Dividends: błąd analizy %s: %s", ticker, e)
+        return None
 
 
-def _policz_ciaglosc(roczne: dict[int, float], biezacy_rok: int) -> int:
-    """Liczy ile lat WSTECZ bez przerwy spółka płaciła dywidendę.
-    Pomija bieżący rok jeśli jeszcze nie było wypłaty (może być za wcześnie)."""
-    lata = 0
-    rok = biezacy_rok
-    # jeśli w tym roku jeszcze nie zapłacono, zacznij od poprzedniego
-    if roczne.get(rok, 0) == 0:
-        rok -= 1
-    while roczne.get(rok, 0) > 0:
-        lata += 1
-        rok -= 1
-    return lata
+@dividends_router.get(
+    "",
+    summary="Dividend stocks ranking",
+    description="Ranking spółek dywidendowych GPW ze score liczonym z historii wypłat.",
+)
+def get_dividends(_user: OptionalCurrentUser = None) -> dict:
+    # Cache 15 min — analiza 24 spółek przez yfinance przy każdym wejściu
+    # grozi blokadą 429 i wolnym ładowaniem. Wyniki nie zmieniają się co minutę.
+    global _cache
+    now = time.time()
+    if _cache and (now - _cache[0]) < _CACHE_TTL_S:
+        return _cache[1]
 
+    placace = []
+    niewyplacajace = []
+    bledy = 0
 
-def _ocen_trend(roczne: dict[int, float], biezacy_rok: int) -> str:
-    """Porównuje średnią wypłat z ostatnich ~3 lat do wcześniejszych ~3.
-    Zwraca 'rosnacy' / 'malejacy' / 'stabilny'."""
-    lata = sorted([r for r in roczne if roczne[r] > 0], reverse=True)
-    if len(lata) < 4:
-        return "stabilny"  # za mało danych na ocenę trendu
-    ostatnie = lata[:3]
-    wczesniejsze = lata[3:6]
-    if not wczesniejsze:
-        return "stabilny"
-    sr_ostatnie = sum(roczne[r] for r in ostatnie) / len(ostatnie)
-    sr_wczesniej = sum(roczne[r] for r in wczesniejsze) / len(wczesniejsze)
-    if sr_wczesniej == 0:
-        return "stabilny"
-    zmiana = (sr_ostatnie - sr_wczesniej) / sr_wczesniej
-    if zmiana > 0.10:
-        return "rosnacy"
-    if zmiana < -0.10:
-        return "malejacy"
-    return "stabilny"
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {
+            executor.submit(_analyze_one, t): t
+            for t in SPOLKI_DYWIDENDOWE_GPW
+        }
+        for future in as_completed(futures):
+            r = future.result()
+            if r is None:
+                bledy += 1
+                continue
+            if r["status"] == "OK":
+                placace.append(r)
+            elif r["status"] == "NIE_PLACI":
+                niewyplacajace.append({
+                    "ticker": r["ticker"], "nazwa": r["nazwa"],
+                    "opis": r["opis"],
+                })
 
+    # Ranking: najwyższy score dywidendowy na górze
+    placace.sort(key=lambda x: x["score"], reverse=True)
 
-def _opis_slowny(score: float, lata: int, trend: str) -> str:
-    """Krótki, ludzki opis profilu dywidendowego."""
-    if score >= 75:
-        baza = "Solidny profil dywidendowy"
-    elif score >= 55:
-        baza = "Przyzwoity profil dywidendowy"
-    else:
-        baza = "Profil dywidendowy z zastrzeżeniami"
+    # Statystyki zbiorcze dla nagłówka panelu
+    srednia_stopa = None
+    stopy = [p["yield_brutto"] for p in placace if p["yield_brutto"] is not None]
+    if stopy:
+        srednia_stopa = round(sum(stopy) / len(stopy), 2)
 
-    dodatki = []
-    if lata >= 10:
-        dodatki.append("długa historia wypłat")
-    if trend == "rosnacy":
-        dodatki.append("dywidenda rośnie")
-    elif trend == "malejacy":
-        dodatki.append("dywidenda maleje")
-
-    if dodatki:
-        return f"{baza} — {', '.join(dodatki)}"
-    return baza
+    payload = {
+        "placace": placace,
+        "niewyplacajace": niewyplacajace,
+        "statystyki": {
+            "liczba_placacych": len(placace),
+            "liczba_niewyplacajacych": len(niewyplacajace),
+            "srednia_stopa_brutto": srednia_stopa,
+            "podatek_belki_pct": 19,
+        },
+    }
+    # Zapisz do cache tylko sensowny wynik (nie pusty po awarii yfinance)
+    if placace or niewyplacajace:
+        _cache = (time.time(), payload)
+    return payload
