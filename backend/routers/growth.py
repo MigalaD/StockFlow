@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -31,6 +32,10 @@ from backend.core.security import OptionalCurrentUser
 log = logging.getLogger("stockflow.growth")
 
 growth_router = APIRouter(prefix="/growth", tags=["growth"])
+
+# Cache wyników w pamięci: (timestamp, payload). TTL 15 min.
+_cache: tuple[float, dict] | None = None
+_CACHE_TTL_S = 15 * 60
 
 # Kategoria wywnioskowana z pozycji na liście (na podstawie komentarzy grup).
 # Prosto: mapujemy ticker -> kategoria dla ładnego grupowania w UI.
@@ -74,7 +79,15 @@ def _analyze_one(name: str, ticker: str, opis: str) -> dict | None:
     summary="Growth stocks",
     description="Analiza spółek wzrostowych — score, cena, kategoria. Posortowane malejąco wg score.",
 )
-async def get_growth(_user: OptionalCurrentUser = None) -> dict:
+def get_growth(_user: OptionalCurrentUser = None) -> dict:
+    # Cache 15 min — bez niego każde wejście odpytuje yfinance ~20 razy,
+    # co przy wielu użytkownikach grozi blokadą 429 (Yahoo rate limit)
+    # i niepotrzebnie wydłuża ładowanie. Score nie zmienia się co minutę.
+    global _cache
+    now = time.time()
+    if _cache and (now - _cache[0]) < _CACHE_TTL_S:
+        return _cache[1]
+
     results = []
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = {
@@ -91,8 +104,12 @@ async def get_growth(_user: OptionalCurrentUser = None) -> dict:
     # Zbierz też listę kategorii (do filtrów w UI)
     categories = sorted({r["category"] for r in results})
 
-    return {
+    payload = {
         "stocks":     results,
         "categories": categories,
         "count":      len(results),
     }
+    # Zapisz do cache tylko sensowny wynik (nie pusty po awarii yfinance)
+    if results:
+        _cache = (time.time(), payload)
+    return payload
