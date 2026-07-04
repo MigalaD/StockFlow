@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
 import {
   LayoutDashboard, TrendingUp, GitCompare, Star, Briefcase,
-  Bitcoin, ScanLine, FlaskConical, BookText, Settings, Info, LogOut, type LucideIcon,
+  Bitcoin, ScanLine, FlaskConical, BookText, Settings, Info, LogOut, Rocket, Coins, type LucideIcon,
 } from 'lucide-react'
 import { useAuthStore } from '../../store'
 
@@ -33,6 +33,8 @@ const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
     label: 'Narzędzia',
     items: [
       { href: '/scanner',  icon: ScanLine,        tKey: 'scanner'  },
+      { href: '/growth',   icon: Rocket,       tKey: 'growth'   },
+      { href: '/dividends', icon: Coins,       tKey: 'dividends' },
       { href: '/backtest', icon: FlaskConical, tKey: 'backtest' },
       { href: '/crypto',   icon: Bitcoin,      tKey: 'crypto'   },
     ],

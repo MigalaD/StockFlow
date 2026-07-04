@@ -99,6 +99,7 @@ function PriceChart({
   mode,
   showBollinger,
   showMA,
+  showVolume,
   live,
   rangeBars,
 }: {
@@ -107,6 +108,7 @@ function PriceChart({
   mode:          ChartMode
   showBollinger: boolean
   showMA:        boolean
+  showVolume:    boolean
   live:          boolean
   rangeBars:     number | null   // ile ostatnich świec pokazać (null = wszystko)
 }) {
@@ -183,6 +185,28 @@ function PriceChart({
         series.setData(data.candles.map(c => ({ time: toTime(c.timestamp), value: c.close })))
       }
 
+      // Histogram wolumenu — dolne ~22% wykresu, na własnej skali.
+      // Kolor wg kierunku świecy, przyciemniony żeby nie konkurował z ceną.
+      if (showVolume) {
+        const hasVolume = data.candles.some(c => c.volume > 0)
+        if (hasVolume) {
+          const vol = chart.addHistogramSeries({
+            priceScaleId: 'volume',
+            priceFormat: { type: 'volume' },
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
+          chart.priceScale('volume').applyOptions({
+            scaleMargins: { top: 0.78, bottom: 0 },
+          })
+          vol.setData(data.candles.map(c => ({
+            time: toTime(c.timestamp),
+            value: c.volume,
+            color: c.close >= c.open ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)',
+          })))
+        }
+      }
+
       // Bollinger Bands overlay
       if (showBollinger) {
         const hasUpper = data.candles.some(c => c.bb_upper != null)
@@ -240,7 +264,7 @@ function PriceChart({
         chartRef.current = null
       }
     }
-  }, [data, mode, interval, showBollinger, showMA, rangeBars])
+  }, [data, mode, interval, showBollinger, showMA, showVolume, rangeBars])
 
   if (isLoading) return (
     <div className="h-[360px] flex items-center justify-center"><Spinner size="lg" /></div>
@@ -526,6 +550,101 @@ function componentLabel(key: string): string {
   return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')
 }
 
+function MethodologyPanel() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="mb-3 bg-surface-1 border border-border rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-surface-2 transition-colors"
+      >
+        <span className="flex items-center gap-2 text-sm text-text-mid">
+          <span className="w-5 h-5 rounded-full border border-border flex items-center justify-center text-xs font-bold text-brand-green shrink-0">i</span>
+          Skąd wynika taki rozkład wag? Metodologia score
+        </span>
+        <span className="text-muted text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 pt-1 text-sm text-text-lo leading-relaxed space-y-3 animate-fade-in border-t border-border">
+          <p>
+            Score StockFlow (0–100) to <strong className="text-text-mid">ważona średnia kilkunastu wskaźników</strong>.
+            Wagi nie są przypadkowe — odzwierciedlają sposób, w jaki oceniają spółki uznani inwestorzy,
+            łącząc analizę fundamentalną z techniczną. Wagi sumują się do 100%.
+          </p>
+
+          <div>
+            <div className="text-2xs text-muted uppercase tracking-wider mb-2">Rozkład wag według obszaru</div>
+            <div className="space-y-1.5">
+              {[
+                { label: 'Fundamenty i wycena', pct: 30, desc: 'wycena, wzrost przychodów, ROE, dług, dywidenda' },
+                { label: 'Trend techniczny', pct: 26, desc: 'położenie ceny względem średnich MA50/200, MACD' },
+                { label: 'Momentum', pct: 22, desc: 'RSI, zmiana ceny w ostatnich okresach' },
+                { label: 'Aktywność rynku', pct: 14, desc: 'wolumen, zmienność' },
+                { label: 'Sentyment', pct: 8, desc: 'wydźwięk ostatnich newsów' },
+              ].map(g => (
+                <div key={g.label} className="flex items-center gap-3">
+                  <span className="text-xs font-mono font-bold text-text-hi w-9 text-right tabular-nums">{g.pct}%</span>
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                    <div className="h-full rounded-full" style={{ width: `${g.pct * 3.3}%`, background: '#22C55E' }} />
+                  </div>
+                  <span className="text-xs text-text-lo w-40 shrink-0 hidden sm:block">{g.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-2xs text-muted uppercase tracking-wider mb-1.5">Dlaczego taki podział</div>
+            <ul className="space-y-1.5 text-xs">
+              <li>
+                <strong className="text-text-mid">Fundamenty ważą najwięcej (30%)</strong>, bo to one decydują
+                o długoterminowej wartości. Sama niska cena (niskie P/E) nie wystarcza — spółka może być tania,
+                bo ma realne problemy. Dlatego wycenę uzupełniają wzrost, rentowność i zadłużenie —
+                zgodnie z podejściem Grahama, Lyncha i Fishera.
+              </li>
+              <li>
+                <strong className="text-text-mid">Trend i momentum razem to ~48%</strong>, bo nawet dobra spółka
+                w wyraźnym trendzie spadkowym bywa ryzykowna. To odpowiada szkole O'Neila i Minerviniego,
+                gdzie siła trendu jest równie ważna co fundamenty.
+              </li>
+              <li>
+                <strong className="text-text-mid">Sentyment ma najmniejszą wagę (8%)</strong> celowo —
+                to sygnał pomocniczy, najbardziej zmienny i podatny na szum. Nie chcemy, by chwilowe
+                nagłówki dominowały nad twardymi danymi.
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <div className="text-2xs text-muted uppercase tracking-wider mb-1.5">Dopasowanie do typu instrumentu</div>
+            <p className="text-xs">
+              Dla ETF-ów, surowców i kryptowalut składowe fundamentalne (P/E, dywidenda) są automatycznie
+              wykluczane, a ich waga rozdzielana na pozostałe wskaźniki — bo te instrumenty nie mają
+              klasycznych fundamentów spółki. Krypto dostaje dodatkowo składową dominacji BTC.
+            </p>
+          </div>
+
+          <div>
+            <div className="text-2xs text-muted uppercase tracking-wider mb-1.5">Inspiracje</div>
+            <p className="text-xs">
+              Model czerpie z klasyków inwestowania: <em className="text-text-mid">Benjamin Graham</em> („Inteligentny inwestor" —
+              wartość i margines bezpieczeństwa), <em className="text-text-mid">Peter Lynch</em> (wskaźnik PEG, wzrost),
+              <em className="text-text-mid"> William O'Neil</em> (metoda CAN SLIM, siła względna) oraz
+              <em className="text-text-mid"> Mark Minervini</em> (trend i momentum).
+            </p>
+          </div>
+
+          <p className="text-2xs text-muted pt-1 border-t border-border">
+            Score to narzędzie edukacyjne wspierające analizę, nie rekomendacja inwestycyjna.
+            Żaden model nie przewiduje przyszłości — pomaga uporządkować ocenę.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
   return (
     <div className="space-y-5">
@@ -533,6 +652,7 @@ function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
       <div>
         <SectionHeader title="Składowe wyniku DT" icon="🧮"
           desc="Jak każdy wskaźnik wpłynął na końcowy wynik długoterminowy" />
+        <MethodologyPanel />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {analysis.components.map(comp => (
             <div key={comp.key} className="bg-surface-2 rounded-xl p-3">
@@ -816,6 +936,7 @@ function AnalysisContent() {
   const [chartMode, setChartMode] = useState<ChartMode>('candles')
   const [showBollinger, setShowBollinger] = useState(false)
   const [showMA,        setShowMA]        = useState(false)
+  const [showVolume,    setShowVolume]    = useState(true)
   const [live,          setLive]          = useState(false)
   const [rangeBars,     setRangeBars]     = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>('chart')
@@ -1071,6 +1192,18 @@ function AnalysisContent() {
                     MA 20/50/200
                   </button>
 
+                  <button
+                    onClick={() => setShowVolume(v => !v)}
+                    className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
+                    style={{
+                      background:  showVolume ? 'rgba(20,184,166,0.18)' : '#141C2B',
+                      color:       showVolume ? '#2DD4BF' : '#64748B',
+                      border:      `1px solid ${showVolume ? 'rgba(20,184,166,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                    }}
+                  >
+                    Wolumen
+                  </button>
+
                   <div className="w-px h-5 bg-border mx-1" />
 
                   {/* Zakres czasu */}
@@ -1097,7 +1230,7 @@ function AnalysisContent() {
                 </div>
 
                 <PriceChart ticker={ticker} interval={interval} mode={chartMode}
-                  showBollinger={showBollinger} showMA={showMA} live={live} rangeBars={rangeBars} />
+                  showBollinger={showBollinger} showMA={showMA} showVolume={showVolume} live={live} rangeBars={rangeBars} />
               </div>
             )}
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -8,6 +8,38 @@ import {
   ArrowRight, Check, LineChart as LineChartIcon,
 } from 'lucide-react'
 import { useAuthStore } from '../../store'
+
+// ── Scroll reveal ─────────────────────────────────────────────────────
+// Klasę ukrywającą nadajemy dopiero po stronie klienta i tylko gdy
+// IntersectionObserver jest dostępny — bez JS (albo przy reduced-motion)
+// treść od razu jest widoczna. Zero ryzyka "pustej strony".
+
+function useReveal<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  const [state, setState] = useState<'idle' | 'hidden' | 'shown'>('idle')
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    setState('hidden')
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setState('shown')
+          io.disconnect()
+        }
+      },
+      { threshold: 0.12 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  const cls = state === 'idle' ? '' : state === 'shown' ? 'reveal revealed' : 'reveal'
+  return { ref, cls }
+}
 
 // ── Mini animated score ring (hero signature) ─────────────────────────
 
@@ -63,6 +95,18 @@ const STEPS = [
 export default function WelcomePage() {
   const router = useRouter()
   const { isAuth, _hasHydrated, sessionVerified } = useAuthStore()
+  const [barsIn, setBarsIn] = useState(false)
+
+  const features = useReveal<HTMLElement>()
+  const steps    = useReveal<HTMLDivElement>()
+  const cta      = useReveal<HTMLDivElement>()
+
+  // Paski składowych w hero-karcie rosną chwilę po starcie pierścienia —
+  // jeden spójny moment animacji zamiast rozproszonych efektów.
+  useEffect(() => {
+    const t = setTimeout(() => setBarsIn(true), 500)
+    return () => clearTimeout(t)
+  }, [])
 
   // Zalogowanych (z POTWIERDZONYM tokenem) przekieruj prosto do aplikacji.
   // Czekamy na sessionVerified, nie tylko _hasHydrated — sama obecność
@@ -162,11 +206,16 @@ export default function WelcomePage() {
                     { label: 'Trend', score: 78 },
                     { label: 'Momentum', score: 65 },
                     { label: 'Wartość', score: 71 },
-                  ].map(c => (
+                  ].map((c, i) => (
                     <div key={c.label} className="flex items-center gap-3">
                       <span className="text-2xs text-muted w-16">{c.label}</span>
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                        <div className="h-full rounded-full" style={{ width: `${c.score}%`, background: '#22C55E' }} />
+                        <div className="h-full rounded-full"
+                          style={{
+                            width: barsIn ? `${c.score}%` : '0%',
+                            background: '#22C55E',
+                            transition: `width 0.9s cubic-bezier(0.16,1,0.3,1) ${i * 120}ms`,
+                          }} />
                       </div>
                       <span className="text-2xs font-mono font-bold w-6 text-right" style={{ color: '#22C55E' }}>{c.score}</span>
                     </div>
@@ -179,9 +228,9 @@ export default function WelcomePage() {
       </section>
 
       {/* Features */}
-      <section className="max-w-6xl mx-auto px-6 py-16">
+      <section ref={features.ref} className={`max-w-6xl mx-auto px-6 py-16 ${features.cls}`}>
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-text-hi tracking-tight mb-3">
+          <h2 className="text-3xl font-bold text-text-hi tracking-tight mb-3 text-balance">
             Wszystko czego potrzebujesz do analizy
           </h2>
           <p className="text-text-lo max-w-xl mx-auto">
@@ -192,8 +241,11 @@ export default function WelcomePage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {FEATURES.map(({ icon: Icon, title, desc }) => (
             <div key={title}
-              className="bg-surface-1 border border-border rounded-xl2 p-6 hover:bg-surface-2 hover:border-border-hi transition-all">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+              className="group bg-surface-1 border border-border rounded-xl2 p-6
+                         hover:bg-surface-2 hover:border-border-hi hover:-translate-y-0.5
+                         transition-all duration-200">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4
+                              transition-transform duration-200 group-hover:scale-110"
                 style={{ background: 'rgba(34,197,94,0.1)' }}>
                 <Icon className="w-5 h-5 text-brand-green" />
               </div>
@@ -206,8 +258,8 @@ export default function WelcomePage() {
 
       {/* How it works */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <div className="bg-surface-1 border border-border rounded-2xl p-10">
-          <h2 className="text-2xl font-bold text-text-hi tracking-tight mb-10 text-center">
+        <div ref={steps.ref} className={`bg-surface-1 border border-border rounded-2xl p-10 ${steps.cls}`}>
+          <h2 className="text-2xl font-bold text-text-hi tracking-tight mb-10 text-center text-balance">
             Od symbolu do decyzji w trzech krokach
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
@@ -229,7 +281,8 @@ export default function WelcomePage() {
 
       {/* CTA */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <div className="relative overflow-hidden rounded-2xl p-12 text-center border border-border"
+        <div ref={cta.ref}
+          className={`relative overflow-hidden rounded-2xl p-12 text-center border border-border ${cta.cls}`}
           style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(20,184,166,0.06))' }}>
           <div className="absolute inset-0 opacity-30 pointer-events-none"
             style={{ background: 'radial-gradient(circle at 50% 0%, rgba(34,197,94,0.15), transparent 60%)' }} />

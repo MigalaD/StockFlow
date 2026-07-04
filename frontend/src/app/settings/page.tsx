@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { AppShell } from '../../components/layout/AppShell'
 import { SectionHeader, Button, Input } from '../../components/ui'
 import { useAuthStore, useSettingsStore } from '../../store'
-import { AuthGuard } from '../../components/shared/AuthGuard'
 import toast from 'react-hot-toast'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
@@ -238,5 +237,5 @@ function SettingsContent() {
 }
 
 export default function SettingsPage() {
-  return <AuthGuard><SettingsContent /></AuthGuard>
+  return <SettingsContent />
 }

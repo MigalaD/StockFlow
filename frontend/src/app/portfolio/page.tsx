@@ -11,7 +11,6 @@ import { AppShell } from '../../components/layout/AppShell'
 import { SectionHeader, Button, Input, EmptyState, Spinner, Tag } from '../../components/ui'
 import { scoreColor } from '../../components/ui/ScoreBadge'
 import { portfolioApi, type PositionItem } from '../../lib/api'
-import { AuthGuard } from '../../components/shared/AuthGuard'
 
 const SECTOR_COLORS = [
   '#22C55E','#14B8A6','#3B82F6','#F59E0B',
@@ -203,14 +202,16 @@ function PortfolioContent() {
           <div className="flex gap-5">
             <div className="text-right">
               <div className="text-[10px] text-muted uppercase tracking-wider">Łączna wartość</div>
-              <div className="text-lg font-bold tabular-nums text-white">
+              <div className="text-lg font-bold tabular-nums font-mono text-text-hi">
                 {portfolio.total_value.toFixed(2)}
+                <span className="text-sm text-muted ml-1">{portfolio.base_currency}</span>
               </div>
             </div>
             <div className="text-right">
               <div className="text-[10px] text-muted uppercase tracking-wider">P&L łącznie</div>
-              <div className="text-lg font-bold tabular-nums" style={{ color: totalPnlPos ? '#22C55E' : '#EF4444' }}>
+              <div className="text-lg font-bold tabular-nums font-mono" style={{ color: totalPnlPos ? '#22C55E' : '#EF4444' }}>
                 {totalPnlPos ? '+' : ''}{portfolio.total_pnl.toFixed(2)}
+                <span className="text-sm text-muted ml-1">{portfolio.base_currency}</span>
                 <span className="text-sm ml-1">({totalPnlPos ? '+' : ''}{portfolio.total_pnl_pct.toFixed(2)}%)</span>
               </div>
             </div>
@@ -301,5 +302,5 @@ function PortfolioContent() {
 }
 
 export default function PortfolioPage() {
-  return <AuthGuard><PortfolioContent /></AuthGuard>
+  return <PortfolioContent />
 }

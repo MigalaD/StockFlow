@@ -154,6 +154,7 @@ class PortfolioResponse(BaseModel):
     total_value:         float
     total_pnl:           float
     total_pnl_pct:       float
+    base_currency:       str = "PLN"
     allocation_by_sector: dict[str, float]
     warnings:            list[str]
 

@@ -347,10 +347,13 @@ def get_alpaca_bars(ticker: str, interval: str = "1d", limit: int = 365) -> list
     params = {
         "timeframe":  timeframe,
         "start":      start,
+        "end":        now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "limit":      min(limit, 1000),
         "feed":       "iex",        # darmowy feed (SIP wymaga płatnej subskrypcji)
         "adjustment": "raw",
-        "sort":       "asc",        # rosnąco po czasie (wykres oczekuje chronologii)
+        "sort":       "desc",       # NAJNOWSZE świece najpierw (odwracamy niżej).
+                                    # Z 'asc' + limit Alpaca ucinała do NAJSTARSZYCH
+                                    # świec od start — stąd dane sprzed miesięcy na wykresie.
     }
 
     data = _alpaca_get(f"/stocks/{ticker}/bars", params=params)
@@ -358,8 +361,9 @@ def get_alpaca_bars(ticker: str, interval: str = "1d", limit: int = 365) -> list
         return None
 
     try:
+        # sort=desc zwraca od najnowszej — odwracamy na chronologię rosnącą (wykres tego oczekuje)
         bars = []
-        for b in data["bars"]:
+        for b in reversed(data["bars"]):
             bars.append({
                 "timestamp": b["t"],                 # ISO 8601 string
                 "open":      float(b["o"]),

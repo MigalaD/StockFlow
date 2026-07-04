@@ -7,7 +7,6 @@ import Link from 'next/link'
 import { AppShell } from '../../components/layout/AppShell'
 import { Card, SectionHeader, Button, Input, EmptyState, Spinner, Tag } from '../../components/ui'
 import { journalApi, type JournalEntry } from '../../lib/api'
-import { AuthGuard } from '../../components/shared/AuthGuard'
 
 const DECISIONS = ['Kupno', 'Sprzedaż', 'Obserwacja', 'Analiza', 'Ominięcie okazji'] as const
 type Decision = typeof DECISIONS[number]
@@ -378,5 +377,5 @@ function JournalContent() {
 }
 
 export default function JournalPage() {
-  return <AuthGuard><JournalContent /></AuthGuard>
+  return <JournalContent />
 }

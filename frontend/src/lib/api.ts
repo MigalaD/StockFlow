@@ -90,6 +90,7 @@ export interface Portfolio {
   total_value:           number
   total_pnl:             number
   total_pnl_pct:         number
+  base_currency:         string
   allocation_by_sector:  Record<string, number>
   warnings:              string[]
 }
@@ -395,6 +396,76 @@ export const scannerApi = {
     elapsed_s: number | null
   }> => {
     const { data } = await api.get('/scan/status')
+    return data
+  },
+}
+
+
+// ── Growth (spółki wzrostowe) ─────────────────────────────────────────
+
+export interface GrowthStock {
+  ticker:       string
+  name:         string
+  display_name: string
+  description:  string
+  category:     string
+  price:        number
+  currency:     string
+  score:        number
+  score_st:     number | null
+  sector:       string
+}
+
+export interface GrowthResponse {
+  stocks:     GrowthStock[]
+  categories: string[]
+  count:      number
+}
+
+export const growthApi = {
+  get: async (): Promise<GrowthResponse> => {
+    const { data } = await api.get<GrowthResponse>('/growth')
+    return data
+  },
+}
+
+
+// ── Dividends (spółki dywidendowe) ────────────────────────────────────
+
+export type DividendFlag = [ 'pozytyw' | 'ostrzezenie' | 'neutralny', string ]
+
+export interface DividendStock {
+  ticker:           string
+  nazwa:            string
+  status:           string
+  score:            number
+  yield_brutto:     number | null
+  yield_netto:      number | null
+  lata_ciaglosci:   number
+  ostatnia_wyplata: string | null
+  dywidenda_roczna: number | null
+  trend:            string
+  payout_ratio:     number | null
+  cena:             number | null
+  flagi:            DividendFlag[]
+  opis:             string
+  _filary:          { bezpieczenstwo: number; ciaglosc: number; atrakcyjnosc: number }
+}
+
+export interface DividendsResponse {
+  placace: DividendStock[]
+  niewyplacajace: { ticker: string; nazwa: string; opis: string }[]
+  statystyki: {
+    liczba_placacych: number
+    liczba_niewyplacajacych: number
+    srednia_stopa_brutto: number | null
+    podatek_belki_pct: number
+  }
+}
+
+export const dividendsApi = {
+  get: async (): Promise<DividendsResponse> => {
+    const { data } = await api.get<DividendsResponse>('/dividends')
     return data
   },
 }

@@ -23,10 +23,12 @@ import yfinance as yf
 
 import database as db
 from stock_analyzer import fetch_history
+import currency as fx
 
 
 CONCENTRATION_WARNING_POSITION = 0.30  # > 30% portfela w jednej spółce
 CONCENTRATION_WARNING_SECTOR = 0.50    # > 50% portfela w jednym sektorze
+PORTFOLIO_BASE_CURRENCY = "PLN"        # waluta w której pokazujemy łączną wartość
 HIGH_CORRELATION_THRESHOLD = 0.75      # od tego poziomu uznajemy korelację za "wysoką"
 
 
@@ -95,27 +97,47 @@ def analyze_portfolio(user_id: str, analyze_fn) -> dict:
             "warnings": [], "errors": errors,
         }
 
-    total_cost = sum(p["cost_basis"] for p in positions)
-    total_value = sum(p["current_value"] for p in positions)
+    # Przelicz wartości każdej pozycji na walutę bazową (PLN) dla poprawnego sumowania.
+    # Bez tego sumowalibyśmy EUR + USD + NOK jako gołe liczby (błąd merytoryczny).
+    base = PORTFOLIO_BASE_CURRENCY
+    conversion_ok = True
+    for p in positions:
+        val_base  = fx.convert(p["current_value"], p["currency"], base)
+        cost_base = fx.convert(p["cost_basis"],    p["currency"], base)
+        if val_base is None or cost_base is None:
+            # Brak kursu — oznacz i użyj wartości nominalnej jako fallback
+            conversion_ok = False
+            val_base  = p["current_value"]
+            cost_base = p["cost_basis"]
+        p["value_base"] = round(val_base, 2)
+        p["cost_base"]  = round(cost_base, 2)
+
+    total_cost = sum(p["cost_base"] for p in positions)
+    total_value = sum(p["value_base"] for p in positions)
     total_pnl = total_value - total_cost
     total_pnl_pct = (total_pnl / total_cost * 100) if total_cost else 0.0
 
     weighted_score = (
-        sum(p["score"] * p["current_value"] for p in positions) / total_value
+        sum(p["score"] * p["value_base"] for p in positions) / total_value
         if total_value else 0.0
     )
 
     sector_values: dict = {}
     for p in positions:
-        sector_values[p["sector"]] = sector_values.get(p["sector"], 0.0) + p["current_value"]
+        sector_values[p["sector"]] = sector_values.get(p["sector"], 0.0) + p["value_base"]
     allocation_by_sector = {
         sector: round(value / total_value * 100, 1)
         for sector, value in sorted(sector_values.items(), key=lambda x: -x[1])
     } if total_value else {}
 
     warnings = []
+    if not conversion_ok:
+        warnings.append(
+            "⚠️ Nie udało się pobrać kursów walut dla części pozycji — "
+            "łączna wartość może być niedokładna."
+        )
     for p in positions:
-        share = p["current_value"] / total_value if total_value else 0
+        share = p["value_base"] / total_value if total_value else 0
         if share > CONCENTRATION_WARNING_POSITION:
             warnings.append(
                 f"⚠️ {p['ticker']} stanowi {share:.0%} portfela - "
@@ -140,6 +162,7 @@ def analyze_portfolio(user_id: str, analyze_fn) -> dict:
             "total_pnl": round(total_pnl, 2),
             "total_pnl_pct": round(total_pnl_pct, 2),
             "weighted_score": round(weighted_score, 1),
+            "base_currency": base,
         },
         "allocation_by_sector": allocation_by_sector,
         "warnings": warnings,
