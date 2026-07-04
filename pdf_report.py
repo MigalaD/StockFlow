@@ -189,7 +189,7 @@ def generate_stock_report(wynik: dict, df, output_path: str,
         extra_lines.append(wynik["sector_pe_comparison"])
     beta_info = wynik.get("beta_info")
     if beta_info:
-        idx_name = "WIG20" if beta_info["index"] == "^WIG20" else "S&P 500"
+        idx_name = "WIG20" if beta_info["index"] == "WIG20.WA" else "S&P 500"
         extra_lines.append(
             f"Beta={beta_info['beta']:.2f}, korelacja={beta_info['correlation']:.2f} z {idx_name}"
         )

@@ -346,9 +346,18 @@ async def candles(
             ticker, interval=cfg["binance"], limit=cfg["limit"]
         )
         if klines:
+            import datetime as _dt
             candles_list = [
                 OHLCVItem(
-                    timestamp = str(k[0]),
+                    # k[0] to open_time w MILISEKUNDACH (Unix epoch), surowe
+                    # z Binance API. Wcześniej wysyłaliśmy to jako str(k[0])
+                    # -> np. "1751000000000", co frontend parsował jako
+                    # "Invalid Date" (stąd zniekształcony wykres krypto).
+                    # Konwertujemy na czytelny ISO 8601 UTC, tak jak robi to
+                    # binance_klines_to_df() dla pozostałych zastosowań.
+                    timestamp = _dt.datetime.fromtimestamp(
+                        k[0] / 1000, tz=_dt.timezone.utc
+                    ).strftime("%Y-%m-%d %H:%M:%S"),
                     open      = float(k[1]),
                     high      = float(k[2]),
                     low       = float(k[3]),

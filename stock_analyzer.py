@@ -241,7 +241,35 @@ def compare_to_sector_pe(pe: float | None, sector: str | None) -> str | None:
 # BETA / KORELACJA Z INDEKSEM (informacyjne - nie wchodzi do score)
 # ----------------------------------------------------------------------
 def _index_for_ticker(ticker: str) -> str:
-    return "^WIG20" if ticker.upper().endswith(".WA") else "^GSPC"
+    # UWAGA: yfinance NIE rozpoznaje "^WIG20" (zwraca 404, "possibly delisted").
+    # Poprawny symbol dla indeksu WIG20 w Yahoo Finance to "WIG20.WA".
+    # Dla USA "^GSPC" (S&P 500) działa poprawnie i zostaje bez zmian.
+    return "WIG20.WA" if ticker.upper().endswith(".WA") else "^GSPC"
+
+
+# Cache historii indeksu (WIG20.WA / ^GSPC) w pamięci procesu, TTL 15 min.
+# Bez tego panele analizujące wiele spółek naraz (Growth, Dividends, Skaner)
+# pobierały ten sam benchmark osobno dla KAŻDEJ spółki — przy 20+ spółkach
+# GPW to 20+ zbędnych zapytań o identyczne dane, zwiększające ryzyko
+# rate limitu (429) od Yahoo bez żadnej korzyści.
+_index_history_cache: dict[str, tuple[float, "pd.DataFrame"]] = {}
+_INDEX_CACHE_TTL_S = 15 * 60
+
+
+def _fetch_index_history_cached(index_ticker: str, period: str) -> "pd.DataFrame | None":
+    key = f"{index_ticker}:{period}"
+    now = time.time()
+    cached = _index_history_cache.get(key)
+    if cached and (now - cached[0]) < _INDEX_CACHE_TTL_S:
+        return cached[1]
+    try:
+        df = fetch_history(yf.Ticker(index_ticker), period=period)
+    except Exception:
+        return cached[1] if cached else None
+    if df is not None and not df.empty:
+        _index_history_cache[key] = (now, df)
+        return df
+    return cached[1] if cached else None
 
 
 @with_backoff(times=2, base_delay=1.0)
@@ -257,10 +285,10 @@ def compute_beta(ticker: str, stock_df: pd.DataFrame, period: str = "1y") -> dic
     """
     index_ticker = _index_for_ticker(ticker)
     try:
-        index_df = fetch_history(yf.Ticker(index_ticker), period=period)
+        index_df = _fetch_index_history_cached(index_ticker, period)
     except Exception:
         return None
-    if index_df.empty:
+    if index_df is None or index_df.empty:
         return None
 
     stock_ret = stock_df["Close"].pct_change().dropna()
@@ -305,7 +333,7 @@ def compute_relative_strength(
     """
     index_ticker = _index_for_ticker(ticker)
     try:
-        index_df = fetch_history(yf.Ticker(index_ticker), period=period)
+        index_df = _fetch_index_history_cached(index_ticker, period)
     except Exception:
         return None
     if index_df is None or index_df.empty or stock_df.empty:
