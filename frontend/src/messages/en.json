@@ -8,6 +8,7 @@
     "crypto":      "Crypto",
     "scanner":     "Scanner",
     "growth":      "Growth",
+    "dividends":   "Dividends",
     "backtest":    "Backtest",
     "journal":     "Journal",
     "settings":    "Settings",
