@@ -99,6 +99,7 @@ function PriceChart({
   mode,
   showBollinger,
   showMA,
+  showVolume,
   live,
   rangeBars,
 }: {
@@ -107,6 +108,7 @@ function PriceChart({
   mode:          ChartMode
   showBollinger: boolean
   showMA:        boolean
+  showVolume:    boolean
   live:          boolean
   rangeBars:     number | null   // ile ostatnich świec pokazać (null = wszystko)
 }) {
@@ -183,6 +185,28 @@ function PriceChart({
         series.setData(data.candles.map(c => ({ time: toTime(c.timestamp), value: c.close })))
       }
 
+      // Histogram wolumenu — dolne ~22% wykresu, na własnej skali.
+      // Kolor wg kierunku świecy, przyciemniony żeby nie konkurował z ceną.
+      if (showVolume) {
+        const hasVolume = data.candles.some(c => c.volume > 0)
+        if (hasVolume) {
+          const vol = chart.addHistogramSeries({
+            priceScaleId: 'volume',
+            priceFormat: { type: 'volume' },
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
+          chart.priceScale('volume').applyOptions({
+            scaleMargins: { top: 0.78, bottom: 0 },
+          })
+          vol.setData(data.candles.map(c => ({
+            time: toTime(c.timestamp),
+            value: c.volume,
+            color: c.close >= c.open ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)',
+          })))
+        }
+      }
+
       // Bollinger Bands overlay
       if (showBollinger) {
         const hasUpper = data.candles.some(c => c.bb_upper != null)
@@ -240,7 +264,7 @@ function PriceChart({
         chartRef.current = null
       }
     }
-  }, [data, mode, interval, showBollinger, showMA, rangeBars])
+  }, [data, mode, interval, showBollinger, showMA, showVolume, rangeBars])
 
   if (isLoading) return (
     <div className="h-[360px] flex items-center justify-center"><Spinner size="lg" /></div>
@@ -912,6 +936,7 @@ function AnalysisContent() {
   const [chartMode, setChartMode] = useState<ChartMode>('candles')
   const [showBollinger, setShowBollinger] = useState(false)
   const [showMA,        setShowMA]        = useState(false)
+  const [showVolume,    setShowVolume]    = useState(true)
   const [live,          setLive]          = useState(false)
   const [rangeBars,     setRangeBars]     = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>('chart')
@@ -1167,6 +1192,18 @@ function AnalysisContent() {
                     MA 20/50/200
                   </button>
 
+                  <button
+                    onClick={() => setShowVolume(v => !v)}
+                    className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
+                    style={{
+                      background:  showVolume ? 'rgba(20,184,166,0.18)' : '#141C2B',
+                      color:       showVolume ? '#2DD4BF' : '#64748B',
+                      border:      `1px solid ${showVolume ? 'rgba(20,184,166,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                    }}
+                  >
+                    Wolumen
+                  </button>
+
                   <div className="w-px h-5 bg-border mx-1" />
 
                   {/* Zakres czasu */}
@@ -1193,7 +1230,7 @@ function AnalysisContent() {
                 </div>
 
                 <PriceChart ticker={ticker} interval={interval} mode={chartMode}
-                  showBollinger={showBollinger} showMA={showMA} live={live} rangeBars={rangeBars} />
+                  showBollinger={showBollinger} showMA={showMA} showVolume={showVolume} live={live} rangeBars={rangeBars} />
               </div>
             )}
 
