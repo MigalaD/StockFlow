@@ -406,7 +406,7 @@ def test_relative_strength_index_selection(fake_yfinance):
     res_us = sa.compute_relative_strength("AAPL", df)
     res_pl = sa.compute_relative_strength("CDR.WA", df)
     assert res_us["index"] == "^GSPC"
-    assert res_pl["index"] == "^WIG20"
+    assert res_pl["index"] == "WIG20.WA"
 
 
 def test_relative_strength_insufficient_data(fake_yfinance):
