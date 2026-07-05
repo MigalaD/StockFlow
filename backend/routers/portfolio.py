@@ -1,216 +1,151 @@
-# Copyright (c) 2026 Damian Migała / StockFlow (Analizator Spółek)
-# Wszystkie prawa zastrzeżone. All rights reserved.
-# Zobacz plik LICENSE w katalogu głównym repozytorium.
+# Copyright (c) 2026 Damian Migała / StockFlow
 
 """
-Portfolio Tracker
-===================
-Pozwala wpisać rzeczywiste pozycje (ile akcji, po jakiej cenie kupione)
-i pokazuje:
-- aktualną wartość portfela i zysk/stratę (P&L) na każdej pozycji i razem
-- alokację sektorową (czy portfel jest zdywersyfikowany)
-- średni "score" portfela (ważony wartością pozycji)
-- ostrzeżenia o koncentracji (jedna spółka/sektor = zbyt duża część portfela)
+Router: /portfolio — zarządzanie portfelem użytkownika.
 
-To narzędzie analityczne - NIE zarządza prawdziwymi środkami, tylko
-pomaga zrozumieć strukturę portfela na podstawie danych, które wpiszesz.
+WAŻNE: to jest router FastAPI (endpointy HTTP). Logika biznesowa
+(liczenie P&L, konwersja walut, wagi sektorowe) mieszka w module
+`portfolio.py` w głównym katalogu repo — ten plik go tylko woła
+i opakowuje w odpowiedzi HTTP.
 """
 
 from __future__ import annotations
 
-import pandas as pd
-import yfinance as yf
+import os
+import sys
+
+from fastapi import APIRouter, HTTPException, status
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 import database as db
-from stock_analyzer import fetch_history
-import currency as fx
+import portfolio as portfolio_logic
+from stock_analyzer import analyze_ticker
+from backend.core.security import CurrentUser
+from backend.models.schemas import (
+    PortfolioResponse,
+    PositionItem,
+    PositionAddRequest,
+)
+
+router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
-CONCENTRATION_WARNING_POSITION = 0.30  # > 30% portfela w jednej spółce
-CONCENTRATION_WARNING_SECTOR = 0.50    # > 50% portfela w jednym sektorze
-PORTFOLIO_BASE_CURRENCY = "PLN"        # waluta w której pokazujemy łączną wartość
-HIGH_CORRELATION_THRESHOLD = 0.75      # od tego poziomu uznajemy korelację za "wysoką"
+@router.get(
+    "",
+    response_model=PortfolioResponse,
+    summary="Get portfolio with P&L",
+)
+async def get_portfolio(user_id: CurrentUser) -> PortfolioResponse:
+    result = portfolio_logic.analyze_portfolio(user_id, analyze_ticker)
 
+    positions = [
+        PositionItem(
+            id            = p["id"],
+            ticker        = p["ticker"],
+            name          = p["name"],
+            sector        = p["sector"],
+            shares        = p["shares"],
+            buy_price     = p["buy_price"],
+            buy_date      = p["buy_date"],
+            current_price = p["current_price"],
+            currency      = p.get("currency", "USD"),
+            cost_basis    = p["cost_basis"],
+            current_value = p["current_value"],
+            pnl           = p["pnl"],
+            pnl_pct       = p["pnl_pct"],
+            notes         = p.get("notes", ""),
+            score         = p.get("score"),
+        )
+        for p in result["positions"]
+    ]
 
-def analyze_portfolio(user_id: str, analyze_fn) -> dict:
-    """
-    Pobiera pozycje użytkownika z bazy, dolicza aktualne ceny i score
-    (przez analyze_fn = stock_analyzer.analyze_ticker), i liczy podsumowanie.
+    # portfolio.py zwraca totals jako zagnieżdżony dict
+    totals = result.get("totals") or {}
 
-    Zwraca dict z:
-    - positions: lista pozycji z aktualną wartością, P&L, score, sektorem
-    - totals: total_cost, total_value, total_pnl, total_pnl_pct, weighted_score
-    - allocation_by_sector: {sektor: udział_procentowy}
-    - warnings: lista ostrzeżeń o koncentracji
-    - errors: tickery, dla których nie udało się pobrać danych
-    """
-    raw_positions = db.get_portfolio(user_id)
-    if not raw_positions:
-        return {
-            "positions": [], "totals": None, "allocation_by_sector": {},
-            "warnings": [], "errors": [],
-        }
-
-    positions = []
-    errors = []
-
-    for pos in raw_positions:
-        ticker = pos["ticker"]
-        try:
-            res = analyze_fn(ticker)
-        except Exception:
-            errors.append(ticker)
-            continue
-
-        if "error" in res:
-            errors.append(ticker)
-            continue
-
-        current_price = res["price"]
-        shares = pos["shares"]
-        cost_basis = shares * pos["buy_price"]
-        current_value = shares * current_price
-        pnl = current_value - cost_basis
-        pnl_pct = (pnl / cost_basis * 100) if cost_basis else 0.0
-
-        positions.append({
-            "id": pos["id"],
-            "ticker": ticker,
-            "name": res["name"],
-            "sector": res.get("sector", "Nieznany"),
-            "shares": shares,
-            "buy_price": pos["buy_price"],
-            "buy_date": pos["buy_date"],
-            "current_price": current_price,
-            "currency": res["currency"],
-            "cost_basis": round(cost_basis, 2),
-            "current_value": round(current_value, 2),
-            "pnl": round(pnl, 2),
-            "pnl_pct": round(pnl_pct, 2),
-            "score": res["total_score"],
-            "notes": pos.get("notes", ""),
-        })
-
-    if not positions:
-        return {
-            "positions": [], "totals": None, "allocation_by_sector": {},
-            "warnings": [], "errors": errors,
-        }
-
-    # Przelicz wartości każdej pozycji na walutę bazową (PLN) dla poprawnego sumowania.
-    # Bez tego sumowalibyśmy EUR + USD + NOK jako gołe liczby (błąd merytoryczny).
-    base = PORTFOLIO_BASE_CURRENCY
-    conversion_ok = True
-    for p in positions:
-        val_base  = fx.convert(p["current_value"], p["currency"], base)
-        cost_base = fx.convert(p["cost_basis"],    p["currency"], base)
-        if val_base is None or cost_base is None:
-            # Brak kursu — oznacz i użyj wartości nominalnej jako fallback
-            conversion_ok = False
-            val_base  = p["current_value"]
-            cost_base = p["cost_basis"]
-        p["value_base"] = round(val_base, 2)
-        p["cost_base"]  = round(cost_base, 2)
-
-    total_cost = sum(p["cost_base"] for p in positions)
-    total_value = sum(p["value_base"] for p in positions)
-    total_pnl = total_value - total_cost
-    total_pnl_pct = (total_pnl / total_cost * 100) if total_cost else 0.0
-
-    weighted_score = (
-        sum(p["score"] * p["value_base"] for p in positions) / total_value
-        if total_value else 0.0
+    return PortfolioResponse(
+        positions            = positions,
+        total_value          = totals.get("total_value", 0.0),
+        total_pnl            = totals.get("total_pnl", 0.0),
+        total_pnl_pct        = totals.get("total_pnl_pct", 0.0),
+        base_currency        = totals.get("base_currency", "PLN"),
+        allocation_by_sector = result.get("allocation_by_sector", {}),
+        warnings             = result.get("warnings", []),
     )
 
-    sector_values: dict = {}
-    for p in positions:
-        sector_values[p["sector"]] = sector_values.get(p["sector"], 0.0) + p["value_base"]
-    allocation_by_sector = {
-        sector: round(value / total_value * 100, 1)
-        for sector, value in sorted(sector_values.items(), key=lambda x: -x[1])
-    } if total_value else {}
 
-    warnings = []
-    if not conversion_ok:
-        warnings.append(
-            "⚠️ Nie udało się pobrać kursów walut dla części pozycji — "
-            "łączna wartość może być niedokładna."
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    summary="Add position",
+)
+async def add_position(payload: PositionAddRequest, user_id: CurrentUser) -> dict:
+    # database.add_position wymaga buy_date jako string — jeśli klient
+    # go nie poda, użyj dzisiejszej daty zamiast przekazywać None.
+    from datetime import date
+    buy_date = payload.buy_date or date.today().isoformat()
+
+    db.add_position(
+        user_id    = user_id,
+        ticker     = payload.ticker.upper().strip(),
+        shares     = payload.shares,
+        buy_price  = payload.buy_price,
+        buy_date   = buy_date,
+        notes      = payload.notes or "",
+    )
+    return {"message": "Pozycja dodana"}
+
+
+@router.delete(
+    "/{position_id}",
+    summary="Remove position",
+)
+async def remove_position(position_id: int, user_id: CurrentUser) -> dict:
+    # database.remove_position nie zwraca informacji o sukcesie (brak wyjątku
+    # przy nieistniejącym id — DELETE po prostu nic nie usuwa). Sprawdzamy
+    # więc jawnie, czy pozycja istniała PRZED usunięciem, żeby móc zwrócić 404.
+    existing = [p for p in db.get_portfolio(user_id) if p["id"] == position_id]
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Pozycja nie znaleziona",
         )
-    for p in positions:
-        share = p["value_base"] / total_value if total_value else 0
-        if share > CONCENTRATION_WARNING_POSITION:
-            warnings.append(
-                f"⚠️ {p['ticker']} stanowi {share:.0%} portfela - "
-                f"jedna spółka ma duży wpływ na cały wynik."
-            )
-    for sector, pct in allocation_by_sector.items():
-        if pct / 100 > CONCENTRATION_WARNING_SECTOR:
-            warnings.append(
-                f"⚠️ Sektor '{sector}' stanowi {pct:.0f}% portfela - "
-                f"słaba dywersyfikacja branżowa."
-            )
-    if len(positions) == 1:
-        warnings.append(
-            "⚠️ Portfel składa się z jednej spółki - brak dywersyfikacji."
-        )
+    db.remove_position(position_id, user_id)
+    return {"message": "Pozycja usunięta"}
+
+
+@router.get(
+    "/correlation",
+    summary="Correlation matrix between portfolio positions",
+)
+async def get_correlation(user_id: CurrentUser) -> dict:
+    raw_positions = db.get_portfolio(user_id)
+    tickers = [p["ticker"] for p in raw_positions]
+
+    if len(tickers) < 2:
+        return {
+            "matrix": None, "high_pairs": [], "errors": [],
+            "message": "Potrzeba co najmniej 2 pozycji do analizy korelacji.",
+        }
+
+    result = portfolio_logic.compute_correlation_matrix(tickers)
+
+    matrix_dict = None
+    if result["matrix"] is not None:
+        matrix_dict = {
+            row: {col: (None if (val := result["matrix"].loc[row, col]) != val  # NaN check
+                        else round(float(val), 3))
+                  for col in result["matrix"].columns}
+            for row in result["matrix"].index
+        }
 
     return {
-        "positions": positions,
-        "totals": {
-            "total_cost": round(total_cost, 2),
-            "total_value": round(total_value, 2),
-            "total_pnl": round(total_pnl, 2),
-            "total_pnl_pct": round(total_pnl_pct, 2),
-            "weighted_score": round(weighted_score, 1),
-            "base_currency": base,
-        },
-        "allocation_by_sector": allocation_by_sector,
-        "warnings": warnings,
-        "errors": errors,
+        "matrix": matrix_dict,
+        "high_pairs": [
+            {"ticker_a": a, "ticker_b": b, "correlation": c}
+            for a, b, c in result["high_pairs"]
+        ],
+        "errors": result["errors"],
     }
-
-
-def compute_correlation_matrix(tickers: list[str], period: str = "6mo") -> dict:
-    """
-    Liczy korelację dziennych zwrotów (% zmiany ceny) między podanymi
-    tickerami. Wysoka korelacja (bliska 1) oznacza, że ceny ruszają się
-    razem - czyli mimo różnych "etykietek" sektorowych, te pozycje mogą
-    NIE dywersyfikować portfela tak, jak by się mogło wydawać.
-
-    Zwraca:
-    - matrix: pd.DataFrame (korelacje, NaN gdzie brak danych)
-    - high_pairs: lista par (ticker1, ticker2, korelacja) >= HIGH_CORRELATION_THRESHOLD
-    - errors: tickery, dla których nie udało się pobrać danych
-    """
-    returns = {}
-    errors = []
-
-    for ticker in tickers:
-        try:
-            stock = yf.Ticker(ticker)
-            df = fetch_history(stock, period=period)
-            if df is None or df.empty or "Close" not in df:
-                errors.append(ticker)
-                continue
-            returns[ticker] = df["Close"].pct_change().dropna()
-        except Exception:
-            errors.append(ticker)
-
-    if len(returns) < 2:
-        return {"matrix": None, "high_pairs": [], "errors": errors}
-
-    returns_df = pd.DataFrame(returns).dropna(how="all")
-    matrix = returns_df.corr()
-
-    high_pairs = []
-    cols = list(matrix.columns)
-    for i in range(len(cols)):
-        for j in range(i + 1, len(cols)):
-            a, b = cols[i], cols[j]
-            corr = matrix.loc[a, b]
-            if pd.notna(corr) and corr >= HIGH_CORRELATION_THRESHOLD:
-                high_pairs.append((a, b, round(float(corr), 2)))
-
-    high_pairs.sort(key=lambda x: -x[2])
-
-    return {"matrix": matrix, "high_pairs": high_pairs, "errors": errors}
