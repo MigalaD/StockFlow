@@ -23,6 +23,7 @@ dodaj np. pakiet `streamlit-authenticator`.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, date
@@ -406,6 +407,58 @@ def get_last_scan_time() -> str | None:
     with get_conn() as conn:
         row = conn.execute("SELECT MAX(scanned_at) as t FROM scan_results").fetchone()
         return row["t"] if row and row["t"] else None
+
+
+# ----------------------------------------------------------------------
+# SCAN STATUS — stan bieżącego skanu WSPÓŁDZIELONY między workerami.
+#
+# Uvicorn w produkcji uruchamia KILKA procesów roboczych. Stan trzymany
+# w pamięci (dict w module) istnieje osobno w każdym workerze — POST /scan
+# startował skan w workerze A, a odpytania o status trafiały do workera B,
+# który widział "nic nie działa". Frontend uznawał, że skan padł, choć
+# ten pracował dalej. Plik SQLite jest jeden na kontener, więc baza jest
+# naturalnym miejscem na stan współdzielony między procesami.
+# ----------------------------------------------------------------------
+
+def _ensure_scan_status_table(conn) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS scan_status (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            payload TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+
+
+def set_scan_status(state: dict) -> None:
+    """Zapisuje stan skanu (nadpisuje pojedynczy wiersz)."""
+    payload = json.dumps(state)
+    now = datetime.now().isoformat()
+    with get_conn() as conn:
+        _ensure_scan_status_table(conn)
+        conn.execute(
+            "INSERT INTO scan_status (id, payload, updated_at) VALUES (1, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, "
+            "updated_at = excluded.updated_at",
+            (payload, now),
+        )
+
+
+def get_scan_status() -> tuple[dict, str | None]:
+    """Zwraca (stan, updated_at) albo (stan domyślny, None) gdy brak wpisu."""
+    default = {"running": False, "progress": 0, "total": 0,
+               "current": "", "started_at": None}
+    with get_conn() as conn:
+        _ensure_scan_status_table(conn)
+        row = conn.execute(
+            "SELECT payload, updated_at FROM scan_status WHERE id = 1"
+        ).fetchone()
+    if not row:
+        return default, None
+    try:
+        return json.loads(row["payload"]), row["updated_at"]
+    except (json.JSONDecodeError, TypeError):
+        return default, None
 
 
 # ----------------------------------------------------------------------
