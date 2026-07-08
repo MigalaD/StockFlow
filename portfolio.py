@@ -22,7 +22,7 @@ import pandas as pd
 import yfinance as yf
 
 import database as db
-from stock_analyzer import fetch_history
+from stock_analyzer import fetch_history, _fetch_index_history_cached
 import currency as fx
 
 
@@ -154,6 +154,42 @@ def analyze_portfolio(user_id: str, analyze_fn) -> dict:
             "⚠️ Portfel składa się z jednej spółki - brak dywersyfikacji."
         )
 
+
+    # ── Benchmark: portfel vs S&P 500 ──
+    # Dla każdej pozycji: zwrot S&P500 od jej daty zakupu do dziś, ważony
+    # kosztem pozycji. Odpowiada na pytanie "czy pobijam rynek?" uczciwie —
+    # każda złotówka porównana z alternatywą kupna indeksu tego samego dnia.
+    benchmark = None
+    try:
+        spx = _fetch_index_history_cached("^GSPC", "5y")
+        if spx is not None and not spx.empty:
+            closes = spx["Close"]
+            last = float(closes.iloc[-1])
+            bench_weighted, bench_cost = 0.0, 0.0
+            for p in positions:
+                bd = p.get("buy_date")
+                if not bd:
+                    continue
+                try:
+                    at_buy = closes[closes.index >= str(bd)[:10]]
+                    if at_buy.empty:
+                        continue
+                    ret = (last / float(at_buy.iloc[0]) - 1) * 100
+                    bench_weighted += ret * p["cost_base"]
+                    bench_cost += p["cost_base"]
+                except Exception:
+                    continue
+            if bench_cost > 0:
+                bench_ret = round(bench_weighted / bench_cost, 2)
+                benchmark = {
+                    "symbol": "S&P 500",
+                    "benchmark_pnl_pct": bench_ret,
+                    "portfolio_pnl_pct": round(total_pnl_pct, 2),
+                    "alpha": round(total_pnl_pct - bench_ret, 2),
+                }
+    except Exception:
+        benchmark = None
+
     return {
         "positions": positions,
         "totals": {
@@ -167,6 +203,7 @@ def analyze_portfolio(user_id: str, analyze_fn) -> dict:
         "allocation_by_sector": allocation_by_sector,
         "warnings": warnings,
         "errors": errors,
+        "benchmark": benchmark,
     }
 
 
