@@ -75,6 +75,10 @@ SKANER_USA = [
     "WMT", "COST", "PG", "KO", "PEP", "MCD", "TGT",
     "DIS", "NKE", "SBUX", "HD", "LOW",
     "BA", "CAT", "GE", "HON", "UPS",
+    # Rozszerzenie: półprzewodniki/software, finanse, zdrowie, przemysł, telko
+    "TXN", "AMAT", "MU", "NOW", "UBER", "ABNB", "PYPL",
+    "MS", "C", "SCHW", "GILD", "AMGN", "BMY",
+    "LMT", "RTX", "DE", "T", "VZ",
 ]
 
 # GPW (Warszawa) - WIG20 + kilka popularnych spoza
@@ -83,6 +87,9 @@ SKANER_GPW = [
     "ALE.WA", "DNP.WA", "LPP.WA", "CPS.WA", "PCO.WA", "SPL.WA",
     "MBK.WA", "BHW.WA", "OPL.WA", "TPE.WA", "PGE.WA", "JSW.WA",
     "KRU.WA", "ALR.WA", "CCC.WA", "ZAB.WA", "BDX.WA", "KTY.WA",
+    # Rozszerzenie: banki, przemysł, tech/gaming, energetyka
+    "ATT.WA", "GPW.WA", "ENA.WA", "XTB.WA", "TXT.WA", "NEU.WA",
+    "MIL.WA", "ING.WA", "11B.WA", "ASE.WA", "LWB.WA", "EAT.WA",
 ]
 
 # Spółki dywidendowe GPW — kandydaci do panelu "Dywidendy".
@@ -111,6 +118,11 @@ SKANER_EUROPA = [
     "ASML.AS", "ADYEN.AS",
     # Szwajcaria
     "NESN.SW", "NOVN.SW", "ROG.SW",
+    # Rozszerzenie: Niemcy, Włochy, Hiszpania, Finlandia
+    "IFX.DE", "BAYN.DE", "DHL.DE",
+    "ENEL.MI", "ENI.MI", "ISP.MI",
+    "IBE.MC", "ITX.MC", "SAN.MC",
+    "NOKIA.HE",
 ]
 
 # Pełna lista użyta przez skaner ("Wszystko")
@@ -178,6 +190,14 @@ ETF_LIST = {
     "Nieruchomości / REIT (VNQ)": ("VNQ", "Fundusze nieruchomości (REIT) - alternatywa do posiadania nieruchomości."),
     "Obligacje długoterminowe (TLT)": ("TLT", "Długoterminowe obligacje rządu USA - zwykle przeciwwaga do akcji."),
     "WIG20 (ETFW20L.WA)": ("ETFW20L.WA", "ETF na indeks WIG20 (20 największych spółek GPW)."),
+    # ── UCITS — wersje europejskie, DOSTĘPNE dla polskich inwestorów ──
+    # (amerykańskich ETF-ów jak SPY/QQQ polski inwestor detaliczny zwykle
+    #  nie kupi przez PRIIPs/KID — te poniżej TAK, przez polskich brokerów)
+    "Vanguard All-World UCITS (VWCE.DE)": ("VWCE.DE", "Cały świat w jednym ETF (akumulujący) - najpopularniejszy wybór polskich inwestorów. UCITS."),
+    "iShares Core S&P 500 UCITS (SXR8.DE)": ("SXR8.DE", "S&P 500 w wersji europejskiej (akumulujący). UCITS - dostępny w PL."),
+    "iShares MSCI World UCITS (IWDA.AS)": ("IWDA.AS", "Rynki rozwinięte całego świata (akumulujący). UCITS - dostępny w PL."),
+    "iShares Core MSCI World (EUNL.DE)": ("EUNL.DE", "MSCI World na Xetra w EUR (akumulujący). UCITS - dostępny w PL."),
+    "Vanguard S&P 500 dist. (VUSA.AS)": ("VUSA.AS", "S&P 500 z wypłatą dywidend, Amsterdam. UCITS - dostępny w PL."),
 }
 
 # Tickery ETF do skanera rynku
@@ -185,6 +205,7 @@ SKANER_ETF = [
     "SPY", "QQQ", "VTI", "VOO", "IWM", "EFA", "VWO", "ARKK",
     "XLK", "XLE", "XLF", "XLV", "XLI", "XLY", "XLP", "XLU",
     "VNQ", "TLT", "IEF", "HYG",
+    "VWCE.DE", "SXR8.DE", "IWDA.AS", "EUNL.DE", "VUSA.AS",
 ]
 
 
@@ -208,10 +229,15 @@ KOMODITY_LIST = {
     "Koszyk surowców (DBC)": ("DBC", "Zdywersyfikowany koszyk surowców (energia, metale, rolnictwo)."),
     "Miedź (CPER)": ("CPER", "ETF śledzący cenę miedzi - czasem nazywana 'Dr Copper', barometr koniunktury przemysłowej."),
     "Rolnictwo (DBA)": ("DBA", "Koszyk surowców rolnych (zboża, soja, cukier, kawa itd.)."),
+    "Platyna (PPLT)": ("PPLT", "ETF śledzący cenę platyny - metal szlachetny o zastosowaniach przemysłowych (katalizatory)."),
+    "Pallad (PALL)": ("PALL", "ETF śledzący cenę palladu - kluczowy w motoryzacji, mocno skoncentrowana podaż."),
+    "Pszenica (WEAT)": ("WEAT", "ETF na kontrakty pszenicy - wrażliwy na pogodę i geopolitykę."),
+    "Kukurydza (CORN)": ("CORN", "ETF na kontrakty kukurydzy - fundament rynku rolnego."),
 }
 
 # Tickery surowcowe do skanera rynku
-SKANER_KOMODITY = ["GLD", "SLV", "USO", "UNG", "DBC", "CPER", "DBA"]
+SKANER_KOMODITY = ["GLD", "SLV", "USO", "UNG", "DBC", "CPER", "DBA",
+                    "PPLT", "PALL", "WEAT", "CORN"]
 
 
 # ----------------------------------------------------------------------
@@ -228,7 +254,17 @@ KRYPTO_LIST = {
     "Cardano (ADA)":    ("ADA-USD", "Blockchain oparty na dowodach akademickich (proof-of-stake, Haskell)."),
     "Avalanche (AVAX)": ("AVAX-USD", "Platforma smart-kontraktów z naciskiem na prędkość i ekosystem DeFi."),
     "Polkadot (DOT)":   ("DOT-USD", "Protokół interoperacyjności – łączy różne blockchainy."),
+    "Dogecoin (DOGE)":  ("DOGE-USD", "Pierwotnie żart, dziś jedna z największych 'meme coins' – ekstremalna zmienność."),
+    "Chainlink (LINK)": ("LINK-USD", "Sieć wyroczni (oracle) – dostarcza dane ze świata rzeczywistego do smart-kontraktów."),
+    "Litecoin (LTC)":   ("LTC-USD", "Jedna z najstarszych kryptowalut – 'srebro' wobec złota Bitcoina."),
+    "Cosmos (ATOM)":    ("ATOM-USD", "Ekosystem połączonych blockchainów ('internet of blockchains')."),
+    "Uniswap (UNI)":    ("UNI-USD", "Token największej zdecentralizowanej giełdy (DEX) na Ethereum."),
+    "TRON (TRX)":       ("TRX-USD", "Blockchain nastawiony na tanie transakcje i stablecoiny – popularny w Azji."),
+    "NEAR (NEAR)":      ("NEAR-USD", "Wydajny blockchain L1 z naciskiem na prostotę dla developerów."),
+    "Shiba Inu (SHIB)": ("SHIB-USD", "Druga największa 'meme coin' – bardzo spekulacyjna."),
 }
 
 SKANER_KRYPTO = ["BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "XRP-USD",
-                  "ADA-USD", "AVAX-USD", "DOT-USD"]
+                  "ADA-USD", "AVAX-USD", "DOT-USD",
+                  "DOGE-USD", "LINK-USD", "LTC-USD", "ATOM-USD",
+                  "UNI-USD", "TRX-USD", "NEAR-USD", "SHIB-USD"]
