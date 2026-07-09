@@ -794,11 +794,11 @@ function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
           <SectionHeader title="Crossover MA" icon="📐" />
           <div className="rounded-lg px-3 py-2.5 text-sm"
             style={{
-              background: (analysis.ma_crossover as any).above ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-              color:      (analysis.ma_crossover as any).above ? '#22C55E' : '#EF4444',
-              border:     `1px solid ${(analysis.ma_crossover as any).above ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+              background: (analysis.ma_crossover as any).state === 'golden' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+              color:      (analysis.ma_crossover as any).state === 'golden' ? '#22C55E' : '#EF4444',
+              border:     `1px solid ${(analysis.ma_crossover as any).state === 'golden' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
             }}>
-            {(analysis.ma_crossover as any).above
+            {(analysis.ma_crossover as any).state === 'golden'
               ? '✓ MA50 > MA200 — układ byczy (Golden Cross)'
               : '✗ MA50 < MA200 — układ niedźwiedzi (Death Cross)'}
           </div>
@@ -1405,11 +1405,11 @@ function AnalysisContent() {
                 <div
                   className="text-xs rounded-lg px-2.5 py-2"
                   style={{
-                    background: (analysis.ma_crossover as any).above ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                    color:      (analysis.ma_crossover as any).above ? '#22C55E' : '#EF4444',
+                    background: (analysis.ma_crossover as any).state === 'golden' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    color:      (analysis.ma_crossover as any).state === 'golden' ? '#22C55E' : '#EF4444',
                   }}
                 >
-                  {(analysis.ma_crossover as any).above ? '✓ MA50 > MA200 (byczy)' : '✗ MA50 < MA200 (niedźwiedzi)'}
+                  {(analysis.ma_crossover as any).state === 'golden' ? '✓ MA50 > MA200 (byczy)' : '✗ MA50 < MA200 (niedźwiedzi)'}
                 </div>
               </div>
             )}
