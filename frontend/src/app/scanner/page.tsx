@@ -10,11 +10,13 @@ import { useAuthStore, useScannerStore } from '../../store'
 import useSWR from 'swr'
 
 const MARKETS: { value: Market; label: string; count: number }[] = [
-  { value: 'usa',    label: 'USA',    count: 53  },
-  { value: 'gpw',    label: 'GPW',    count: 24  },
-  { value: 'europa', label: 'Europa', count: 33  },
-  { value: 'krypto', label: 'Krypto', count: 8   },
-  { value: 'all',    label: 'Wszystko', count: 110 },
+  { value: 'usa',     label: 'USA',     count: 71  },
+  { value: 'gpw',     label: 'GPW',     count: 36  },
+  { value: 'europa',  label: 'Europa',  count: 43  },
+  { value: 'krypto',  label: 'Krypto',  count: 16  },
+  { value: 'etf',     label: 'ETF',     count: 25  },
+  { value: 'surowce', label: 'Surowce', count: 11  },
+  { value: 'all',     label: 'Wszystko (akcje)', count: 150 },
 ]
 
 // ── Sector heatmap ────────────────────────────────────────────────────
