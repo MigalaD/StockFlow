@@ -152,7 +152,7 @@ export interface TokenResponse {
 }
 
 export type Interval = '1m' | '5m' | '15m' | '30m' | '1h' | '1d'
-export type Market   = 'usa' | 'gpw' | 'europa' | 'krypto' | 'all'
+export type Market   = 'usa' | 'gpw' | 'europa' | 'krypto' | 'etf' | 'surowce' | 'all'
 
 
 // ── API Error ─────────────────────────────────────────────────────────
@@ -439,6 +439,22 @@ export interface GrowthResponse {
   stocks:     GrowthStock[]
   categories: string[]
   count:      number
+}
+
+export interface EtfStock extends GrowthStock { ucits?: boolean }
+
+export const etfApi = {
+  get: async (): Promise<{ stocks: EtfStock[]; categories: string[]; count: number }> => {
+    const { data } = await api.get('/etf')
+    return data
+  },
+}
+
+export const commoditiesApi = {
+  get: async (): Promise<GrowthResponse> => {
+    const { data } = await api.get('/commodities')
+    return data
+  },
 }
 
 export const growthApi = {
