@@ -8,6 +8,8 @@
     "crypto":      "Krypto",
     "scanner":     "Skaner",
     "growth":      "Wzrostowe",
+    "etf":         "ETF-y",
+    "commodities": "Surowce",
     "dividends":   "Dywidendy",
     "backtest":    "Backtest",
     "journal":     "Dziennik",

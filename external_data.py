@@ -58,6 +58,14 @@ _BINANCE_SYMBOL_MAP = {
     "ADA-USD": "ADAUSDT",
     "AVAX-USD": "AVAXUSDT",
     "DOT-USD": "DOTUSDT",
+    "DOGE-USD": "DOGEUSDT",
+    "LINK-USD": "LINKUSDT",
+    "LTC-USD":  "LTCUSDT",
+    "ATOM-USD": "ATOMUSDT",
+    "UNI-USD":  "UNIUSDT",
+    "TRX-USD":  "TRXUSDT",
+    "NEAR-USD": "NEARUSDT",
+    "SHIB-USD": "SHIBUSDT",
 }
 
 
