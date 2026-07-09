@@ -28,6 +28,8 @@ if _ROOT not in sys.path:
 import database as db
 from scanner import scan_market
 from tickers import (
+    SKANER_ETF,
+    SKANER_KOMODITY,
     SKANER_USA, SKANER_GPW, SKANER_EUROPA,
     SKANER_KRYPTO, SKANER_WSZYSTKIE,
 )
@@ -63,6 +65,8 @@ _MARKET_MAP = {
     "europa": SKANER_EUROPA,
     "krypto": SKANER_KRYPTO,
     "all":    SKANER_WSZYSTKIE,
+    "etf":     SKANER_ETF,
+    "surowce": SKANER_KOMODITY,
 }
 
 
