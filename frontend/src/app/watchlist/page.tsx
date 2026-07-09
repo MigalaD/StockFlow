@@ -246,7 +246,7 @@ function WatchlistContent() {
           action={<Link href="/analysis"><Button>Przejdź do Analizy</Button></Link>} />
       ) : (
         <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
-          <table className="w-full border-collapse">
+          <div className="overflow-x-auto -mx-1 px-1"><table className="w-full border-collapse min-w-[640px]">
             <thead>
               <tr style={{ background: '#0B1120' }}>
                 {[
@@ -268,7 +268,7 @@ function WatchlistContent() {
                   onRemove={() => handleRemove(item.ticker)} />
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </AppShell>

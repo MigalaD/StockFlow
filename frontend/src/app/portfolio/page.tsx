@@ -19,7 +19,7 @@ const SECTOR_COLORS = [
 
 // ── Add position form ─────────────────────────────────────────────────
 
-function AddPositionForm({ onAdded }: { onAdded: () => void }) {
+function AddPositionForm({ onAdded, onToggleImport }: { onAdded: () => void; onToggleImport: () => void }) {
   const [open, setOpen] = useState(false)
   const [fields, setFields] = useState({ ticker:'', shares:'', price:'', date:'', notes:'' })
   const [loading, setLoading] = useState(false)
@@ -48,9 +48,14 @@ function AddPositionForm({ onAdded }: { onAdded: () => void }) {
   }
 
   if (!open) return (
-    <Button onClick={() => setOpen(true)} size="sm" className="mb-4">
-      ➕ Dodaj pozycję
-    </Button>
+    <div className="flex gap-2 mb-4">
+      <Button onClick={() => setOpen(true)} size="sm">
+        ➕ Dodaj pozycję
+      </Button>
+      <Button onClick={onToggleImport} size="sm" variant="secondary">
+        📥 Import z XTB
+      </Button>
+    </div>
   )
 
   return (
@@ -173,8 +178,130 @@ function PositionCard({ pos, onRemove }: { pos: PositionItem; onRemove: () => vo
 
 // ── Portfolio page ────────────────────────────────────────────────────
 
+// ── Import z XTB (CSV z xStation) ─────────────────────────────────────
+
+type ParsedPos = { ticker: string; shares: number; buy_price: number; buy_date?: string }
+
+/** Normalizuje symbol XTB do formatu yfinance: PKN.PL→PKN.WA, AAPL.US→AAPL. */
+function normalizeXtbSymbol(sym: string): string {
+  const s = sym.trim().toUpperCase()
+  if (s.endsWith('.PL')) return s.replace(/\.PL$/, '.WA')
+  if (s.endsWith('.US')) return s.replace(/\.US$/, '')
+  return s
+}
+
+/** Parsuje CSV z XTB (otwarte pozycje). Toleruje ; , i tab oraz nagłówki PL/EN. */
+function parseXtbCsv(text: string): { positions: ParsedPos[]; skipped: string[] } {
+  const lines = text.split(/\r?\n/).filter(l => l.trim())
+  if (lines.length < 2) return { positions: [], skipped: [] }
+
+  // Wykryj separator po nagłówku
+  const sep = [';', '\t', ','].find(d => lines[0].split(d).length >= 3) ?? ';'
+  const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/"/g, ''))
+
+  const findCol = (...names: string[]) =>
+    headers.findIndex(h => names.some(n => h.includes(n)))
+
+  const iSym   = findCol('symbol', 'instrument')
+  const iVol   = findCol('volume', 'wolumen', 'ilość', 'ilosc')
+  const iPrice = findCol('open price', 'cena otwarcia', 'purchase', 'cena zakupu')
+  const iDate  = findCol('open time', 'czas otwarcia', 'data')
+
+  if (iSym < 0 || iVol < 0 || iPrice < 0) return { positions: [], skipped: ['Nie rozpoznano kolumn (potrzebne: Symbol, Volume, Open price)'] }
+
+  const positions: ParsedPos[] = []
+  const skipped: string[] = []
+
+  for (const line of lines.slice(1)) {
+    const cols = line.split(sep).map(c => c.trim().replace(/"/g, ''))
+    const rawSym = cols[iSym]
+    if (!rawSym) continue
+    // XTB używa przecinka dziesiętnego w PL eksportach
+    const num = (v?: string) => v ? parseFloat(v.replace(/\s/g, '').replace(',', '.')) : NaN
+    const shares = num(cols[iVol])
+    const price  = num(cols[iPrice])
+    if (!shares || !price || shares <= 0 || price <= 0) {
+      skipped.push(rawSym)
+      continue
+    }
+    const dateRaw = iDate >= 0 ? cols[iDate] : undefined
+    const buy_date = dateRaw ? dateRaw.slice(0, 10).replace(/\./g, '-') : undefined
+    positions.push({ ticker: normalizeXtbSymbol(rawSym), shares, buy_price: price, buy_date })
+  }
+  return { positions, skipped }
+}
+
+function XtbImport({ onDone }: { onDone: () => void }) {
+  const [parsed, setParsed]   = useState<{ positions: ParsedPos[]; skipped: string[] } | null>(null)
+  const [busy, setBusy]       = useState(false)
+  const [result, setResult]   = useState('')
+
+  async function handleFile(f: File) {
+    const text = await f.text()
+    setParsed(parseXtbCsv(text))
+    setResult('')
+  }
+
+  async function doImport() {
+    if (!parsed?.positions.length) return
+    setBusy(true)
+    try {
+      const res = await portfolioApi.importPositions(parsed.positions)
+      setResult(`Zaimportowano ${res.added} pozycji${res.errors.length ? `, błędy: ${res.errors.length}` : ''}.`)
+      setParsed(null)
+      onDone()
+    } catch (err: any) {
+      setResult(err?.detail ?? 'Import nie powiódł się.')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-4 animate-fade-in">
+      <div className="font-semibold text-sm text-text-hi mb-1">📥 Import z XTB</div>
+      <p className="text-xs text-text-lo mb-3 leading-relaxed">
+        W xStation: Portfel → otwarte pozycje → eksport do CSV, a plik wgraj tutaj.
+        Symbole zostaną automatycznie dopasowane (np. PKN.PL → PKN.WA, AAPL.US → AAPL).
+      </p>
+      <input type="file" accept=".csv,.txt" className="text-xs text-text-lo mb-3 block"
+        onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+
+      {parsed && (
+        <div className="space-y-2">
+          {parsed.positions.length > 0 ? (
+            <>
+              <div className="text-xs text-text-lo">
+                Rozpoznano <strong className="text-text-hi">{parsed.positions.length}</strong> pozycji:
+              </div>
+              <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                {parsed.positions.map((p, i) => (
+                  <div key={i} className="flex gap-3 text-xs font-mono bg-surface-2 rounded-md px-2.5 py-1.5">
+                    <span className="font-bold text-text-hi w-20">{p.ticker}</span>
+                    <span className="text-muted">{p.shares} szt.</span>
+                    <span className="text-muted">@ {p.buy_price}</span>
+                    {p.buy_date && <span className="text-muted ml-auto">{p.buy_date}</span>}
+                  </div>
+                ))}
+              </div>
+              <Button onClick={doImport} loading={busy} size="sm">
+                Importuj {parsed.positions.length} pozycji
+              </Button>
+            </>
+          ) : (
+            <div className="text-xs text-red-400">Nie rozpoznano żadnych pozycji w pliku.</div>
+          )}
+          {parsed.skipped.length > 0 && (
+            <div className="text-2xs text-muted">Pominięte wiersze: {parsed.skipped.join(', ')}</div>
+          )}
+        </div>
+      )}
+      {result && <div className="text-xs text-brand-green mt-2">{result}</div>}
+    </div>
+  )
+}
+
 function PortfolioContent() {
   const { data: portfolio, isLoading, mutate } = useSWR('portfolio', portfolioApi.get)
+  const [showImport, setShowImport] = useState(false)
 
   const totalPnlPos = (portfolio?.total_pnl ?? 0) >= 0
   const positions   = portfolio?.positions ?? []
@@ -227,7 +354,28 @@ function PortfolioContent() {
         </div>
       ))}
 
-      <AddPositionForm onAdded={() => mutate()} />
+
+      {/* Portfel vs S&P 500 */}
+      {portfolio?.benchmark && (
+        <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-4 animate-fade-in">
+          <div className="text-2xs text-muted uppercase tracking-widest mb-2">⚖️ Portfel vs {portfolio.benchmark.symbol}</div>
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+            <div><span className="text-2xs text-muted mr-1.5">Twój portfel</span>
+              <span className="font-mono font-bold text-sm" style={{ color: portfolio.benchmark.portfolio_pnl_pct >= 0 ? '#22C55E' : '#EF4444' }}>
+                {portfolio.benchmark.portfolio_pnl_pct >= 0 ? '+' : ''}{portfolio.benchmark.portfolio_pnl_pct}%</span></div>
+            <div><span className="text-2xs text-muted mr-1.5">{portfolio.benchmark.symbol} w tym samym okresie</span>
+              <span className="font-mono font-bold text-sm text-text-lo">
+                {portfolio.benchmark.benchmark_pnl_pct >= 0 ? '+' : ''}{portfolio.benchmark.benchmark_pnl_pct}%</span></div>
+            <div><span className="text-2xs text-muted mr-1.5">Różnica</span>
+              <span className="font-mono font-bold text-sm" style={{ color: portfolio.benchmark.alpha >= 0 ? '#22C55E' : '#EF4444' }}>
+                {portfolio.benchmark.alpha >= 0 ? '+' : ''}{portfolio.benchmark.alpha} p.p.</span></div>
+          </div>
+          <p className="text-2xs text-muted mt-1.5">Każda pozycja porównana ze zwrotem indeksu od jej daty zakupu, ważona kosztem.</p>
+        </div>
+      )}
+
+      <AddPositionForm onAdded={() => mutate()} onToggleImport={() => setShowImport(v => !v)} />
+      {showImport && <XtbImport onDone={() => mutate()} />}
 
       {isLoading ? (
         <div className="flex justify-center py-12"><Spinner size="lg" /></div>

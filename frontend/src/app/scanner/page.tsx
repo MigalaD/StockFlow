@@ -376,7 +376,7 @@ export default function ScannerPage() {
             </div>
           ) : (
             <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
-              <table className="w-full border-collapse">
+              <div className="overflow-x-auto -mx-1 px-1"><table className="w-full border-collapse min-w-[640px]">
                 <thead>
                   <tr>
                     <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider text-muted font-medium border-b border-border w-8"
@@ -425,7 +425,7 @@ export default function ScannerPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               <div className="px-4 py-2.5 text-xs text-muted border-t border-border">
                 {sorted.length} instrumentów · Kliknij nagłówek kolumny aby sortować ·
                 Wysoki score ≠ sygnał kupna

@@ -9,7 +9,7 @@ import { useAuthStore, useRecentStore } from '../store'
 import { AppShell } from '../components/layout/AppShell'
 import { ScoreBar, scoreColor } from '../components/ui/ScoreBadge'
 import { SectionHeader, EmptyState, Button, Tag, Spinner } from '../components/ui'
-import { analysisApi, watchlistApi, scannerApi } from '../lib/api'
+import { analysisApi, watchlistApi, scannerApi, calendarApi, type CalendarEvent } from '../lib/api'
 import type { WatchlistItem, ScanResultItem, AnalysisResult } from '../lib/api'
 
 // ── VIX Widget ─────────────────────────────────────────────────────────
@@ -197,6 +197,13 @@ export default function DashboardPage() {
   }, [watchlist.map(w => w.ticker).join(',')])
 
   const { data: scan } = useSWR('scan-results', scannerApi.getResults, { refreshInterval: 0 })
+  const { data: calendar } = useSWR(isAuth ? 'calendar' : null, calendarApi.get, { revalidateOnFocus: false })
+
+  // Tylko przyszłe wydarzenia (dzisiejsze włącznie), max 6
+  const today = new Date().toISOString().slice(0, 10)
+  const upcomingEvents: CalendarEvent[] = (calendar?.events ?? [])
+    .filter(e => e.date.slice(0, 10) >= today)
+    .slice(0, 6)
 
   const avgScore = Object.values(analyses).length > 0
     ? (Object.values(analyses).reduce((s, a) => s + a.total_score, 0) / Object.values(analyses).length).toFixed(1)
@@ -232,6 +239,30 @@ export default function DashboardPage() {
           </Link>
         )}
       </div>
+
+      {/* Kalendarz rynkowy — nadchodzące wydarzenia z watchlisty */}
+      {isAuth && upcomingEvents.length > 0 && (
+        <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-5 animate-fade-in">
+          <div className="text-2xs text-muted uppercase tracking-widest mb-2.5">
+            📅 Kalendarz rynkowy — Twoje spółki
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {upcomingEvents.map((e, i) => (
+              <Link key={i} href={`/analysis?ticker=${e.ticker}`}
+                className="flex items-center gap-3 bg-surface-2 rounded-lg px-3 py-2 hover:bg-surface-3 transition-colors group">
+                <span className="text-base">{e.type === 'earnings' ? '📊' : '💰'}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-bold font-mono text-xs text-text-hi group-hover:text-brand-green transition-colors">{e.ticker}</span>
+                    <span className="text-2xs text-muted">{e.label}</span>
+                  </div>
+                  <div className="text-xs font-mono text-text-lo tabular-nums">{e.date.slice(0, 10)}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">

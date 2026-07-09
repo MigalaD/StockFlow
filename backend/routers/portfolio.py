@@ -28,6 +28,7 @@ from backend.models.schemas import (
     PortfolioResponse,
     PositionItem,
     PositionAddRequest,
+    PortfolioImportRequest,
 )
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -72,6 +73,7 @@ async def get_portfolio(user_id: CurrentUser) -> PortfolioResponse:
         total_pnl_pct        = totals.get("total_pnl_pct", 0.0),
         base_currency        = totals.get("base_currency", "PLN"),
         allocation_by_sector = result.get("allocation_by_sector", {}),
+        benchmark            = result.get("benchmark"),
         warnings             = result.get("warnings", []),
     )
 
@@ -114,6 +116,34 @@ async def remove_position(position_id: int, user_id: CurrentUser) -> dict:
         )
     db.remove_position(position_id, user_id)
     return {"message": "Pozycja usunięta"}
+
+
+@router.post(
+    "/import",
+    status_code=status.HTTP_201_CREATED,
+    summary="Bulk import positions (e.g. from XTB CSV)",
+)
+async def import_positions(payload: PortfolioImportRequest, user_id: CurrentUser) -> dict:
+    """Importuje wiele pozycji naraz (parsowanie CSV robi frontend —
+    tu tylko walidacja przez schemat i zapis). Zwraca podsumowanie."""
+    from datetime import date
+    added, errors = 0, []
+
+    for pos in payload.positions:
+        try:
+            db.add_position(
+                user_id   = user_id,
+                ticker    = pos.ticker.upper().strip(),
+                shares    = pos.shares,
+                buy_price = pos.buy_price,
+                buy_date  = pos.buy_date or date.today().isoformat(),
+                notes     = pos.notes or "Import XTB",
+            )
+            added += 1
+        except Exception as e:
+            errors.append({"ticker": pos.ticker, "error": str(e)[:80]})
+
+    return {"added": added, "errors": errors}
 
 
 @router.get(

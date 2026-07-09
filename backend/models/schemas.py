@@ -83,6 +83,7 @@ class AnalysisResponse(BaseModel):
     ma_crossover: dict[str, Any] | None
     beta_info:    dict[str, Any] | None
     relative_strength: dict[str, Any] | None
+    calendar_info: dict[str, Any] | None = None   # earnings_date, ex_dividend_date
     cached_at:    str | None = None
 
 
@@ -132,6 +133,11 @@ class PositionAddRequest(BaseModel):
         return v.strip().upper()
 
 
+class PortfolioImportRequest(BaseModel):
+    """Zbiorczy import pozycji (np. z CSV XTB). Max 200 na raz."""
+    positions: list[PositionAddRequest] = Field(..., min_length=1, max_length=200)
+
+
 class PositionItem(BaseModel):
     id:            int
     ticker:        str
@@ -155,6 +161,7 @@ class PortfolioResponse(BaseModel):
     total_pnl:           float
     total_pnl_pct:       float
     base_currency:       str = "PLN"
+    benchmark:           dict[str, Any] | None = None
     allocation_by_sector: dict[str, float]
     warnings:            list[str]
 

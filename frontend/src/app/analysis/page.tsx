@@ -100,6 +100,8 @@ function PriceChart({
   showBollinger,
   showMA,
   showVolume,
+  alertHigh,
+  alertLow,
   live,
   rangeBars,
 }: {
@@ -109,11 +111,14 @@ function PriceChart({
   showBollinger: boolean
   showMA:        boolean
   showVolume:    boolean
+  alertHigh?:    number | null
+  alertLow?:     number | null
   live:          boolean
   rangeBars:     number | null   // ile ostatnich świec pokazać (null = wszystko)
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef     = useRef<any>(null)
+  const readoutRef   = useRef<HTMLDivElement>(null)
 
   const { data, isLoading } = useSWR(
     ticker ? `candles-${ticker}-${interval}` : null,
@@ -247,6 +252,41 @@ function PriceChart({
         chart.timeScale().fitContent()
       }
 
+      // Linie progów alertów z watchlisty — użytkownik widzi swoje progi
+      // na tle ceny (spójność z alertami e-mail: ustawiasz → widzisz → mail).
+      if (alertHigh) {
+        series.createPriceLine({
+          price: alertHigh, color: '#22C55E', lineWidth: 1, lineStyle: 2,
+          axisLabelVisible: true, title: 'Alert ▲',
+        })
+      }
+      if (alertLow) {
+        series.createPriceLine({
+          price: alertLow, color: '#EF4444', lineWidth: 1, lineStyle: 2,
+          axisLabelVisible: true, title: 'Alert ▼',
+        })
+      }
+
+      // Odczyt OHLC pod kursorem — wykres "do czytania", nie tylko oglądania.
+      // Aktualizacja przez ref (bez re-renderów React przy każdym ruchu myszy).
+      const byTime = new Map(data.candles.map(c => [toTime(c.timestamp) as number, c]))
+      chart.subscribeCrosshairMove((param: any) => {
+        const el = readoutRef.current
+        if (!el) return
+        const c = param?.time != null ? byTime.get(param.time as number) : null
+        if (!c) { el.style.opacity = '0'; return }
+        const chg = c.open ? ((c.close - c.open) / c.open * 100) : 0
+        const col = c.close >= c.open ? '#22C55E' : '#EF4444'
+        el.innerHTML =
+          `<span style="color:#64748B">O</span> ${c.open.toFixed(2)} ` +
+          `<span style="color:#64748B">H</span> ${c.high.toFixed(2)} ` +
+          `<span style="color:#64748B">L</span> ${c.low.toFixed(2)} ` +
+          `<span style="color:#64748B">C</span> <span style="color:${col}">${c.close.toFixed(2)}</span> ` +
+          `<span style="color:${col}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>` +
+          (c.volume ? ` <span style="color:#64748B">Vol</span> ${Intl.NumberFormat('pl-PL', { notation: 'compact' }).format(c.volume)}` : '')
+        el.style.opacity = '1'
+      })
+
       chartRef.current = chart
 
       const obs = new ResizeObserver(() => {
@@ -264,7 +304,7 @@ function PriceChart({
         chartRef.current = null
       }
     }
-  }, [data, mode, interval, showBollinger, showMA, showVolume, rangeBars])
+  }, [data, mode, interval, showBollinger, showMA, showVolume, alertHigh, alertLow, rangeBars])
 
   if (isLoading) return (
     <div className="h-[360px] flex items-center justify-center"><Spinner size="lg" /></div>
@@ -277,7 +317,12 @@ function PriceChart({
 
   return (
     <div>
-      <div ref={containerRef} className="w-full" />
+      <div className="relative">
+        <div ref={readoutRef}
+          className="absolute top-1 left-1 z-10 px-2 py-1 rounded-md text-2xs font-mono tabular-nums pointer-events-none transition-opacity"
+          style={{ background: 'rgba(8,12,22,0.85)', color: '#CBD5E1', opacity: 0 }} />
+        <div ref={containerRef} className="w-full" />
+      </div>
       <div className="flex items-center gap-3 mt-2 px-1 text-2xs text-muted flex-wrap">
         <span className="flex items-center gap-1">
           {data.is_live
@@ -550,6 +595,28 @@ function componentLabel(key: string): string {
   return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')
 }
 
+
+function ScoreValidation() {
+  const { data } = useSWR('score-validation', analysisApi.scoreValidation, { revalidateOnFocus: false })
+
+  if (!data) return <p className="text-xs text-muted">Ładowanie…</p>
+  if (!data.ready) return <p className="text-xs text-text-lo leading-relaxed">{data.message}</p>
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-text-lo mb-1.5">Średni zwrot od momentu zapisu score ({data.records} obserwacji):</p>
+      {data.buckets.map((b: any) => (
+        <div key={b.bucket} className="flex items-center gap-3 text-xs font-mono">
+          <span className="w-12 text-muted">{b.bucket}</span>
+          <span className="font-bold" style={{ color: b.avg_return_pct >= 0 ? '#22C55E' : '#EF4444' }}>
+            {b.avg_return_pct >= 0 ? '+' : ''}{b.avg_return_pct}%
+          </span>
+          <span className="text-2xs text-muted">({b.count} obs.)</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function MethodologyPanel() {
   const [open, setOpen] = useState(false)
   return (
@@ -633,6 +700,12 @@ function MethodologyPanel() {
               <em className="text-text-mid"> William O'Neil</em> (metoda CAN SLIM, siła względna) oraz
               <em className="text-text-mid"> Mark Minervini</em> (trend i momentum).
             </p>
+          </div>
+
+
+          <div>
+            <div className="text-2xs text-muted uppercase tracking-wider mb-1.5">Walidacja empiryczna</div>
+            <ScoreValidation />
           </div>
 
           <p className="text-2xs text-muted pt-1 border-t border-border">
@@ -721,11 +794,11 @@ function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
           <SectionHeader title="Crossover MA" icon="📐" />
           <div className="rounded-lg px-3 py-2.5 text-sm"
             style={{
-              background: (analysis.ma_crossover as any).above ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-              color:      (analysis.ma_crossover as any).above ? '#22C55E' : '#EF4444',
-              border:     `1px solid ${(analysis.ma_crossover as any).above ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+              background: (analysis.ma_crossover as any).state === 'golden' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+              color:      (analysis.ma_crossover as any).state === 'golden' ? '#22C55E' : '#EF4444',
+              border:     `1px solid ${(analysis.ma_crossover as any).state === 'golden' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
             }}>
-            {(analysis.ma_crossover as any).above
+            {(analysis.ma_crossover as any).state === 'golden'
               ? '✓ MA50 > MA200 — układ byczy (Golden Cross)'
               : '✗ MA50 < MA200 — układ niedźwiedzi (Death Cross)'}
           </div>
@@ -874,7 +947,32 @@ function SignalsTab({ ticker, price, currency }: {
 
 // ── News tab ──────────────────────────────────────────────────────────
 
-function NewsTab({ ticker }: { ticker: string }) {
+function UpcomingEvents({ analysis }: { analysis?: AnalysisResult }) {
+  const cal = analysis?.calendar_info
+  const events = [
+    cal?.earnings_date    ? { label: 'Najbliższe wyniki finansowe', date: cal.earnings_date,    icon: '📊' } : null,
+    cal?.ex_dividend_date ? { label: 'Dzień ex-dividend',           date: cal.ex_dividend_date, icon: '💰' } : null,
+  ].filter(Boolean) as { label: string; date: string; icon: string }[]
+
+  if (events.length === 0) return null
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+      {events.map(e => (
+        <div key={e.label}
+          className="flex items-center gap-3 bg-surface-1 border border-border rounded-xl2 px-4 py-3">
+          <span className="text-lg">{e.icon}</span>
+          <div className="min-w-0">
+            <div className="text-2xs text-muted uppercase tracking-wider">{e.label}</div>
+            <div className="text-sm font-bold font-mono text-text-hi tabular-nums">{e.date}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function NewsTab({ ticker, analysis }: { ticker: string; analysis?: AnalysisResult }) {
   const { data: news, isLoading } = useSWR(
     `news-${ticker}`,
     () => newsApi.get(ticker),
@@ -886,12 +984,16 @@ function NewsTab({ ticker }: { ticker: string }) {
   )
 
   if (!news || news.length === 0) return (
-    <EmptyState icon="📰" title="Brak newsów"
-      desc={`Nie znaleziono najnowszych wiadomości dla ${ticker}.`} />
+    <div>
+      <UpcomingEvents analysis={analysis} />
+      <EmptyState icon="📰" title="Brak newsów"
+        desc={`Nie znaleziono najnowszych wiadomości dla ${ticker}.`} />
+    </div>
   )
 
   return (
     <div className="space-y-3">
+      <UpcomingEvents analysis={analysis} />
       <div className="text-xs text-muted mb-2">
         Najnowsze wiadomości · źródło: Yahoo Finance
       </div>
@@ -932,6 +1034,11 @@ function AnalysisContent() {
 
   const initialTicker = searchParams.get('ticker') ?? ''
   const [ticker,    setTicker]    = useState(initialTicker)
+
+  // Wpis watchlisty dla bieżącego tickera — progi alertów rysowane na wykresie
+  const { data: wlData } = useSWR(isAuth ? 'watchlist' : null, watchlistApi.get, { revalidateOnFocus: false })
+  const wlItem = wlData?.find(w => w.ticker === ticker)
+
   const [interval,  setInterval]  = useState<Interval>('1d')
   const [chartMode, setChartMode] = useState<ChartMode>('candles')
   const [showBollinger, setShowBollinger] = useState(false)
@@ -1042,7 +1149,7 @@ function AnalysisContent() {
           action={<Button onClick={() => setTicker('')} variant="ghost">Szukaj ponownie</Button>}
         />
       ) : (
-        <div className="flex gap-5">
+        <div className="flex flex-col lg:flex-row gap-5">
           {/* Main area */}
           <div className="flex-1 min-w-0">
             {/* Sticky header */}
@@ -1230,7 +1337,9 @@ function AnalysisContent() {
                 </div>
 
                 <PriceChart ticker={ticker} interval={interval} mode={chartMode}
-                  showBollinger={showBollinger} showMA={showMA} showVolume={showVolume} live={live} rangeBars={rangeBars} />
+                  showBollinger={showBollinger} showMA={showMA} showVolume={showVolume}
+                  alertHigh={wlItem?.alert_high} alertLow={wlItem?.alert_low}
+                  live={live} rangeBars={rangeBars} />
               </div>
             )}
 
@@ -1238,7 +1347,7 @@ function AnalysisContent() {
             {activeTab === 'details'    && <DetailsTab   analysis={analysis} />}
             {activeTab === 'scenarios'  && <ScenariosTab ticker={ticker} analysis={analysis} />}
             {activeTab === 'strategies' && <StrategiesTab analysis={analysis} />}
-            {activeTab === 'news'       && <NewsTab ticker={ticker} />}
+            {activeTab === 'news'       && <NewsTab ticker={ticker} analysis={analysis} />}
 
             {activeTab === 'pdf' && (
               <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -1296,11 +1405,11 @@ function AnalysisContent() {
                 <div
                   className="text-xs rounded-lg px-2.5 py-2"
                   style={{
-                    background: (analysis.ma_crossover as any).above ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                    color:      (analysis.ma_crossover as any).above ? '#22C55E' : '#EF4444',
+                    background: (analysis.ma_crossover as any).state === 'golden' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    color:      (analysis.ma_crossover as any).state === 'golden' ? '#22C55E' : '#EF4444',
                   }}
                 >
-                  {(analysis.ma_crossover as any).above ? '✓ MA50 > MA200 (byczy)' : '✗ MA50 < MA200 (niedźwiedzi)'}
+                  {(analysis.ma_crossover as any).state === 'golden' ? '✓ MA50 > MA200 (byczy)' : '✗ MA50 < MA200 (niedźwiedzi)'}
                 </div>
               </div>
             )}

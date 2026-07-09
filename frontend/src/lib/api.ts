@@ -34,6 +34,7 @@ export interface AnalysisResult {
   ma_crossover: Record<string, unknown> | null
   beta_info:    Record<string, unknown> | null
   relative_strength: Record<string, unknown> | null
+  calendar_info?: { earnings_date?: string | null; ex_dividend_date?: string | null } | null
 }
 
 export interface OHLCVCandle {
@@ -91,6 +92,7 @@ export interface Portfolio {
   total_pnl:             number
   total_pnl_pct:         number
   base_currency:         string
+  benchmark?:            { symbol: string; benchmark_pnl_pct: number; portfolio_pnl_pct: number; alpha: number } | null
   allocation_by_sector:  Record<string, number>
   warnings:              string[]
 }
@@ -266,7 +268,17 @@ export const authApi = {
 
 // ── Analysis endpoints ────────────────────────────────────────────────
 
+export interface ScoreValidationBucket { bucket: string; count: number; avg_return_pct: number }
+export interface ScoreValidationResult {
+  ready: boolean; records: number; message: string | null; buckets: ScoreValidationBucket[]
+}
+
 export const analysisApi = {
+  scoreValidation: async (): Promise<ScoreValidationResult> => {
+    const { data } = await api.get<ScoreValidationResult>('/analyze/score-validation')
+    return data
+  },
+
   search: async (q: string, limit = 8): Promise<{ symbol: string; name: string }[]> => {
     const { data } = await api.get('/analyze/search', { params: { q, limit } })
     return data
@@ -328,6 +340,13 @@ export const watchlistApi = {
 export const portfolioApi = {
   get: async (): Promise<Portfolio> => {
     const { data } = await api.get<Portfolio>('/portfolio')
+    return data
+  },
+
+  importPositions: async (positions: {
+    ticker: string; shares: number; buy_price: number; buy_date?: string; notes?: string
+  }[]): Promise<{ added: number; errors: { ticker: string; error: string }[] }> => {
+    const { data } = await api.post('/portfolio/import', { positions })
     return data
   },
 
@@ -466,6 +485,23 @@ export interface DividendsResponse {
 export const dividendsApi = {
   get: async (): Promise<DividendsResponse> => {
     const { data } = await api.get<DividendsResponse>('/dividends')
+    return data
+  },
+}
+
+
+// ── Kalendarz rynkowy ─────────────────────────────────────────────────
+
+export interface CalendarEvent {
+  ticker: string
+  type:   'earnings' | 'ex_dividend'
+  label:  string
+  date:   string
+}
+
+export const calendarApi = {
+  get: async (): Promise<{ events: CalendarEvent[]; tickers_checked: number }> => {
+    const { data } = await api.get('/calendar')
     return data
   },
 }

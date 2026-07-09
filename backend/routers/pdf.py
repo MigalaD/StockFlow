@@ -53,12 +53,30 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
     pdf.add_page()
     pdf.set_margins(20, 20, 20)
 
+    # Font: DejaVu Sans obsługuje polskie znaki diakrytyczne (ą, ć, ę, ł, ń,
+    # ó, ś, ź, ż). Wbudowana "Helvetica" fpdf2 wspiera tylko Latin-1, który
+    # NIE zawiera polskich ogonków — stąd błąd "Character 'ł' ... outside
+    # the range of characters supported". Font dołączony do repo (nie
+    # polegamy na tym, co przypadkiem jest zainstalowane na serwerze).
+    _FONT_DIR = os.path.join(_ROOT, "backend", "assets", "fonts")
+    _regular  = os.path.join(_FONT_DIR, "DejaVuSans.ttf")
+    _bold     = os.path.join(_FONT_DIR, "DejaVuSans-Bold.ttf")
+
+    if os.path.exists(_regular) and os.path.exists(_bold):
+        pdf.add_font("DejaVu", "", _regular)
+        pdf.add_font("DejaVu", "B", _bold)
+        FONT = "DejaVu"
+    else:
+        # Fallback (nie powinien wystąpić w produkcji) — polskie znaki
+        # ze "ogonkiem" zostaną wtedy obcięte/zniekształcone przez fpdf2.
+        FONT = "Helvetica"
+
     # ── Nagłówek ──────────────────────────────────────────────────────
-    pdf.set_font("Helvetica", "B", 22)
+    pdf.set_font(FONT, "B", 22)
     pdf.set_text_color(34, 197, 94)      # brand green
     pdf.cell(0, 10, "StockFlow", ln=True)
 
-    pdf.set_font("Helvetica", "", 10)
+    pdf.set_font(FONT, "", 10)
     pdf.set_text_color(100, 116, 139)    # muted
     pdf.cell(0, 5, f"Raport analizy  ·  {now}", ln=True)
     pdf.ln(4)
@@ -69,11 +87,11 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
     pdf.line(20, pdf.get_y(), 190, pdf.get_y())
     pdf.ln(3)
 
-    pdf.set_font("Helvetica", "B", 16)
+    pdf.set_font(FONT, "B", 16)
     pdf.set_text_color(248, 250, 252)
     pdf.cell(0, 10, f"{name} ({ticker})", ln=True)
 
-    pdf.set_font("Helvetica", "", 10)
+    pdf.set_font(FONT, "", 10)
     pdf.set_text_color(100, 116, 139)
     pdf.cell(0, 5, f"Sektor: {sector}  ·  Cena: {price:.2f} {currency}", ln=True)
     pdf.ln(5)
@@ -87,15 +105,15 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
         pdf.set_line_width(0.5)
         pdf.rect(x, y, w, 22, style="FD")
         pdf.set_xy(x + 2, y + 2)
-        pdf.set_font("Helvetica", "", 7)
+        pdf.set_font(FONT, "", 7)
         pdf.set_text_color(100, 116, 139)
         pdf.cell(w - 4, 5, label.upper(), ln=True)
         pdf.set_xy(x + 2, y + 8)
-        pdf.set_font("Helvetica", "B", 18)
+        pdf.set_font(FONT, "B", 18)
         pdf.set_text_color(*clr)
         pdf.cell(w // 2, 10, f"{score_val:.0f}/100")
         pdf.set_xy(x + 2 + w // 2, y + 11)
-        pdf.set_font("Helvetica", "", 9)
+        pdf.set_font(FONT, "", 9)
         pdf.set_text_color(*clr)
         pdf.cell(w // 2 - 4, 7, score_label(score_val))
 
@@ -108,7 +126,7 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
     pdf.ln(3)
 
     # ── Składowe ──────────────────────────────────────────────────────
-    pdf.set_font("Helvetica", "B", 12)
+    pdf.set_font(FONT, "B", 12)
     pdf.set_text_color(248, 250, 252)
     pdf.cell(0, 8, "Składowe wyniku DT", ln=True)
     pdf.set_draw_color(34, 197, 94)
@@ -119,7 +137,7 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
     col_widths = [80, 25, 25, 40]
     headers    = ["Wskaźnik", "Wynik", "Waga", "Sygnał"]
 
-    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_font(FONT, "B", 9)
     pdf.set_text_color(100, 116, 139)
     for w, h in zip(col_widths, headers):
         pdf.cell(w, 6, h)
@@ -135,15 +153,15 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
         note  = comp.get("note", "") if isinstance(comp, dict) else getattr(comp, "note", "")
         clr   = (34, 197, 94) if s >= 60 else (245, 158, 11) if s >= 40 else (239, 68, 68)
 
-        pdf.set_font("Helvetica", "", 9)
+        pdf.set_font(FONT, "", 9)
         pdf.set_text_color(248, 250, 252)
         pdf.cell(col_widths[0], 6, str(k)[:38])
 
         pdf.set_text_color(*clr)
-        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_font(FONT, "B", 9)
         pdf.cell(col_widths[1], 6, f"{s:.0f}")
 
-        pdf.set_font("Helvetica", "", 9)
+        pdf.set_font(FONT, "", 9)
         pdf.set_text_color(100, 116, 139)
         pdf.cell(col_widths[2], 6, f"{w_pct * 100:.0f}%")
         pdf.cell(col_widths[3], 6, str(note)[:22])
@@ -155,13 +173,13 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
 
     # ── Red flags ─────────────────────────────────────────────────────
     if flags:
-        pdf.set_font("Helvetica", "B", 12)
+        pdf.set_font(FONT, "B", 12)
         pdf.set_text_color(248, 250, 252)
         pdf.cell(0, 8, "Ostrzeżenia (Red Flags)", ln=True)
         pdf.set_draw_color(239, 68, 68)
         pdf.line(20, pdf.get_y(), 190, pdf.get_y())
         pdf.ln(3)
-        pdf.set_font("Helvetica", "", 9)
+        pdf.set_font(FONT, "", 9)
         pdf.set_text_color(239, 68, 68)
         for flag in flags:
             pdf.cell(5, 6, "!")
@@ -175,7 +193,7 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
     pdf.set_draw_color(34, 197, 94)
     pdf.set_line_width(0.4)
     pdf.line(20, pdf.get_y(), 190, pdf.get_y())
-    pdf.set_font("Helvetica", "", 7)
+    pdf.set_font(FONT, "", 7)
     pdf.set_text_color(100, 116, 139)
     pdf.cell(0, 5, "StockFlow  ·  Narzędzie edukacyjne  ·  Nie stanowi porady inwestycyjnej", ln=True, align="C")
     pdf.cell(0, 5, f"Wygenerowano: {now}", align="C")

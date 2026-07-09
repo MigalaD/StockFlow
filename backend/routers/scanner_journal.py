@@ -44,15 +44,18 @@ from backend.models.schemas import (
 
 scan_router = APIRouter(prefix="/scan", tags=["scanner"])
 
-# Globalny stan skanu (w pamięci — wystarczy dla jednej instancji)
-_scan_state: dict = {
-    "running":   False,
-    "progress":  0,
-    "total":     0,
-    "current":   "",
-    "started_at": None,
-}
+# Stan skanu żyje w BAZIE (db.set_scan_status / get_scan_status), nie w
+# pamięci procesu. Uvicorn uruchamia kilka workerów — stan w pamięci
+# istniał osobno w każdym z nich: POST /scan startował skan w workerze A,
+# a status odpytywany był z workera B, który widział "nic nie działa".
+# Frontend gasił panel, choć skan pracował dalej (stąd też 409 przy
+# ponownym kliknięciu). Baza (jeden plik na kontener) jest współdzielona.
 _scan_lock = threading.Lock()
+
+# Jeśli running=True, ale ostatnia aktualizacja starsza niż tyle sekund,
+# uznajemy skan za martwy (np. kontener zrestartował w połowie) i
+# pozwalamy wystartować nowy zamiast blokować wiecznym 409.
+_SCAN_STALE_AFTER_S = 180
 
 _MARKET_MAP = {
     "usa":    SKANER_USA,
@@ -63,30 +66,49 @@ _MARKET_MAP = {
 }
 
 
+def _status_is_stale(updated_at: str | None) -> bool:
+    if not updated_at:
+        return True
+    try:
+        from datetime import datetime as _dt
+        last = _dt.fromisoformat(updated_at)
+        return (_dt.now() - last).total_seconds() > _SCAN_STALE_AFTER_S
+    except (ValueError, TypeError):
+        return True
+
+
 def _run_scan_background(market: str) -> None:
     """Uruchamia skan w tle (background task FastAPI)."""
-    global _scan_state
     tickers = _MARKET_MAP.get(market, SKANER_USA)
+    started = time.time()
 
-    with _scan_lock:
-        _scan_state.update({
-            "running":    True,
-            "progress":   0,
-            "total":      len(tickers),
-            "current":    "",
-            "started_at": time.time(),
-        })
+    db.set_scan_status({
+        "running":    True,
+        "progress":   0,
+        "total":      len(tickers),
+        "current":    "",
+        "started_at": started,
+    })
 
     def progress_cb(done: int, total: int, ticker: str) -> None:
-        with _scan_lock:
-            _scan_state["progress"] = done
-            _scan_state["current"]  = ticker
+        db.set_scan_status({
+            "running":    True,
+            "progress":   done,
+            "total":      total,
+            "current":    ticker,
+            "started_at": started,
+        })
 
     try:
         scan_market(tickers, progress_callback=progress_cb)
     finally:
-        with _scan_lock:
-            _scan_state["running"] = False
+        db.set_scan_status({
+            "running":    False,
+            "progress":   len(tickers),
+            "total":      len(tickers),
+            "current":    "",
+            "started_at": started,
+        })
 
 
 @scan_router.get(
@@ -132,7 +154,8 @@ async def start_scan(
     Wyniki dostępne przez GET /scan gdy skan się zakończy.
     """
     with _scan_lock:
-        if _scan_state["running"]:
+        state, updated_at = db.get_scan_status()
+        if state.get("running") and not _status_is_stale(updated_at):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Scan already running",
@@ -154,9 +177,13 @@ async def start_scan(
     summary="Scan progress",
 )
 async def scan_status() -> dict:
-    """Zwraca aktualny status bieżącego skanu."""
-    with _scan_lock:
-        state = dict(_scan_state)
+    """Zwraca aktualny status bieżącego skanu (stan współdzielony w bazie)."""
+    state, updated_at = db.get_scan_status()
+
+    # Skan oznaczony jako running, ale dawno nieaktualizowany = martwy
+    # (np. restart kontenera w połowie). Raportuj jako zakończony.
+    if state.get("running") and _status_is_stale(updated_at):
+        state["running"] = False
 
     elapsed = None
     if state["started_at"]:

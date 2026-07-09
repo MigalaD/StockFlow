@@ -123,6 +123,82 @@ async def search(
         raise HTTPException(status_code=503, detail=f"Search unavailable: {e}")
 
 
+
+# ── Walidacja empiryczna score ────────────────────────────────────────
+_val_cache: tuple[float, dict] | None = None
+
+@router.get(
+    "/score-validation",
+    summary="Empirical score validation",
+    description="Czy spółki z wysokim score faktycznie zachowały się lepiej? Zwroty od momentu zapisu score, pogrupowane w koszyki.",
+)
+def score_validation() -> dict:
+    """Porównuje historyczne score'y (score_history, zapisywane przy każdej
+    analizie) z faktycznym zwrotem ceny od dnia zapisu. Cache 12h."""
+    global _val_cache
+    import time as _t
+    if _val_cache and (_t.time() - _val_cache[0]) < 12 * 3600:
+        return _val_cache[1]
+
+    from datetime import date, timedelta
+    min_age = (date.today() - timedelta(days=30)).isoformat()
+
+    with db.get_conn() as conn:
+        rows = conn.execute(
+            "SELECT ticker, date, score FROM score_history WHERE date <= ? "
+            "ORDER BY ticker, date", (min_age,),
+        ).fetchall()
+
+    records = [dict(r) for r in rows]
+    if len(records) < 20:
+        payload = {
+            "ready": False,
+            "records": len(records),
+            "message": f"Za mało danych ({len(records)} zapisów starszych niż 30 dni; potrzeba min. 20). "
+                       "Score'y zapisują się automatycznie przy każdej analizie — wróć za kilka tygodni.",
+            "buckets": [],
+        }
+        _val_cache = (_t.time(), payload)
+        return payload
+
+    import yfinance as yf
+    buckets = {"80+": [], "60-79": [], "40-59": [], "<40": []}
+    tickers = sorted({r["ticker"] for r in records})
+    hist_cache: dict = {}
+    for t in tickers[:60]:  # limit ochronny na yfinance
+        try:
+            hist_cache[t] = yf.Ticker(t).history(period="1y")["Close"]
+        except Exception:
+            hist_cache[t] = None
+
+    for r in records:
+        closes = hist_cache.get(r["ticker"])
+        if closes is None or closes.empty:
+            continue
+        try:
+            at = closes[closes.index >= r["date"]]
+            if at.empty:
+                continue
+            ret = (float(closes.iloc[-1]) / float(at.iloc[0]) - 1) * 100
+        except Exception:
+            continue
+        s = r["score"]
+        key = "80+" if s >= 80 else "60-79" if s >= 60 else "40-59" if s >= 40 else "<40"
+        buckets[key].append(ret)
+
+    out = []
+    for k in ["80+", "60-79", "40-59", "<40"]:
+        vals = buckets[k]
+        if vals:
+            out.append({"bucket": k, "count": len(vals),
+                        "avg_return_pct": round(sum(vals) / len(vals), 2)})
+
+    payload = {"ready": len(out) >= 2, "records": len(records), "buckets": out,
+               "message": None if len(out) >= 2 else "Za mało zróżnicowanych danych między koszykami."}
+    _val_cache = (_t.time(), payload)
+    return payload
+
+
 @router.get(
     "/{ticker}",
     response_model=AnalysisResponse,
@@ -205,6 +281,7 @@ async def analyze(
         ma_crossover      = result.get("ma_crossover"),
         beta_info         = result.get("beta_info"),
         relative_strength = result.get("relative_strength"),
+        calendar_info     = result.get("calendar_info"),
     )
 
     # Zapisz score do historii (cicha — nie blokuje odpowiedzi)
