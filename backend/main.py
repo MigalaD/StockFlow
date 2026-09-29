@@ -83,11 +83,23 @@ async def lifespan(app: FastAPI):
     settings.validate_production_security()
 
     if settings.use_postgres:
-        # PostgreSQL — uruchom migracje schematu
-        async with get_db() as pg_db:
-            from backend.core.database import run_postgres_migrations
-            await run_postgres_migrations(pg_db)
-        print(f"✅ PostgreSQL connected ({settings.database_url[:30]}...)")
+        # PostgreSQL służy dziś WYŁĄCZNIE do migracji schematu — routery i /health
+        # działają na SQLite (database.py inicjalizuje go przy imporcie). Dlatego
+        # chwilowa niedostępność Supabase (pauza projektu, limit połączeń, zła
+        # zmienna) nie może wyłączać całej aplikacji: logujemy wyraźny błąd
+        # i startujemy dalej. Gdy Postgres stanie się faktycznym źródłem danych
+        # (np. po migracji na Supabase Auth), ustaw REQUIRE_POSTGRES=true —
+        # wtedy start znów zakończy się błędem, jak dawniej.
+        try:
+            async with get_db() as pg_db:
+                from backend.core.database import run_postgres_migrations
+                await run_postgres_migrations(pg_db)
+            print(f"✅ PostgreSQL connected ({settings.database_url[:30]}...)")
+        except Exception as e:
+            if os.getenv("REQUIRE_POSTGRES", "").lower() in ("1", "true", "yes"):
+                raise
+            print(f"⚠️  PostgreSQL niedostępny — pomijam migracje: {type(e).__name__}: {str(e)[:200]}")
+            print("    Aplikacja startuje na SQLite. Sprawdź DATABASE_URL i status projektu Supabase.")
     else:
         # SQLite — istniejący mechanizm migracji Streamlit
         db.init_db()

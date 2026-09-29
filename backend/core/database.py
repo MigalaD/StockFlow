@@ -149,8 +149,8 @@ async def _get_pg_pool():
             )
         _pg_pool = await asyncpg.create_pool(
             settings.database_url,
-            min_size = 2,
-            max_size = 10,
+            min_size = 1,      # Postgres używany tylko do migracji — mały pool wystarczy
+            max_size = 3,      # oszczędza limit klientów puli Supabase przy wielu workerach
             command_timeout = 60,
         )
     return _pg_pool

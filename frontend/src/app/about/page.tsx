@@ -1,6 +1,6 @@
 'use client'
 import { useTranslations } from 'next-intl'
-import { Briefcase, Calculator, FlaskConical, Radio, Search, Settings2, Sparkles, TrendingUp, Zap } from 'lucide-react'
+import { Briefcase, Calculator, FlaskConical, Radio, Search, Settings2, Sparkles, Star, TrendingUp, Zap } from 'lucide-react'
 
 import { AppShell } from '../../components/layout/AppShell'
 import { SectionHeader, Tag } from '../../components/ui'
@@ -10,7 +10,7 @@ const FEATURES = [
   { Icon: TrendingUp, title:'Score DT', desc:'Wynik długoterminowy 0–100 z 8–12 wskaźników technicznych i fundamentalnych.' },
   { Icon: Zap, title:'Score ST', desc:'Wynik krótkoterminowy (swing) z RSI-7, Stochastik, OBV, VWAP.' },
   { Icon: Search, title:'Skaner',   desc:'Automatyczny skan USA, GPW, Europy i kryptowalut z rankingiem.' },
-  { icon:'⭐', title:'Watchlista', desc:'Obserwuj instrumenty i otrzymuj alerty gdy score zmienia się znacząco.' },
+  { Icon: Star, title:'Watchlista', desc:'Obserwuj instrumenty i otrzymuj alerty gdy score zmienia się znacząco.' },
   { Icon: Briefcase, title:'Portfolio', desc:'Śledzenie P&L, alokacja sektorowa, macierz korelacji.' },
   { Icon: FlaskConical, title:'Backtest', desc:'Test strategii score score na danych historycznych.' },
 ]

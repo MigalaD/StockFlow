@@ -24,7 +24,7 @@ function EtfCard({ stock }: { stock: EtfStock }) {
             {stock.ucits && (
               <span className="text-2xs px-1.5 py-0.5 rounded font-semibold"
                 style={{ background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}>
-                🇵🇱 UCITS
+                UCITS
               </span>
             )}
           </div>

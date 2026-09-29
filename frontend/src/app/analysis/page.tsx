@@ -1154,7 +1154,7 @@ function AnalysisContent() {
 
           {[
             {
-              label: '🇺🇸 Akcje USA',
+              label: 'Akcje USA',
               items: [
                 { t: 'AAPL', n: 'Apple' }, { t: 'MSFT', n: 'Microsoft' },
                 { t: 'NVDA', n: 'NVIDIA' }, { t: 'TSLA', n: 'Tesla' },
@@ -1162,7 +1162,7 @@ function AnalysisContent() {
               ],
             },
             {
-              label: '🇵🇱 GPW',
+              label: 'GPW',
               items: [
                 { t: 'CDR.WA', n: 'CD Projekt' }, { t: 'PKO.WA', n: 'PKO BP' },
                 { t: 'PKN.WA', n: 'Orlen' }, { t: 'PZU.WA', n: 'PZU' },
@@ -1426,7 +1426,7 @@ function AnalysisContent() {
                   rel="noreferrer"
                   download
                 >
-                  <Button>⬇ Pobierz PDF — {ticker}</Button>
+                  <Button>Pobierz PDF — {ticker}</Button>
                 </a>
               </div>
             )}
