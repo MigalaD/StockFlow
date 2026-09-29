@@ -58,7 +58,7 @@ function LanguageSection() {
     <div>
       <SectionHeader title={t('language')} icon={Globe} />
       <div className="flex gap-3">
-        {([['pl','🇵🇱 Polski'],['en','🇬🇧 English']] as const).map(([lang, label]) => (
+        {([['pl','Polski'],['en','English']] as const).map(([lang, label]) => (
           <button key={lang} onClick={() => { setLocale(lang); setTimeout(() => window.location.reload(), 200) }}
             className="flex-1 py-3 rounded-xl border text-sm font-semibold transition-all"
             style={{
