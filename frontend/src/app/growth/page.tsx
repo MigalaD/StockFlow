@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Rocket, ArrowRight, Info } from 'lucide-react'
 import { AppShell } from '../../components/layout/AppShell'
@@ -12,6 +13,7 @@ import { growthApi, type GrowthStock } from '../../lib/api'
 // ── Karta spółki ──────────────────────────────────────────────────────
 
 function GrowthCard({ stock }: { stock: GrowthStock }) {
+  const t = useTranslations('growth')
   return (
     <Link href={`/analysis?ticker=${stock.ticker}`}
       className="block bg-surface-1 border border-border rounded-xl2 p-4 hover:bg-surface-2 hover:border-border-hi transition-all group">
@@ -36,7 +38,7 @@ function GrowthCard({ stock }: { stock: GrowthStock }) {
         <Price value={stock.price} currency={stock.currency}
           className="text-sm font-semibold text-text-hi" />
         <span className="flex items-center gap-1 text-2xs text-muted group-hover:text-brand-green transition-colors">
-          Analizuj <ArrowRight className="w-3 h-3" />
+          {t('analyze')} <ArrowRight className="w-3 h-3" />
         </span>
       </div>
     </Link>
@@ -46,6 +48,7 @@ function GrowthCard({ stock }: { stock: GrowthStock }) {
 // ── Strona ────────────────────────────────────────────────────────────
 
 export default function GrowthPage() {
+  const t = useTranslations('growth')
   const { data, isLoading } = useSWR('growth', growthApi.get, {
     revalidateOnFocus: false,
   })
@@ -87,7 +90,7 @@ export default function GrowthPage() {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Spinner size="lg" />
-          <span className="text-sm text-muted">Analizuję spółki wzrostowe…</span>
+          <span className="text-sm text-muted">{t('loading')}</span>
         </div>
       ) : !data || data.stocks.length === 0 ? (
         <div className="text-center py-16 text-muted">
@@ -106,7 +109,7 @@ export default function GrowthPage() {
                 borderColor: activeCat === 'all' ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.06)',
               }}
             >
-              Wszystkie <span className="opacity-60">({data.stocks.length})</span>
+              {t('all')} <span className="opacity-60">({data.stocks.length})</span>
             </button>
             {data.categories.map(cat => {
               const count = data.stocks.filter(s => s.category === cat).length

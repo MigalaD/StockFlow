@@ -410,6 +410,96 @@ def get_last_scan_time() -> str | None:
 
 
 # ----------------------------------------------------------------------
+# FORECAST LOG — dane do kalibracji Probability Engine.
+#
+# Każda wygenerowana prognoza jest zapisywana RAZEM z wersją modelu.
+# Cron dopisuje później faktyczną cenę (forecast_outcome), co pozwala
+# policzyć, czy deklarowane 80% to faktycznie 80%. Bez tego logu nie da
+# się zbudować publicznej tablicy kalibracji — a ona jest właściwym
+# produktem, nie same liczby.
+#
+# UWAGA: przy migracji na Postgres te dwie tabele mają NAJWYŻSZY priorytet
+# — dane kalibracyjne narastają miesiącami i nie mogą zniknąć z kontenerem.
+# ----------------------------------------------------------------------
+
+def _ensure_forecast_tables(conn) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS forecast_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            target_date TEXT NOT NULL,
+            horizon_days INTEGER NOT NULL,
+            last_price REAL NOT NULL,
+            quantiles TEXT NOT NULL,
+            model_version TEXT NOT NULL,
+            sigma_daily REAL,
+            UNIQUE (ticker, target_date, horizon_days, model_version)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS forecast_outcome (
+            forecast_id INTEGER PRIMARY KEY,
+            actual_price REAL NOT NULL,
+            resolved_at TEXT NOT NULL
+        )
+    """)
+
+
+def log_forecast(ticker: str, target_date: str, horizon_days: int,
+                 last_price: float, quantiles: dict, model_version: str,
+                 sigma_daily: float | None = None) -> None:
+    """Zapisuje prognozę do późniejszej weryfikacji. INSERT OR IGNORE —
+    powtórne wygenerowanie tej samej prognozy (np. z cache) nie duplikuje
+    wpisu i nie zaburza statystyk kalibracji."""
+    with get_conn() as conn:
+        _ensure_forecast_tables(conn)
+        conn.execute(
+            "INSERT OR IGNORE INTO forecast_log "
+            "(ticker, created_at, target_date, horizon_days, last_price, "
+            " quantiles, model_version, sigma_daily) VALUES (?,?,?,?,?,?,?,?)",
+            (ticker.upper(), datetime.now().isoformat(), target_date, horizon_days,
+             last_price, json.dumps(quantiles), model_version, sigma_daily),
+        )
+
+
+def get_pending_forecasts(today: str) -> list[dict]:
+    """Prognozy, których termin minął, a wynik nie został jeszcze zapisany."""
+    with get_conn() as conn:
+        _ensure_forecast_tables(conn)
+        rows = conn.execute(
+            "SELECT f.* FROM forecast_log f "
+            "LEFT JOIN forecast_outcome o ON o.forecast_id = f.id "
+            "WHERE o.forecast_id IS NULL AND f.target_date <= ? LIMIT 500",
+            (today,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def resolve_forecast(forecast_id: int, actual_price: float) -> None:
+    with get_conn() as conn:
+        _ensure_forecast_tables(conn)
+        conn.execute(
+            "INSERT OR REPLACE INTO forecast_outcome (forecast_id, actual_price, resolved_at) "
+            "VALUES (?,?,?)", (forecast_id, actual_price, datetime.now().isoformat()),
+        )
+
+
+def get_calibration_data(model_version: str | None = None) -> list[dict]:
+    """Rozstrzygnięte prognozy + realizacje — wsad do tablicy kalibracji."""
+    q = ("SELECT f.ticker, f.horizon_days, f.quantiles, f.model_version, "
+         "f.last_price, o.actual_price FROM forecast_log f "
+         "JOIN forecast_outcome o ON o.forecast_id = f.id")
+    params: tuple = ()
+    if model_version:
+        q += " WHERE f.model_version = ?"
+        params = (model_version,)
+    with get_conn() as conn:
+        _ensure_forecast_tables(conn)
+        return [dict(r) for r in conn.execute(q, params).fetchall()]
+
+
+# ----------------------------------------------------------------------
 # SCAN STATUS — stan bieżącego skanu WSPÓŁDZIELONY między workerami.
 #
 # Uvicorn w produkcji uruchamia KILKA procesów roboczych. Stan trzymany

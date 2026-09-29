@@ -1,181 +1,275 @@
 # Copyright (c) 2026 Damian Migała / StockFlow
 
 """
-Router: /portfolio — zarządzanie portfelem użytkownika.
+Router: /scan
+  GET  /scan         — wyniki ostatniego skanu
+  POST /scan         — uruchom nowy skan (background task)
+  GET  /scan/status  — status bieżącego skanu
 
-WAŻNE: to jest router FastAPI (endpointy HTTP). Logika biznesowa
-(liczenie P&L, konwersja walut, wagi sektorowe) mieszka w module
-`portfolio.py` w głównym katalogu repo — ten plik go tylko woła
-i opakowuje w odpowiedzi HTTP.
+Router: /journal
+  GET    /journal         — lista wpisów
+  POST   /journal         — dodaj wpis
+  DELETE /journal/{id}    — usuń wpis
 """
 
 from __future__ import annotations
 
-import os
 import sys
+import os
+import threading
+import time
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 import database as db
-import portfolio as portfolio_logic
-from stock_analyzer import analyze_ticker
-from backend.core.security import CurrentUser
+from scanner import scan_market
+from tickers import (
+    SKANER_ETF,
+    SKANER_KOMODITY,
+    SKANER_USA, SKANER_GPW, SKANER_EUROPA,
+    SKANER_KRYPTO, SKANER_WSZYSTKIE,
+)
+from backend.core.security import CurrentUser, OptionalCurrentUser
 from backend.models.schemas import (
-    PortfolioResponse,
-    PositionItem,
-    PositionAddRequest,
-    PortfolioImportRequest,
+    JournalAddRequest,
+    JournalItem,
+    ScanRequest,
+    ScanResponse,
+    ScanResultItem,
 )
 
-router = APIRouter(prefix="/portfolio", tags=["portfolio"])
+# ── Scanner ────────────────────────────────────────────────────────────
+
+scan_router = APIRouter(prefix="/scan", tags=["scanner"])
+
+# Stan skanu żyje w BAZIE (db.set_scan_status / get_scan_status), nie w
+# pamięci procesu. Uvicorn uruchamia kilka workerów — stan w pamięci
+# istniał osobno w każdym z nich: POST /scan startował skan w workerze A,
+# a status odpytywany był z workera B, który widział "nic nie działa".
+# Frontend gasił panel, choć skan pracował dalej (stąd też 409 przy
+# ponownym kliknięciu). Baza (jeden plik na kontener) jest współdzielona.
+_scan_lock = threading.Lock()
+
+# Jeśli running=True, ale ostatnia aktualizacja starsza niż tyle sekund,
+# uznajemy skan za martwy (np. kontener zrestartował w połowie) i
+# pozwalamy wystartować nowy zamiast blokować wiecznym 409.
+_SCAN_STALE_AFTER_S = 180
+
+_MARKET_MAP = {
+    "usa":    SKANER_USA,
+    "gpw":    SKANER_GPW,
+    "europa": SKANER_EUROPA,
+    "krypto": SKANER_KRYPTO,
+    "all":    SKANER_WSZYSTKIE,
+    "etf":     SKANER_ETF,
+    "surowce": SKANER_KOMODITY,
+}
 
 
-@router.get(
+def _status_is_stale(updated_at: str | None) -> bool:
+    if not updated_at:
+        return True
+    try:
+        from datetime import datetime as _dt
+        last = _dt.fromisoformat(updated_at)
+        return (_dt.now() - last).total_seconds() > _SCAN_STALE_AFTER_S
+    except (ValueError, TypeError):
+        return True
+
+
+def _run_scan_background(market: str) -> None:
+    """Uruchamia skan w tle (background task FastAPI)."""
+    tickers = _MARKET_MAP.get(market, SKANER_USA)
+    started = time.time()
+
+    db.set_scan_status({
+        "running":    True,
+        "progress":   0,
+        "total":      len(tickers),
+        "current":    "",
+        "started_at": started,
+    })
+
+    def progress_cb(done: int, total: int, ticker: str) -> None:
+        db.set_scan_status({
+            "running":    True,
+            "progress":   done,
+            "total":      total,
+            "current":    ticker,
+            "started_at": started,
+        })
+
+    try:
+        scan_market(tickers, progress_callback=progress_cb)
+    finally:
+        db.set_scan_status({
+            "running":    False,
+            "progress":   len(tickers),
+            "total":      len(tickers),
+            "current":    "",
+            "started_at": started,
+        })
+
+
+@scan_router.get(
     "",
-    response_model=PortfolioResponse,
-    summary="Get portfolio with P&L",
+    response_model=ScanResponse,
+    summary="Get last scan results",
 )
-async def get_portfolio(user_id: CurrentUser) -> PortfolioResponse:
-    result = portfolio_logic.analyze_portfolio(user_id, analyze_ticker)
+async def get_scan_results(_user: OptionalCurrentUser = None) -> ScanResponse:
+    """Zwraca wyniki ostatniego skanu. Publiczny endpoint."""
+    results  = db.get_scan_results()
+    scan_at  = db.get_last_scan_time() or ""
 
-    positions = [
-        PositionItem(
-            id            = p["id"],
-            ticker        = p["ticker"],
-            name          = p["name"],
-            sector        = p["sector"],
-            shares        = p["shares"],
-            buy_price     = p["buy_price"],
-            buy_date      = p["buy_date"],
-            current_price = p["current_price"],
-            currency      = p.get("currency", "USD"),
-            cost_basis    = p["cost_basis"],
-            current_value = p["current_value"],
-            pnl           = p["pnl"],
-            pnl_pct       = p["pnl_pct"],
-            notes         = p.get("notes", ""),
-            score         = p.get("score"),
-        )
-        for p in result["positions"]
-    ]
-
-    # portfolio.py zwraca totals jako zagnieżdżony dict
-    totals = result.get("totals") or {}
-
-    return PortfolioResponse(
-        positions            = positions,
-        total_value          = totals.get("total_value", 0.0),
-        total_pnl            = totals.get("total_pnl", 0.0),
-        total_pnl_pct        = totals.get("total_pnl_pct", 0.0),
-        base_currency        = totals.get("base_currency", "PLN"),
-        allocation_by_sector = result.get("allocation_by_sector", {}),
-        benchmark            = result.get("benchmark"),
-        warnings             = result.get("warnings", []),
-    )
-
-
-@router.post(
-    "",
-    status_code=status.HTTP_201_CREATED,
-    summary="Add position",
-)
-async def add_position(payload: PositionAddRequest, user_id: CurrentUser) -> dict:
-    # database.add_position wymaga buy_date jako string — jeśli klient
-    # go nie poda, użyj dzisiejszej daty zamiast przekazywać None.
-    from datetime import date
-    buy_date = payload.buy_date or date.today().isoformat()
-
-    db.add_position(
-        user_id    = user_id,
-        ticker     = payload.ticker.upper().strip(),
-        shares     = payload.shares,
-        buy_price  = payload.buy_price,
-        buy_date   = buy_date,
-        notes      = payload.notes or "",
-    )
-    return {"message": "Pozycja dodana"}
-
-
-@router.delete(
-    "/{position_id}",
-    summary="Remove position",
-)
-async def remove_position(position_id: int, user_id: CurrentUser) -> dict:
-    # database.remove_position nie zwraca informacji o sukcesie (brak wyjątku
-    # przy nieistniejącym id — DELETE po prostu nic nie usuwa). Sprawdzamy
-    # więc jawnie, czy pozycja istniała PRZED usunięciem, żeby móc zwrócić 404.
-    existing = [p for p in db.get_portfolio(user_id) if p["id"] == position_id]
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Pozycja nie znaleziona",
-        )
-    db.remove_position(position_id, user_id)
-    return {"message": "Pozycja usunięta"}
-
-
-@router.post(
-    "/import",
-    status_code=status.HTTP_201_CREATED,
-    summary="Bulk import positions (e.g. from XTB CSV)",
-)
-async def import_positions(payload: PortfolioImportRequest, user_id: CurrentUser) -> dict:
-    """Importuje wiele pozycji naraz (parsowanie CSV robi frontend —
-    tu tylko walidacja przez schemat i zapis). Zwraca podsumowanie."""
-    from datetime import date
-    added, errors = 0, []
-
-    for pos in payload.positions:
-        try:
-            db.add_position(
-                user_id   = user_id,
-                ticker    = pos.ticker.upper().strip(),
-                shares    = pos.shares,
-                buy_price = pos.buy_price,
-                buy_date  = pos.buy_date or date.today().isoformat(),
-                notes     = pos.notes or "Import XTB",
+    return ScanResponse(
+        results = [
+            ScanResultItem(
+                ticker   = r["ticker"],
+                name     = r.get("name"),
+                sector   = r.get("sector"),
+                price    = r.get("price"),
+                score    = r["score"],
+                score_st = r.get("score_st"),
             )
-            added += 1
-        except Exception as e:
-            errors.append({"ticker": pos.ticker, "error": str(e)[:80]})
+            for r in results
+        ],
+        scanned_at = scan_at,
+        total      = len(results),
+    )
 
-    return {"added": added, "errors": errors}
 
-
-@router.get(
-    "/correlation",
-    summary="Correlation matrix between portfolio positions",
+@scan_router.post(
+    "",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Start new scan",
 )
-async def get_correlation(user_id: CurrentUser) -> dict:
-    raw_positions = db.get_portfolio(user_id)
-    tickers = [p["ticker"] for p in raw_positions]
+async def start_scan(
+    body:             ScanRequest,
+    background_tasks: BackgroundTasks,
+    user_id:          CurrentUser,
+) -> dict:
+    """
+    Uruchamia skan w tle. Zwraca natychmiast z 202 Accepted.
+    Postęp dostępny przez GET /scan/status.
+    Wyniki dostępne przez GET /scan gdy skan się zakończy.
+    """
+    with _scan_lock:
+        state, updated_at = db.get_scan_status()
+        if state.get("running") and not _status_is_stale(updated_at):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Scan already running",
+            )
 
-    if len(tickers) < 2:
-        return {
-            "matrix": None, "high_pairs": [], "errors": [],
-            "message": "Potrzeba co najmniej 2 pozycji do analizy korelacji.",
-        }
-
-    result = portfolio_logic.compute_correlation_matrix(tickers)
-
-    matrix_dict = None
-    if result["matrix"] is not None:
-        matrix_dict = {
-            row: {col: (None if (val := result["matrix"].loc[row, col]) != val  # NaN check
-                        else round(float(val), 3))
-                  for col in result["matrix"].columns}
-            for row in result["matrix"].index
-        }
+    background_tasks.add_task(_run_scan_background, body.market)
+    tickers_count = len(_MARKET_MAP.get(body.market, SKANER_USA))
 
     return {
-        "matrix": matrix_dict,
-        "high_pairs": [
-            {"ticker_a": a, "ticker_b": b, "correlation": c}
-            for a, b, c in result["high_pairs"]
-        ],
-        "errors": result["errors"],
+        "status":  "accepted",
+        "market":  body.market,
+        "tickers": tickers_count,
+        "message": f"Scan started for {tickers_count} instruments",
     }
+
+
+@scan_router.get(
+    "/status",
+    summary="Scan progress",
+)
+async def scan_status() -> dict:
+    """Zwraca aktualny status bieżącego skanu (stan współdzielony w bazie)."""
+    state, updated_at = db.get_scan_status()
+
+    # Skan oznaczony jako running, ale dawno nieaktualizowany = martwy
+    # (np. restart kontenera w połowie). Raportuj jako zakończony.
+    if state.get("running") and _status_is_stale(updated_at):
+        state["running"] = False
+
+    elapsed = None
+    if state["started_at"]:
+        elapsed = round(time.time() - state["started_at"], 1)
+
+    pct = 0
+    if state["total"] > 0:
+        pct = round(state["progress"] / state["total"] * 100)
+
+    return {
+        "running":     state["running"],
+        "progress":    state["progress"],
+        "total":       state["total"],
+        "percent":     pct,
+        "current":     state["current"],
+        "elapsed_s":   elapsed,
+    }
+
+
+# ── Journal ────────────────────────────────────────────────────────────
+
+journal_router = APIRouter(prefix="/journal", tags=["journal"])
+
+
+@journal_router.get(
+    "",
+    response_model=list[JournalItem],
+    summary="Get journal entries",
+)
+async def get_journal(
+    user_id: CurrentUser,
+    ticker:  str | None = Query(None, max_length=20),
+) -> list[JournalItem]:
+    """Pobiera wpisy z dziennika. Opcjonalnie filtruje po tickerze."""
+    entries = db.get_journal_entries(
+        user_id,
+        ticker=ticker.upper() if ticker else None,
+    )
+    return [
+        JournalItem(
+            id         = e["id"],
+            entry_date = e["entry_date"],
+            ticker     = e["ticker"],
+            decision   = e["decision"],
+            reason     = e["reason"],
+            score      = e.get("score"),
+            price      = e.get("price"),
+            created_at = e.get("created_at"),
+        )
+        for e in entries
+    ]
+
+
+@journal_router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    summary="Add journal entry",
+)
+async def add_journal_entry(
+    body:    JournalAddRequest,
+    user_id: CurrentUser,
+) -> dict:
+    """Dodaje wpis do dziennika inwestycyjnego."""
+    db.add_journal_entry(
+        user_id    = user_id,
+        entry_date = body.entry_date,
+        ticker     = body.ticker,
+        decision   = body.decision,
+        reason     = body.reason,
+        score      = body.score or 0,
+        price      = body.price or 0,
+    )
+    return {"added": True, "ticker": body.ticker}
+
+
+@journal_router.delete(
+    "/{entry_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete journal entry",
+)
+async def delete_journal_entry(
+    entry_id: int,
+    user_id:  CurrentUser,
+) -> None:
+    db.delete_journal_entry(entry_id, user_id)

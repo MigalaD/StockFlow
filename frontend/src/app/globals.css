@@ -9,6 +9,15 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 @layer base {
+  /* Siatka bezpieczeństwa (mobile): żaden element nie może przesunąć
+     całej strony w poziomie. Zgłoszenia użytkowników: "ekran przesuwa
+     się w prawo, przyciski ukryte". Wewnętrzne kontenery z własnym
+     overflow-x-auto (tabele, taby) działają dalej normalnie. */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
   :root {
     /* ── Typografia ── */
     --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;

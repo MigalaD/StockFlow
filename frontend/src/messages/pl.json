@@ -1,220 +1,363 @@
 {
   "nav": {
-    "dashboard":   "Dashboard",
-    "analysis":    "Analiza",
-    "comparison":  "Porównanie",
-    "watchlist":   "Watchlista",
-    "portfolio":   "Portfolio",
-    "crypto":      "Krypto",
-    "scanner":     "Skaner",
-    "growth":      "Wzrostowe",
-    "etf":         "ETF-y",
+    "dashboard": "Dashboard",
+    "analysis": "Analiza",
+    "comparison": "Porównanie",
+    "watchlist": "Watchlista",
+    "portfolio": "Portfolio",
+    "crypto": "Krypto",
+    "scanner": "Skaner",
+    "growth": "Wzrostowe",
+    "etf": "ETF-y",
     "commodities": "Surowce",
-    "dividends":   "Dywidendy",
-    "backtest":    "Backtest",
-    "journal":     "Dziennik",
-    "settings":    "Ustawienia",
-    "about":       "O aplikacji"
+    "dividends": "Dywidendy",
+    "backtest": "Backtest",
+    "journal": "Dziennik",
+    "settings": "Ustawienia",
+    "about": "O aplikacji"
   },
-
   "common": {
-    "loading":      "Ładowanie...",
-    "error":        "Błąd",
-    "retry":        "Spróbuj ponownie",
-    "save":         "Zapisz",
-    "cancel":       "Anuluj",
-    "delete":       "Usuń",
-    "add":          "Dodaj",
-    "search":       "Szukaj",
-    "score":        "Wynik",
-    "price":        "Cena",
-    "change24h":    "Zmiana 24h",
-    "sector":       "Sektor",
-    "currency":     "Waluta",
-    "noData":       "Brak danych",
-    "loginRequired":"Zaloguj się aby kontynuować"
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "retry": "Spróbuj ponownie",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "delete": "Usuń",
+    "add": "Dodaj",
+    "search": "Szukaj",
+    "score": "Wynik",
+    "price": "Cena",
+    "change24h": "Zmiana 24h",
+    "sector": "Sektor",
+    "currency": "Waluta",
+    "noData": "Brak danych",
+    "loginRequired": "Zaloguj się aby kontynuować"
   },
-
   "score": {
-    "dt":           "Wynik DT",
-    "st":           "Wynik ST",
-    "longTerm":     "Długoterminowy",
-    "shortTerm":    "Krótkoterminowy (swing)",
-    "positive":     "Pozytywny",
-    "neutral":      "Neutralny",
-    "negative":     "Negatywny",
-    "components":   "Składowe wyniku",
-    "history":      "Historia sygnału",
-    "disclaimer":   "Wynik nie jest prognozą ani poradą inwestycyjną."
+    "dt": "Wynik DT",
+    "st": "Wynik ST",
+    "longTerm": "Długoterminowy",
+    "shortTerm": "Krótkoterminowy (swing)",
+    "positive": "Pozytywny",
+    "neutral": "Neutralny",
+    "negative": "Negatywny",
+    "components": "Składowe wyniku",
+    "history": "Historia sygnału",
+    "disclaimer": "Wynik nie jest prognozą ani poradą inwestycyjną."
   },
-
   "auth": {
-    "login":        "Zaloguj się",
-    "logout":       "Wyloguj",
-    "register":     "Zarejestruj się",
-    "username":     "Nazwa użytkownika",
-    "password":     "Hasło",
-    "email":        "E-mail (opcjonalnie)",
+    "login": "Zaloguj się",
+    "logout": "Wyloguj",
+    "register": "Zarejestruj się",
+    "username": "Nazwa użytkownika",
+    "password": "Hasło",
+    "email": "E-mail (opcjonalnie)",
     "loginSuccess": "Zalogowano pomyślnie",
-    "logoutSuccess":"Wylogowano",
+    "logoutSuccess": "Wylogowano",
     "invalidCreds": "Nieprawidłowa nazwa lub hasło",
-    "usernameTaken":"Ta nazwa jest już zajęta",
-    "welcome":      "Witaj, {name}!",
-    "passwordMin":  "Hasło musi mieć min. 8 znaków"
+    "usernameTaken": "Ta nazwa jest już zajęta",
+    "welcome": "Witaj, {name}!",
+    "passwordMin": "Hasło musi mieć min. 8 znaków"
   },
-
   "dashboard": {
     "greeting": {
-      "morning":    "Dzień dobry",
-      "afternoon":  "Witaj",
-      "evening":    "Dobry wieczór"
+      "morning": "Dzień dobry",
+      "afternoon": "Witaj",
+      "evening": "Dobry wieczór"
     },
     "vix": {
-      "label":      "VIX – Indeks strachu",
-      "calm":       "Spokój rynkowy",
-      "normal":     "Normalna zmienność",
-      "elevated":   "Podwyższona niepewność",
-      "fear":       "Wysoki strach / panika"
+      "label": "VIX – Indeks strachu",
+      "calm": "Spokój rynkowy",
+      "normal": "Normalna zmienność",
+      "elevated": "Podwyższona niepewność",
+      "fear": "Wysoki strach / panika"
     },
-    "watchlist":    "Watchlista",
-    "lastScan":     "Ostatni skan",
-    "top5":         "Top 5",
-    "bottom5":      "Bottom 5",
-    "noWatchlist":  "Watchlista jest pusta",
-    "addFirst":     "Dodaj pierwszy instrument",
-    "noScan":       "Skan nie był jeszcze uruchamiany",
-    "runScan":      "Uruchom skan rynku"
+    "watchlist": "Watchlista",
+    "lastScan": "Ostatni skan",
+    "top5": "Top 5",
+    "bottom5": "Bottom 5",
+    "noWatchlist": "Watchlista jest pusta",
+    "addFirst": "Dodaj pierwszy instrument",
+    "noScan": "Skan nie był jeszcze uruchamiany",
+    "runScan": "Uruchom skan rynku"
   },
-
   "analysis": {
-    "title":        "Analiza spółki",
+    "title": "Analiza spółki",
     "searchPlaceholder": "Wpisz symbol lub nazwę (np. AAPL, Apple)",
-    "searchHint":   "Wciśnij Enter aby wyszukać",
+    "searchHint": "Wciśnij Enter aby wyszukać",
     "recentlyViewed": "Ostatnio przeglądane",
     "addToWatchlist": "Dodaj do watchlisty",
     "tabs": {
-      "chart":      "Wykres",
-      "signals":    "Sygnały ST",
-      "details":    "Analiza",
-      "scenarios":  "Scenariusze",
+      "chart": "Wykres",
+      "signals": "Sygnały ST",
+      "details": "Analiza",
+      "scenarios": "Scenariusze",
       "strategies": "Strategie",
-      "pdf":        "PDF"
+      "pdf": "PDF"
     },
     "interval": {
-      "1m":   "1 minuta",
-      "5m":   "5 minut",
-      "15m":  "15 minut",
-      "30m":  "30 minut",
-      "1h":   "1 godzina",
-      "1d":   "1 dzień"
+      "1m": "1 minuta",
+      "5m": "5 minut",
+      "15m": "15 minut",
+      "30m": "30 minut",
+      "1h": "1 godzina",
+      "1d": "1 dzień"
     },
     "source": {
-      "binance":  "Binance (na żywo)",
-      "yahoo":    "Yahoo Finance (~15 min opóźnienia)"
+      "binance": "Binance (na żywo)",
+      "yahoo": "Yahoo Finance (~15 min opóźnienia)"
     },
     "signals": {
-      "title":      "Sygnały krótkoterminowe",
-      "atr":        "ATR – zasięg ruchu",
+      "title": "Sygnały krótkoterminowe",
+      "atr": "ATR – zasięg ruchu",
       "stochastic": "Stochastik %K/%D",
-      "obv":        "OBV – wolumen",
-      "levels":     "Wsparcie i opór",
-      "stopLoss":   "Sugerowany stop-loss",
-      "tight":      "Ciasny (1× ATR)",
-      "wide":       "Szeroki (1.5× ATR)",
-      "swingNote":  "Dane dzienne – narzędzie dla swing-tradingu (dni/tygodnie)"
+      "obv": "OBV – wolumen",
+      "levels": "Wsparcie i opór",
+      "stopLoss": "Sugerowany stop-loss",
+      "tight": "Ciasny (1× ATR)",
+      "wide": "Szeroki (1.5× ATR)",
+      "swingNote": "Dane dzienne – narzędzie dla swing-tradingu (dni/tygodnie)"
     },
-    "redFlags":     "Red flags",
-    "noRedFlags":   "Brak ostrzeżeń",
-    "keyData":      "Kluczowe dane",
-    "downloadPdf":  "Pobierz raport PDF"
+    "redFlags": "Red flags",
+    "noRedFlags": "Brak ostrzeżeń",
+    "keyData": "Kluczowe dane",
+    "downloadPdf": "Pobierz raport PDF"
   },
-
   "watchlist": {
-    "title":        "Watchlista",
-    "add":          "Dodaj symbol",
-    "empty":        "Watchlista jest pusta",
-    "emptyHint":    "Dodaj spółki które chcesz obserwować",
-    "alerts":       "Alerty",
-    "alertHigh":    "Alert gdy score >",
-    "alertLow":     "Alert gdy score <",
+    "title": "Watchlista",
+    "add": "Dodaj symbol",
+    "empty": "Watchlista jest pusta",
+    "emptyHint": "Dodaj spółki które chcesz obserwować",
+    "alerts": "Alerty",
+    "alertHigh": "Alert gdy score >",
+    "alertLow": "Alert gdy score <",
     "alertCrossover": "Alert crossover MA",
-    "saveAlerts":   "Zapisz alerty",
-    "remove":       "Usuń z watchlisty",
+    "saveAlerts": "Zapisz alerty",
+    "remove": "Usuń z watchlisty",
     "addedSuccess": "{ticker} dodano do watchlisty",
     "removedSuccess": "{ticker} usunięto z watchlisty",
-    "scoreChange":  "Zmiana score"
+    "scoreChange": "Zmiana score"
   },
-
   "portfolio": {
-    "title":        "Portfolio",
-    "addPosition":  "Dodaj pozycję",
-    "ticker":       "Symbol",
-    "shares":       "Liczba akcji/jednostek",
-    "buyPrice":     "Cena zakupu",
-    "buyDate":      "Data zakupu",
-    "notes":        "Notatki",
-    "pnl":          "P&L",
+    "title": "Portfolio",
+    "addPosition": "Dodaj pozycję",
+    "ticker": "Symbol",
+    "shares": "Liczba szt.",
+    "buyPrice": "Cena zakupu",
+    "buyDate": "Data zakupu",
+    "notes": "Notatki",
+    "pnl": "P&L",
     "currentValue": "Wartość bieżąca",
-    "allocation":   "Alokacja sektorowa",
-    "correlation":  "Macierz korelacji",
-    "empty":        "Portfolio jest puste",
-    "emptyHint":    "Dodaj pierwszą pozycję aby śledzić swoje wyniki",
+    "allocation": "Alokacja sektorowa",
+    "correlation": "Macierz korelacji",
+    "empty": "Portfolio jest puste",
+    "emptyHint": "Dodaj pierwszą pozycję aby śledzić swoje wyniki",
     "removePosition": "Usuń pozycję",
-    "totalPnl":     "P&L łącznie"
+    "totalPnl": "P&L łącznie",
+    "positions": "Pozycje",
+    "sectorAllocation": "Alokacja sektorowa",
+    "symbol": "Symbol",
+    "reasonPlaceholder": "Powód zakupu...",
+    "add": "Dodaj",
+    "cancel": "Anuluj",
+    "confirm": "Potwierdź",
+    "analyze": "Analizuj →",
+    "yourPortfolio": "Twój portfel",
+    "difference": "Różnica",
+    "importNoPositions": "Nie rozpoznano żadnych pozycji w pliku.",
+    "totalValue": "Łączna wartość",
+    "benchmarkNote": "Każda pozycja porównana ze zwrotem indeksu od jej daty zakupu, ważona kosztem.",
+    "benchmarkTitle": "Portfel vs",
+    "inSamePeriod": "w tym samym okresie",
+    "noteOptional": "Notatka (opcjonalna)"
   },
-
   "scanner": {
-    "title":        "Skaner rynku",
-    "run":          "Uruchom skan",
-    "running":      "Skanowanie...",
-    "done":         "Skan zakończony",
+    "title": "Skaner rynku",
+    "run": "Uruchom skan",
+    "running": "Skanowanie...",
+    "done": "Skan zakończony",
     "market": {
-      "usa":    "USA (53 spółki)",
-      "gpw":    "GPW (24 spółki)",
+      "usa": "USA (53 spółki)",
+      "gpw": "GPW (24 spółki)",
       "europa": "Europa Zach. (33 spółki)",
       "krypto": "Krypto (8 tokenów)",
-      "all":    "Wszystko (110)"
+      "all": "Wszystko (110)"
     },
     "mode": {
       "dt": "Długoterminowy",
       "st": "Swing (ST)"
     },
-    "sectors":      "Siła sektorów",
-    "results":      "Wyniki skanu",
-    "disclaimer":   "Wysoki score nie oznacza 'kup' – to punkt wyjścia do analizy."
+    "sectors": "Siła sektorów",
+    "results": "Wyniki skanu",
+    "disclaimer": "Wysoki score nie oznacza 'kup' – to punkt wyjścia do analizy.",
+    "runScan": "Uruchom skan",
+    "scanning": "Skanowanie w toku…",
+    "noResults": "Brak wyników skanu",
+    "runToSeeRanking": "Uruchom skan aby zobaczyć ranking instrumentów",
+    "runToSeeSectors": "Uruchom skan aby zobaczyć siłę sektorów",
+    "scoreDistribution": "Rozkład score",
+    "sectorStrength": "Siła sektorów",
+    "ticker": "Ticker",
+    "sector": "Sektor",
+    "login": "Zaloguj się",
+    "loginAgain": "Zaloguj ponownie",
+    "loginPrompt": "Zaloguj się",
+    "loginAgainPrompt": "Zaloguj ponownie",
+    "filterPlaceholder": "Filtruj po tickerze, nazwie lub sektorze…"
   },
-
   "crypto": {
-    "title":          "Kryptowaluty",
-    "dominance":      "Dominacja",
-    "marketCap":      "Kapitalizacja rynku",
-    "disclaimer":     "Score krypto jest wyłącznie techniczny. Kryptowaluty są bardzo ryzykowne.",
-    "binanceLive":    "Ceny live z Binance"
+    "title": "Kryptowaluty",
+    "dominance": "Dominacja",
+    "marketCap": "Kapitalizacja rynku",
+    "disclaimer": "Score krypto jest wyłącznie techniczny. Kryptowaluty są bardzo ryzykowne.",
+    "binanceLive": "Ceny live z Binance"
   },
-
   "settings": {
-    "title":          "Ustawienia",
-    "telegram":       "Alerty Telegram",
-    "email":          "Alerty e-mail",
-    "appearance":     "Wygląd",
-    "diagnostics":    "Diagnostyka",
-    "language":       "Język",
+    "title": "Ustawienia",
+    "telegram": "Alerty Telegram",
+    "email": "Alerty e-mail",
+    "appearance": "Wygląd",
+    "diagnostics": "Diagnostyka",
+    "language": "Język / Language",
     "theme": {
-      "dark":   "Tryb ciemny",
-      "light":  "Tryb jasny"
+      "dark": "Tryb ciemny",
+      "light": "Tryb jasny"
     },
     "cache": {
-      "title":  "Cache danych",
-      "clear":  "Wyczyść cache",
-      "cleared":"Cache wyczyszczony"
-    }
+      "title": "Cache danych",
+      "clear": "Wyczyść cache",
+      "cleared": "Cache wyczyszczony"
+    },
+    "loggedUser": "Zalogowany użytkownik",
+    "logout": "Wyloguj",
+    "save": "Zapisz",
+    "sendTest": "Wyślij test",
+    "alertsTitle": "Alerty e-mail",
+    "alertsDesc": "Powiadomienia e-mail, gdy cena przekroczy progi ustawione w watchliście"
   },
-
   "errors": {
-    "notFound":       "Nie znaleziono danych dla {ticker}",
-    "networkError":   "Błąd połączenia z serwerem",
-    "analysisError":  "Błąd analizy – spróbuj ponownie za chwilę",
-    "invalidTicker":  "Nieprawidłowy symbol. Dla GPW użyj sufiksu .WA (np. CDR.WA)",
-    "rateLimited":    "Zbyt wiele zapytań – odczekaj chwilę"
+    "notFound": "Nie znaleziono danych dla {ticker}",
+    "networkError": "Błąd połączenia z serwerem",
+    "analysisError": "Błąd analizy – spróbuj ponownie za chwilę",
+    "invalidTicker": "Nieprawidłowy symbol. Dla GPW użyj sufiksu .WA (np. CDR.WA)",
+    "rateLimited": "Zbyt wiele zapytań – odczekaj chwilę"
+  },
+  "growth": {
+    "title": "Spółki wzrostowe",
+    "intro": "Spółki o wysokim potencjale wzrostu — zwykle bardziej zmienne i ryzykowne niż szeroki rynek. To nie są prywatne startupy, lecz spółki już notowane.",
+    "all": "Wszystkie",
+    "analyze": "Analizuj",
+    "empty": "Nie udało się pobrać danych. Spróbuj odświeżyć stronę.",
+    "loading": "Analizuję spółki wzrostowe…"
+  },
+  "etf": {
+    "title": "ETF-y",
+    "availableInPl": "dostępnych w PL",
+    "intro": "Ważne dla inwestora z Polski: amerykańskich ETF-ów (SPY, QQQ) zwykle nie kupisz u polskiego brokera (regulacje PRIIPs — brak dokumentu KID). Fundusze oznaczone UCITS to europejskie odpowiedniki, realnie dostępne w PL — reszta służy jako punkt odniesienia i analiza rynku.",
+    "all": "Wszystkie",
+    "analyze": "Analizuj",
+    "loading": "Analizuję ETF-y…",
+    "empty": "Nie udało się pobrać danych. Spróbuj odświeżyć stronę."
+  },
+  "commodities": {
+    "title": "Surowce",
+    "intro": "Ceny surowców śledzimy przez płynne ETF-y towarowe (np. GLD dla złota) — stabilniejsze źródło danych niż kontrakty futures. Surowce nie mają fundamentów spółek, więc score opiera się wyłącznie na analizie technicznej (trend, momentum, zmienność).",
+    "all": "Wszystkie",
+    "analyze": "Analizuj",
+    "loading": "Analizuję surowce…",
+    "empty": "Nie udało się pobrać danych. Spróbuj odświeżyć stronę."
+  },
+  "dividends": {
+    "title": "Dywidendy GPW",
+    "avgYield": "Średnia stopa",
+    "intro": "Ranking spółek według score dywidendowego — liczonego z historii wypłat, nie z pojedynczej migawki. Score łączy trzy obszary: bezpieczeństwo dywidendy (40%), ciągłość i wzrost wypłat (35%) oraz atrakcyjność stopy (25%).",
+    "introTax": "Stopę pokazujemy brutto oraz netto po podatku Belki (19%) — czyli to, co realnie trafia do kieszeni.",
+    "minYield": "Min. stopa brutto:",
+    "all": "Wszystkie",
+    "gross": "brutto",
+    "netAfterTax": "netto (po Belce)",
+    "yearsStreak": "lat z rzędu",
+    "safety": "Bezpieczeństwo",
+    "continuity": "Ciągłość",
+    "attractiveness": "Atrakcyjność",
+    "annualDividend": "Dywidenda roczna",
+    "payout": "Payout",
+    "lastPayout": "Ostatnia wypłata",
+    "fullAnalysis": "Pełna analiza",
+    "notPaying": "Nie wypłacają dywidendy",
+    "notPayingNote": "Te spółki nie wypłacają dywidend — często reinwestują zysk we wzrost. To nie jest wada, to inna strategia.",
+    "noneMatch": "Żadna spółka nie spełnia wybranego progu stopy.",
+    "loading": "Analizuję historię wypłat spółek…",
+    "disclaimer": "Score dywidendowy to narzędzie edukacyjne, nie rekomendacja inwestycyjna. Wysoka stopa dywidendy bywa sygnałem ryzyka, nie tylko okazji — dlatego bezpieczeństwo waży najwięcej.",
+    "empty": "Nie udało się pobrać danych. Odśwież stronę, aby spróbować ponownie."
+  },
+  "backtest": {
+    "equityCurve": "Krzywa kapitału",
+    "period": "Okres",
+    "winRate": "Skuteczność",
+    "trades": "Transakcji",
+    "drawdown": "Strata",
+    "strategyReturn": "Zwrot strategii",
+    "perPeriod": "Wyniki per okres",
+    "symbol": "Symbol",
+    "configure": "Skonfiguruj i uruchom backtest",
+    "stabilityNote": "Test stabilności w czasie.",
+    "overfittingNote": "Uwaga na overfitting.",
+    "pastResultsNote": "Wyniki historyczne nie gwarantują przyszłych zysków.",
+    "buyHold": "Buy & Hold",
+    "maxDrawdown": "Max obsunięcie",
+    "vsBuyHold": "Strategia score vs. Kup i trzymaj",
+    "heatmapTitle": "Heatmapa progów (buy × sell)",
+    "winsVsBH": "Wygranych vs B&H",
+    "buyThreshold": "Próg kupna (≥)",
+    "sellThreshold": "Próg sprzedaży (≤)",
+    "configureDesc": "Wybierz tryb, instrument i parametry. Pojedynczy test pokazuje krzywą kapitału, heatmapa znajduje optymalne progi, walk-forward sprawdza stabilność reguły w czasie."
+  },
+  "about": {
+    "features": "Funkcje",
+    "techStack": "Stack technologiczny",
+    "howScoreWorks": "Jak działa Score?"
+  },
+  "landing": {
+    "features": {
+      "score": {
+        "title": "Score 0–100",
+        "desc": "Każdy instrument oceniony przez kilkanaście wskaźników technicznych i fundamentalnych — jeden czytelny wynik."
+      },
+      "charts": {
+        "title": "Wykresy pro",
+        "desc": "Świece, Bollinger, średnie kroczące, wolumen, zoom i dane live. To czego potrzebujesz do analizy w jednym miejscu."
+      },
+      "scanner": {
+        "title": "Skaner rynku",
+        "desc": "Przeskanuj USA, GPW, Europę, ETF-y, surowce i krypto. Ranking instrumentów po sile w sekundy."
+      },
+      "backtest": {
+        "title": "Backtest",
+        "desc": "Sprawdź jak strategia score zachowywała się historycznie — equity curve, Sharpe, walk-forward."
+      },
+      "scenarios": {
+        "title": "Scenariusze",
+        "desc": "Symulacja Monte Carlo pokazuje zakres możliwych ścieżek ceny, nie jedną fałszywą prognozę."
+      },
+      "alerts": {
+        "title": "Alerty e-mail",
+        "desc": "Dostań powiadomienie e-mail, gdy cena instrumentu przekroczy ustawiony przez Ciebie próg."
+      }
+    },
+    "steps": {
+      "s1": {
+        "title": "Wpisz symbol",
+        "desc": "AAPL, CD Projekt, Bitcoin — cokolwiek chcesz przeanalizować."
+      },
+      "s2": {
+        "title": "Zobacz score",
+        "desc": "Natychmiastowa ocena z rozbiciem na składowe i sygnały."
+      },
+      "s3": {
+        "title": "Podejmij decyzję",
+        "desc": "Pełen obraz: wykres, scenariusze, strategie — w jednym miejscu."
+      }
+    }
   }
 }
