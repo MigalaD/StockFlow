@@ -1,7 +1,7 @@
 'use client'
 
 import { clsx } from 'clsx'
-import { Loader2 } from 'lucide-react'
+import { Loader2, type LucideIcon } from 'lucide-react'
 import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes } from 'react'
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -228,17 +228,23 @@ export function EmptyState({ icon, title, desc, action }: EmptyStateProps) {
 
 interface SectionHeaderProps {
   title:   string
-  icon?:   string
+  /** Ikona lucide (komponent) — preferowana. String (emoji) nadal
+   *  działa dla wstecznej zgodności, ale emoji renderują się różnie
+   *  na różnych systemach i nadają interfejsowi amatorski wygląd. */
+  icon?:   LucideIcon | string
   desc?:   string
   action?: ReactNode
 }
 
 export function SectionHeader({ title, icon, desc, action }: SectionHeaderProps) {
+  const Icon = typeof icon === 'function' ? icon : null
   return (
     <div className="flex items-start justify-between mb-4">
       <div className="border-l-[3px] pl-3" style={{ borderColor: '#22C55E' }}>
-        <h2 className="font-semibold text-base text-text-hi tracking-tight">
-          {icon && <span className="mr-1.5">{icon}</span>}
+        <h2 className="font-semibold text-base text-text-hi tracking-tight flex items-center gap-2">
+          {Icon
+            ? <Icon className="w-4 h-4 shrink-0" style={{ color: '#22C55E' }} />
+            : icon ? <span>{icon}</span> : null}
           {title}
         </h2>
         {desc && <p className="text-xs text-muted mt-0.5">{desc}</p>}

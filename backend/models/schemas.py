@@ -84,6 +84,8 @@ class AnalysisResponse(BaseModel):
     beta_info:    dict[str, Any] | None
     relative_strength: dict[str, Any] | None
     calendar_info: dict[str, Any] | None = None   # earnings_date, ex_dividend_date
+    data_coverage: dict[str, Any] | None = None   # ile wagi score stoi za realnymi danymi
+    score_drivers: dict[str, Any] | None = None   # co ciągnie score w górę/dół
     cached_at:    str | None = None
 
 

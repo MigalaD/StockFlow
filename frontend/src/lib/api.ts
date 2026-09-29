@@ -35,6 +35,11 @@ export interface AnalysisResult {
   beta_info:    Record<string, unknown> | null
   relative_strength: Record<string, unknown> | null
   calendar_info?: { earnings_date?: string | null; ex_dividend_date?: string | null } | null
+  data_coverage?: { pct: number; components_total: number; components_missing: number; missing: string[] } | null
+  score_drivers?: {
+    top_positive: { component: string; impact: number; note: string }[]
+    top_negative: { component: string; impact: number; note: string }[]
+  } | null
 }
 
 export interface OHLCVCandle {
@@ -453,6 +458,63 @@ export const etfApi = {
 export const commoditiesApi = {
   get: async (): Promise<GrowthResponse> => {
     const { data } = await api.get('/commodities')
+    return data
+  },
+}
+
+
+// ── Probability Engine ────────────────────────────────────────────────
+
+export interface ProbBand {
+  horizon_days: number
+  quantiles: { q5: number; q10: number; q25: number; q50: number; q75: number; q90: number; q95: number }
+}
+
+export interface ProbabilityResult {
+  ticker: string
+  last_price: number
+  model_version: string
+  drift_mode: string
+  bands: ProbBand[]
+  volatility: {
+    daily_pct: number
+    annualized_pct: number
+    yang_zhang_pct: number | null
+    ewma_pct: number | null
+    forecast_path_pct: number[]
+    garch: { alpha: number; beta: number; persistence: number; longrun_daily_pct: number } | null
+  }
+  regime: { label: string; percentile: number | null; annualized_pct?: number }
+  daily_range: { expected_range_pct: number; median_range_pct?: number; p90_range_pct?: number; expected_range_abs?: number }
+  move_probabilities: Record<string, number>
+  tail_fatness_nu: number
+  assumptions: { drift: string; distribution: string; volatility_estimator: string; simulations: number }
+  level_query?: {
+    level: number
+    by_horizon: { horizon_days: number; prob_end_beyond_pct: number; prob_touch_pct: number }[]
+  }
+}
+
+export interface CalibrationResult {
+  ready: boolean
+  resolved_forecasts: number
+  message?: string
+  coverage: { declared_pct: number; actual_pct: number | null; sample: number }[]
+  by_horizon?: Record<string, number>
+  model_version?: string
+}
+
+export const probabilityApi = {
+  get: async (ticker: string, opts?: { level?: number; drift?: string }): Promise<ProbabilityResult> => {
+    const params = new URLSearchParams()
+    if (opts?.level) params.set('level', String(opts.level))
+    if (opts?.drift) params.set('drift', opts.drift)
+    const qs = params.toString()
+    const { data } = await api.get<ProbabilityResult>(`/probability/${encodeURIComponent(ticker)}${qs ? '?' + qs : ''}`)
+    return data
+  },
+  calibration: async (): Promise<CalibrationResult> => {
+    const { data } = await api.get<CalibrationResult>('/probability/calibration')
     return data
   },
 }

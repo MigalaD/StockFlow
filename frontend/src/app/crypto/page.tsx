@@ -1,5 +1,7 @@
 'use client'
 
+import { AlertTriangle } from 'lucide-react'
+
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
@@ -10,14 +12,14 @@ import { Card, SectionHeader, Button, Spinner, EmptyState, Tag, Price } from '..
 import { analysisApi } from '../../lib/api'
 
 const CRYPTO_TICKERS = [
-  { ticker:'BTC-USD', name:'Bitcoin',   icon:'₿'  },
-  { ticker:'ETH-USD', name:'Ethereum',  icon:'Ξ'  },
-  { ticker:'BNB-USD', name:'BNB',       icon:'🔶' },
-  { ticker:'SOL-USD', name:'Solana',    icon:'◎'  },
-  { ticker:'XRP-USD', name:'XRP',       icon:'✕'  },
-  { ticker:'ADA-USD', name:'Cardano',   icon:'₳'  },
-  { ticker:'AVAX-USD',name:'Avalanche', icon:'🔺' },
-  { ticker:'DOT-USD', name:'Polkadot',  icon:'⬤'  },
+  { ticker:'BTC-USD', name:'Bitcoin'  },
+  { ticker:'ETH-USD', name:'Ethereum'  },
+  { ticker:'BNB-USD', name:'BNB',       },
+  { ticker:'SOL-USD', name:'Solana'  },
+  { ticker:'XRP-USD', name:'XRP'  },
+  { ticker:'ADA-USD', name:'Cardano'  },
+  { ticker:'AVAX-USD',name:'Avalanche', },
+  { ticker:'DOT-USD', name:'Polkadot'  },
 ]
 
 function CryptoCard({ ticker, name, icon }: { ticker: string; name: string; icon: string }) {
@@ -61,7 +63,7 @@ function CryptoCard({ ticker, name, icon }: { ticker: string; name: string; icon
           <ScoreBar score={data.total_score} width="w-20" />
           {data.score_st != null && (
             <div className="flex items-center gap-1">
-              <span className="text-2xs text-muted">⚡ ST</span>
+              <span className="text-2xs text-muted">ST</span>
               <span className="text-xs font-bold font-mono tabular-nums" style={{ color: scoreColor(data.score_st) }}>
                 {Math.round(data.score_st)}
               </span>
@@ -115,7 +117,7 @@ export default function CryptoPage() {
         <div className="mt-2 text-sm text-muted bg-surface border border-border rounded-lg p-3 leading-relaxed">
           Score krypto uwzględnia analizę techniczną (trend, RSI, MACD, momentum) skalowaną pod
           realia rynku krypto oraz siłę względem Bitcoina. Kryptowaluty nie mają fundamentów
-          spółki (P/E, dywidendy). <strong style={{ color:'#F59E0B' }}>⚠ {t('disclaimer')}</strong>
+          spółki (P/E, dywidendy). <strong style={{ color:'#F59E0B' }}><AlertTriangle className="w-3.5 h-3.5 inline mr-1" />{t('disclaimer')}</strong>
         </div>
       </details>
 
