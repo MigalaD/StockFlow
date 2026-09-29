@@ -1,4 +1,5 @@
 'use client'
+import { NotebookPen, PenLine, Search } from 'lucide-react'
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -64,7 +65,7 @@ function AddEntryForm({ onAdded }: { onAdded: () => void }) {
 
   return (
     <div className="bg-surface-1 border border-border rounded-xl2 p-5 mb-5">
-      <div className="font-semibold text-sm text-text-hi mb-4">✏️ Nowy wpis</div>
+      <div className="font-semibold text-sm text-text-hi mb-4 flex items-center gap-2"><PenLine className="w-4 h-4 text-brand-green" /> Nowy wpis</div>
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           <Input
@@ -287,7 +288,7 @@ function JournalContent() {
 
   return (
     <AppShell>
-      <h1 className="text-xl font-bold mb-5">📓 Dziennik inwestycyjny</h1>
+      <h1 className="text-xl font-bold mb-5 flex items-center gap-2"><NotebookPen className="w-5 h-5 text-brand-green" /> Dziennik inwestycyjny</h1>
 
       <AddEntryForm onAdded={() => mutate()} />
 
@@ -331,13 +332,13 @@ function JournalContent() {
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : entries.length === 0 ? (
         <EmptyState
-          icon="📓"
+          icon={NotebookPen}
           title="Dziennik jest pusty"
           desc="Zapisuj swoje decyzje inwestycyjne, obserwacje i wnioski. To najlepsza nauka — przeglądanie własnych przemyśleń po czasie."
         />
       ) : filtered.length === 0 ? (
         <EmptyState
-          icon="🔍"
+          icon={Search}
           title="Brak wyników"
           desc="Zmień kryteria filtrowania"
           action={

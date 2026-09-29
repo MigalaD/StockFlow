@@ -1,4 +1,5 @@
 'use client'
+import { BarChart3, Briefcase, CalendarDays, Coins, GitCompare, LineChart, Lock, NotebookPen, Rocket, Search, Star, Zap } from 'lucide-react'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -24,7 +25,7 @@ function VixWidget() {
   )
   const vix = data?.price ?? 18.4
   const color = vix < 15 ? '#22C55E' : vix < 25 ? '#F59E0B' : vix < 35 ? '#E07800' : '#EF4444'
-  const label = vix < 15 ? '😌 Spokój' : vix < 25 ? '😐 Normalna zmienność' : vix < 35 ? '😟 Niepewność' : '😱 Panika'
+  const label = vix < 15 ? 'Spokój' : vix < 25 ? 'Normalna zmienność' : vix < 35 ? 'Niepewność' : 'Panika'
   return (
     <div className="rounded-xl2 p-4 border" style={{ background: color + '14', borderColor: color + '40' }}>
       <div className="text-[10px] text-muted uppercase tracking-widest mb-1">VIX – Indeks strachu</div>
@@ -147,7 +148,7 @@ function RecentlyViewed() {
   if (!tickers.length) return null
   return (
     <div className="mb-4">
-      <div className="text-[10px] text-muted uppercase tracking-widest mb-2">🕐 Ostatnio przeglądane</div>
+      <div className="text-[10px] text-muted uppercase tracking-widest mb-2">Ostatnio przeglądane</div>
       <div className="flex gap-2 flex-wrap">
         {tickers.map(ticker => (
           <Link key={ticker} href={`/analysis?ticker=${ticker}`}>
@@ -225,7 +226,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             {greeting},{' '}
-            <span style={{ color: '#22C55E' }}>{isAuth ? userId : 'Inwestorze'}</span> 👋
+            <span style={{ color: '#22C55E' }}>{isAuth ? userId : 'Inwestorze'}</span>
           </h1>
           <div className="text-sm text-muted mt-1">
             {new Date().toLocaleDateString('pl-PL', {
@@ -244,13 +245,15 @@ export default function DashboardPage() {
       {isAuth && upcomingEvents.length > 0 && (
         <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-5 animate-fade-in">
           <div className="text-2xs text-muted uppercase tracking-widest mb-2.5">
-            📅 Kalendarz rynkowy — Twoje spółki
+            Kalendarz rynkowy — Twoje spółki
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {upcomingEvents.map((e, i) => (
               <Link key={i} href={`/analysis?ticker=${e.ticker}`}
                 className="flex items-center gap-3 bg-surface-2 rounded-lg px-3 py-2 hover:bg-surface-3 transition-colors group">
-                <span className="text-base">{e.type === 'earnings' ? '📊' : '💰'}</span>
+                {e.type === 'earnings'
+                  ? <BarChart3 className="w-4 h-4 shrink-0" style={{ color: '#22C55E' }} />
+                  : <Coins className="w-4 h-4 shrink-0" style={{ color: '#F59E0B' }} />}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="font-bold font-mono text-xs text-text-hi group-hover:text-brand-green transition-colors">{e.ticker}</span>
@@ -275,7 +278,7 @@ export default function DashboardPage() {
       {/* Alerts row — największe zmiany */}
       {biggestChanges.length > 0 && (
         <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-5">
-          <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">🔔 Największe zmiany score od ostatniej wizyty</div>
+          <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Największe zmiany score od ostatniej wizyty</div>
           <div className="flex gap-3 flex-wrap">
             {biggestChanges.map(({ ticker, delta }) => {
               const color = delta > 0 ? '#22C55E' : '#EF4444'
@@ -303,17 +306,17 @@ export default function DashboardPage() {
 
         {/* Watchlist table */}
         <div>
-          <SectionHeader title="Watchlista" icon="★"
+          <SectionHeader title="Watchlista" icon={Star}
             action={<Link href="/watchlist"><Button variant="ghost" size="sm">Zarządzaj →</Button></Link>} />
 
           {wlLoading ? (
             <div className="flex justify-center py-12"><Spinner size="lg" /></div>
           ) : !isAuth ? (
-            <EmptyState icon="🔐" title="Zaloguj się"
+            <EmptyState icon={Lock} title="Zaloguj się"
               desc="Zaloguj się aby zobaczyć swoją watchlistę i analizy"
               action={<Link href="/login"><Button size="sm">Zaloguj się</Button></Link>} />
           ) : watchlist.length === 0 ? (
-            <EmptyState icon="★" title="Watchlista jest pusta"
+            <EmptyState icon={Star} title="Watchlista jest pusta"
               desc="Dodaj spółki które chcesz obserwować"
               action={<Link href="/analysis"><Button size="sm">Przejdź do Analizy</Button></Link>} />
           ) : (
@@ -343,7 +346,7 @@ export default function DashboardPage() {
           {/* Top 5 */}
           <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="font-semibold text-sm text-white">🟢 Top 5 skanu</span>
+              <span className="font-semibold text-sm text-white flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:'#22C55E'}} /> Top 5 skanu</span>
               <Link href="/scanner">
                 <Button variant="ghost" size="sm">Skan →</Button>
               </Link>
@@ -359,7 +362,7 @@ export default function DashboardPage() {
           {bottomScan.length > 0 && (
             <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
               <div className="px-4 py-3 border-b border-border">
-                <span className="font-semibold text-sm text-white">🔴 Bottom 5 skanu</span>
+                <span className="font-semibold text-sm text-white flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:'#EF4444'}} /> Bottom 5 skanu</span>
               </div>
               {bottomScan.map((r, i) => <ScanRow key={r.ticker} rank={i + 1} item={r} />)}
             </div>
@@ -370,10 +373,10 @@ export default function DashboardPage() {
             <div className="text-[10px] text-muted uppercase tracking-widest mb-3">Szybkie akcje</div>
             <div className="space-y-2">
               {[
-                { href: '/analysis',  icon: '📈', label: 'Analizuj instrument'   },
-                { href: '/scanner',   icon: '🔍', label: 'Uruchom skan rynku'    },
-                { href: '/portfolio', icon: '💼', label: 'Sprawdź portfolio'      },
-                { href: '/compare',   icon: '🔀', label: 'Porównaj instrumenty'  },
+                { href: '/analysis',  Icon: LineChart,  label: 'Analizuj instrument'   },
+                { href: '/scanner',   Icon: Search, label: 'Uruchom skan rynku'    },
+                { href: '/portfolio', Icon: Briefcase, label: 'Sprawdź portfolio'      },
+                { href: '/compare',   Icon: GitCompare, label: 'Porównaj instrumenty'  },
               ].map(({ href, icon, label }) => (
                 <Link key={href} href={href}>
                   <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer">

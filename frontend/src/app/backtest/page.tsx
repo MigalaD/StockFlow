@@ -1,6 +1,8 @@
 'use client'
+import { AlertTriangle, CalendarDays, Flame, FlaskConical, LineChart, Star, TrendingUp } from 'lucide-react'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend,
   ResponsiveContainer, ReferenceLine, CartesianGrid,
@@ -35,11 +37,11 @@ function SingleBacktest({ result }: { result: BacktestResult }) {
     <div className="space-y-5">
       {/* KPI */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <MetricCard label="Zwrot strategii" value={`${m.total_return >= 0 ? '+' : ''}${m.total_return}%`} color={stratColor} />
+        <MetricCard label={t('strategyReturn')} value={`${m.total_return >= 0 ? '+' : ''}${m.total_return}%`} color={stratColor} />
         <MetricCard label="Buy & Hold" value={`${m.buyhold_return >= 0 ? '+' : ''}${m.buyhold_return}%`} color={bnhColor} />
         <MetricCard label="Alpha" value={`${alpha >= 0 ? '+' : ''}${alpha.toFixed(1)}%`}
           color={alpha >= 0 ? '#22C55E' : '#EF4444'} sub="vs B&H" />
-        <MetricCard label="Transakcji" value={String(m.num_trades)} sub={`Win: ${m.win_rate}%`}
+        <MetricCard label={t('trades')} value={String(m.num_trades)} sub={`Win: ${m.win_rate}%`}
           color={m.win_rate >= 50 ? '#22C55E' : '#EF4444'} />
         <MetricCard label="Max DD" value={`${m.max_drawdown}%`}
           color={m.max_drawdown > -10 ? '#22C55E' : m.max_drawdown > -20 ? '#F59E0B' : '#EF4444'} />
@@ -51,7 +53,7 @@ function SingleBacktest({ result }: { result: BacktestResult }) {
 
       {/* Equity curve */}
       <Card>
-        <SectionHeader title="Krzywa kapitału" icon="📈" desc="Strategia score vs. Kup i trzymaj" />
+        <SectionHeader title={t('equityCurve')} icon={TrendingUp} desc={t('vsBuyHold')} />
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={result.equity_curve}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -145,12 +147,12 @@ function GridHeatmap({ grid }: { grid: GridResult }) {
     <div className="space-y-4">
       <div className="rounded-xl p-3 text-xs leading-relaxed"
         style={{ background:'rgba(245,158,11,0.08)', color:'#F59E0B', border:'1px solid rgba(245,158,11,0.2)' }}>
-        ⚠ <strong>Uwaga na overfitting.</strong> Najlepsza kombinacja w przeszłości NIE gwarantuje
+        <AlertTriangle className="w-3.5 h-3.5 inline mr-1" /><strong>{t('overfittingNote')}</strong> Najlepsza kombinacja w przeszłości NIE gwarantuje
         wyników w przyszłości. Szukaj raczej "wysp" stabilnych dobrych wyników niż pojedynczego maksimum.
       </div>
 
       <Card>
-        <SectionHeader title="Heatmapa progów (buy × sell)" icon="🔥"
+        <SectionHeader title={t('heatmapTitle')} icon={Flame}
           desc={`Najlepsza: buy ${grid.best.buy} / sell ${grid.best.sell} → ${grid.best.return >= 0 ? '+' : ''}${grid.best.return}% · Buy&Hold: ${grid.buyhold_return}%`} />
         <div className="overflow-x-auto">
           <table className="border-collapse mx-auto">
@@ -182,7 +184,7 @@ function GridHeatmap({ grid }: { grid: GridResult }) {
                             title={`buy ${buy} / sell ${sell}: ${cell.return}%`}
                           >
                             {cell.return}
-                            {isBest && <span className="absolute -top-1 -right-1 text-[8px]">★</span>}
+                            {isBest && <span className="absolute -top-1 -right-1 text-[8px]"><Star className="w-2.5 h-2.5" fill="currentColor" /></span>}
                           </div>
                         ) : (
                           <div className="w-12 h-9 bg-surface-2/30 rounded" />
@@ -204,7 +206,7 @@ function GridHeatmap({ grid }: { grid: GridResult }) {
             <div className="w-4 h-3 rounded" style={{ background:'rgba(34,197,94,0.7)' }} />
             <span>Zysk</span>
           </div>
-          <span>★ = najlepsza kombinacja</span>
+          <span className="flex items-center gap-1"><Star className="w-3 h-3" fill="currentColor" /> = najlepsza kombinacja</span>
         </div>
       </Card>
     </div>
@@ -219,23 +221,23 @@ function WalkForward({ wf }: { wf: WalkForwardResult }) {
     <div className="space-y-4">
       <div className="rounded-xl p-3 text-xs leading-relaxed"
         style={{ background:'rgba(59,130,246,0.08)', color:'#93C5FD', border:'1px solid rgba(59,130,246,0.2)' }}>
-        ℹ️ <strong>Test stabilności w czasie.</strong> Historia podzielona na {wf.summary.n_windows} okien.
+        ℹ️ <strong>{t('stabilityNote')}</strong> Historia podzielona na {wf.summary.n_windows} okien.
         Jeśli strategia działa tylko w 1 oknie — to prawdopodobnie przypadek, nie reguła.
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
         <MetricCard label="Okien" value={String(wf.summary.n_windows)} />
-        <MetricCard label="Wygranych vs B&H" value={String(wf.summary.wins)}
+        <MetricCard label={t('winsVsBH')} value={String(wf.summary.wins)}
           color={wf.summary.wins > wf.summary.n_windows / 2 ? '#22C55E' : '#EF4444'} />
-        <MetricCard label="Skuteczność" value={`${winRate}%`}
+        <MetricCard label={t('winRate')} value={`${winRate}%`}
           color={winRate >= 60 ? '#22C55E' : winRate >= 40 ? '#F59E0B' : '#EF4444'}
           sub={winRate >= 60 ? 'Stabilna' : winRate >= 40 ? 'Niepewna' : 'Niestabilna'} />
       </div>
 
       {/* Windows table */}
       <Card>
-        <SectionHeader title="Wyniki per okres" icon="📅" />
+        <SectionHeader title={t('perPeriod')} icon={CalendarDays} />
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -283,6 +285,7 @@ function WalkForward({ wf }: { wf: WalkForwardResult }) {
 // ── Backtest page ─────────────────────────────────────────────────────
 
 export default function BacktestPage() {
+  const t = useTranslations('backtest')
   const [ticker, setTicker]   = useState('AAPL')
   const [buy, setBuy]         = useState('65')
   const [sell, setSell]       = useState('35')
@@ -315,21 +318,21 @@ export default function BacktestPage() {
 
   return (
     <AppShell>
-      <h1 className="text-xl font-bold mb-5">🧪 Backtest strategii</h1>
+      <h1 className="text-xl font-bold mb-5 flex items-center gap-2"><FlaskConical className="w-5 h-5 text-brand-green" /> Backtest strategii</h1>
 
       {/* Disclaimer */}
       <div className="mb-5 rounded-lg px-4 py-3 text-sm leading-relaxed"
         style={{ background:'rgba(245,158,11,0.08)', color:'#F59E0B', border:'1px solid rgba(245,158,11,0.2)' }}>
-        ⚠ <strong>Wyniki historyczne nie gwarantują przyszłych zysków.</strong> Backtest pomija
+        <AlertTriangle className="w-3.5 h-3.5 inline mr-1" /><strong>{t('pastResultsNote')}</strong> Backtest pomija
         prowizje, poślizg i podatki. Cel: edukacyjne poznanie zachowania score, nie system transakcyjny.
       </div>
 
       {/* View tabs */}
       <div className="flex gap-2 mb-4">
         {([
-          ['single','📈 Pojedynczy test'],
-          ['grid','🔥 Heatmapa progów'],
-          ['walkforward','📅 Walk-forward'],
+          ['single','Pojedynczy test'],
+          ['grid','Heatmapa progów'],
+          ['walkforward','Walk-forward'],
         ] as [View,string][]).map(([v, label]) => (
           <button key={v} onClick={() => { setView(v); setSingle(null); setGrid(null); setWf(null) }}
             className="px-3 py-2 rounded-lg text-sm font-medium transition-all border"
@@ -346,11 +349,11 @@ export default function BacktestPage() {
       {/* Controls */}
       <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-5">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
-          <Input label="Symbol" value={ticker} onChange={e => setTicker(e.target.value.toUpperCase())} placeholder="AAPL" />
+          <Input label={t('symbol')} value={ticker} onChange={e => setTicker(e.target.value.toUpperCase())} placeholder="AAPL" />
           {view !== 'grid' && (
             <>
-              <Input label="Próg kupna (≥)" type="number" value={buy} onChange={e => setBuy(e.target.value)} min="0" max="100" />
-              <Input label="Próg sprzedaży (≤)" type="number" value={sell} onChange={e => setSell(e.target.value)} min="0" max="100" />
+              <Input label={t('buyThreshold')} type="number" value={buy} onChange={e => setBuy(e.target.value)} min="0" max="100" />
+              <Input label={t('sellThreshold')} type="number" value={sell} onChange={e => setSell(e.target.value)} min="0" max="100" />
             </>
           )}
           <div>
@@ -380,7 +383,7 @@ export default function BacktestPage() {
 
       {error && (
         <div className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
-          ⚠ {error}
+          <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />{error}
         </div>
       )}
 
@@ -400,8 +403,8 @@ export default function BacktestPage() {
       {!loading && wf     && <WalkForward wf={wf} />}
 
       {!loading && !single && !grid && !wf && !error && (
-        <EmptyState icon="🧪" title="Skonfiguruj i uruchom backtest"
-          desc="Wybierz tryb, instrument i parametry. Pojedynczy test pokazuje krzywą kapitału, heatmapa znajduje optymalne progi, walk-forward sprawdza stabilność reguły w czasie." />
+        <EmptyState icon={FlaskConical} title="{t('configure')}"
+          desc={t('configureDesc')} />
       )}
     </AppShell>
   )
