@@ -63,6 +63,7 @@ from backend.routers.calendar import calendar_router
 from backend.routers.alerts import alerts_router
 from backend.routers.etf import etf_router
 from backend.routers.commodities import commodities_router
+from backend.routers.probability import probability_router
 from backend.routers.scanner_journal import (
     scan_router,
     journal_router,
@@ -210,6 +211,7 @@ app.include_router(calendar_router,  prefix=API_V1)
 app.include_router(alerts_router,    prefix=API_V1)
 app.include_router(etf_router,       prefix=API_V1)
 app.include_router(commodities_router, prefix=API_V1)
+app.include_router(probability_router, prefix=API_V1)
 
 
 # ── Root endpoints ────────────────────────────────────────────────────

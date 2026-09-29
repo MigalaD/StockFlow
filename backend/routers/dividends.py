@@ -29,6 +29,7 @@ if _ROOT not in sys.path:
 
 import dividends as div_engine
 from tickers import SPOLKI_DYWIDENDOWE_GPW
+from backend.core.lang import RequestLang
 from backend.core.security import OptionalCurrentUser
 
 log = logging.getLogger("stockflow.dividends_router")
@@ -36,7 +37,9 @@ log = logging.getLogger("stockflow.dividends_router")
 dividends_router = APIRouter(prefix="/dividends", tags=["dividends"])
 
 # Cache wyników w pamięci: (timestamp, payload). TTL 15 min.
-_cache: tuple[float, dict] | None = None
+# Cache kluczowany JĘZYKIEM: bez tego użytkownik EN dostałby polską
+# treść z cache'a zapełnionego przez użytkownika PL (i odwrotnie).
+_cache: dict[str, tuple[float, dict]] = {}
 _CACHE_TTL_S = 15 * 60
 
 # Czytelne nazwy spółek (fallback gdy yfinance nie zwróci longName)
@@ -52,7 +55,7 @@ _NAZWY = {
 }
 
 
-def _analyze_one(ticker: str) -> dict | None:
+def _analyze_one(ticker: str, lang: str = "pl") -> dict | None:
     """Pobiera dane z yfinance i liczy profil dywidendowy jednej spółki."""
     try:
         import yfinance as yf
@@ -87,9 +90,9 @@ def _analyze_one(ticker: str) -> dict | None:
             pass
 
         profil = div_engine.analyze_dividend(
-            ticker, dividends, current_price, currency="PLN"
+            ticker, dividends, current_price, currency="PLN", lang=lang
         )
-        profil = div_engine.zastosuj_payout(profil, payout)
+        profil = div_engine.zastosuj_payout(profil, payout, lang)
 
         # Dodaj czytelną nazwę
         profil["nazwa"] = _NAZWY.get(ticker, ticker.replace(".WA", ""))
@@ -108,13 +111,13 @@ def _analyze_one(ticker: str) -> dict | None:
     summary="Dividend stocks ranking",
     description="Ranking spółek dywidendowych GPW ze score liczonym z historii wypłat.",
 )
-def get_dividends(_user: OptionalCurrentUser = None) -> dict:
+def get_dividends(lang: RequestLang, _user: OptionalCurrentUser = None) -> dict:
     # Cache 15 min — analiza 24 spółek przez yfinance przy każdym wejściu
     # grozi blokadą 429 i wolnym ładowaniem. Wyniki nie zmieniają się co minutę.
-    global _cache
     now = time.time()
-    if _cache and (now - _cache[0]) < _CACHE_TTL_S:
-        return _cache[1]
+    cached = _cache.get(lang)
+    if cached and (now - cached[0]) < _CACHE_TTL_S:
+        return cached[1]
 
     placace = []
     niewyplacajace = []
@@ -122,7 +125,7 @@ def get_dividends(_user: OptionalCurrentUser = None) -> dict:
 
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = {
-            executor.submit(_analyze_one, t): t
+            executor.submit(_analyze_one, t, lang): t
             for t in SPOLKI_DYWIDENDOWE_GPW
         }
         for future in as_completed(futures):
@@ -159,5 +162,5 @@ def get_dividends(_user: OptionalCurrentUser = None) -> dict:
     }
     # Zapisz do cache tylko sensowny wynik (nie pusty po awarii yfinance)
     if placace or niewyplacajace:
-        _cache = (time.time(), payload)
+        _cache[lang] = (time.time(), payload)
     return payload

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   TrendingUp, BarChart3, ScanLine, FlaskConical, Bell,
   ArrowRight, Check, LineChart as LineChartIcon,
@@ -78,22 +79,23 @@ function HeroScoreRing({ value }: { value: number }) {
 }
 
 const FEATURES = [
-  { icon: BarChart3,   title: 'Score 0–100',     desc: 'Każdy instrument oceniony przez kilkanaście wskaźników technicznych i fundamentalnych — jeden czytelny wynik.' },
-  { icon: LineChartIcon, title: 'Wykresy pro',    desc: 'Świece, Bollinger, średnie kroczące, zoom i dane live. To czego potrzebujesz do analizy w jednym miejscu.' },
-  { icon: ScanLine,       title: 'Skaner rynku',    desc: 'Przeskanuj USA, GPW, Europę i krypto. Ranking instrumentów po sile w sekundy.' },
-  { icon: FlaskConical, title: 'Backtest',        desc: 'Sprawdź jak strategia score zachowywała się historycznie — equity curve, Sharpe, walk-forward.' },
-  { icon: TrendingUp,  title: 'Scenariusze',     desc: 'Symulacja Monte Carlo pokazuje zakres możliwych ścieżek ceny, nie jedną fałszywą prognozę.' },
-  { icon: Bell,        title: 'Alerty Telegram', desc: 'Dostań powiadomienie gdy score instrumentu przekroczy ustawiony przez Ciebie próg.' },
+  { icon: BarChart3,     key: 'score'     },
+  { icon: LineChartIcon, key: 'charts'    },
+  { icon: ScanLine,      key: 'scanner'   },
+  { icon: FlaskConical,  key: 'backtest'  },
+  { icon: TrendingUp,    key: 'scenarios' },
+  { icon: Bell,          key: 'alerts'    },
 ]
 
 const STEPS = [
-  { n: '01', title: 'Wpisz symbol',   desc: 'AAPL, CD Projekt, Bitcoin — cokolwiek chcesz przeanalizować.' },
-  { n: '02', title: 'Zobacz score',   desc: 'Natychmiastowa ocena z rozbiciem na składowe i sygnały.' },
-  { n: '03', title: 'Podejmij decyzję', desc: 'Pełen obraz: wykres, scenariusze, strategie — wszystko po polsku.' },
+  { n: '01', key: 's1' },
+  { n: '02', key: 's2' },
+  { n: '03', key: 's3' },
 ]
 
 export default function WelcomePage() {
   const router = useRouter()
+  const t = useTranslations('landing')
   const { isAuth, _hasHydrated, sessionVerified } = useAuthStore()
   const [barsIn, setBarsIn] = useState(false)
 
@@ -239,8 +241,8 @@ export default function WelcomePage() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FEATURES.map(({ icon: Icon, title, desc }) => (
-            <div key={title}
+          {FEATURES.map(({ icon: Icon, key }) => (
+            <div key={key}
               className="group bg-surface-1 border border-border rounded-xl2 p-6
                          hover:bg-surface-2 hover:border-border-hi hover:-translate-y-0.5
                          transition-all duration-200">
@@ -249,8 +251,8 @@ export default function WelcomePage() {
                 style={{ background: 'rgba(34,197,94,0.1)' }}>
                 <Icon className="w-5 h-5 text-brand-green" />
               </div>
-              <h3 className="font-semibold text-text-hi mb-2">{title}</h3>
-              <p className="text-sm text-text-lo leading-relaxed">{desc}</p>
+              <h3 className="font-semibold text-text-hi mb-2">{t(`features.${key}.title`)}</h3>
+              <p className="text-sm text-text-lo leading-relaxed">{t(`features.${key}.desc`)}</p>
             </div>
           ))}
         </div>
@@ -268,8 +270,8 @@ export default function WelcomePage() {
                 <div className="text-5xl font-bold font-mono mb-3" style={{ color: 'rgba(34,197,94,0.25)' }}>
                   {s.n}
                 </div>
-                <h3 className="font-semibold text-text-hi mb-2">{s.title}</h3>
-                <p className="text-sm text-text-lo leading-relaxed">{s.desc}</p>
+                <h3 className="font-semibold text-text-hi mb-2">{t(`steps.${s.key}.title`)}</h3>
+                <p className="text-sm text-text-lo leading-relaxed">{t(`steps.${s.key}.desc`)}</p>
                 {i < STEPS.length - 1 && (
                   <ArrowRight className="hidden md:block absolute top-6 -right-4 w-5 h-5 text-muted" />
                 )}

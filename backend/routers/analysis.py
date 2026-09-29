@@ -33,6 +33,7 @@ from intraday_signals import (
     stochastic_summary,
 )
 import external_data
+from backend.core.lang import RequestLang
 from backend.core.security import OptionalCurrentUser
 from backend.models.schemas import (
     AnalysisResponse,
@@ -210,6 +211,7 @@ def score_validation() -> dict:
 )
 async def analyze(
     ticker: str,
+    lang: RequestLang,
     _user:  OptionalCurrentUser = None,
 ) -> AnalysisResponse:
     """
@@ -220,7 +222,7 @@ async def analyze(
     """
     ticker = ticker.strip().upper()
     try:
-        result = analyze_ticker(ticker)
+        result = analyze_ticker(ticker, lang)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -282,6 +284,8 @@ async def analyze(
         beta_info         = result.get("beta_info"),
         relative_strength = result.get("relative_strength"),
         calendar_info     = result.get("calendar_info"),
+        data_coverage     = result.get("data_coverage"),
+        score_drivers     = result.get("score_drivers"),
     )
 
     # Zapisz score do historii (cicha — nie blokuje odpowiedzi)

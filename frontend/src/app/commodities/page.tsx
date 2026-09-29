@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import { Gem, ArrowRight, Info } from 'lucide-react'
 import { AppShell } from '../../components/layout/AppShell'
 import { ScoreBadge } from '../../components/ui/ScoreBadge'
@@ -10,6 +11,7 @@ import { Spinner, Price, Tag } from '../../components/ui'
 import { commoditiesApi, type GrowthStock } from '../../lib/api'
 
 function CommodityCard({ stock }: { stock: GrowthStock }) {
+  const t = useTranslations('commodities')
   return (
     <Link href={`/analysis?ticker=${stock.ticker}`}
       className="block bg-surface-1 border border-border rounded-xl2 p-4 hover:bg-surface-2 hover:border-border-hi transition-all group">
@@ -34,7 +36,7 @@ function CommodityCard({ stock }: { stock: GrowthStock }) {
         <Price value={stock.price} currency={stock.currency}
           className="text-sm font-semibold text-text-hi" />
         <span className="flex items-center gap-1 text-2xs text-muted group-hover:text-brand-green transition-colors">
-          Analizuj <ArrowRight className="w-3 h-3" />
+          {t('analyze')} <ArrowRight className="w-3 h-3" />
         </span>
       </div>
     </Link>
@@ -42,6 +44,7 @@ function CommodityCard({ stock }: { stock: GrowthStock }) {
 }
 
 export default function CommoditiesPage() {
+  const t = useTranslations('commodities')
   const { data, isLoading } = useSWR('commodities', commoditiesApi.get, { revalidateOnFocus: false })
   const [activeCat, setActiveCat] = useState<string>('all')
 
@@ -55,28 +58,23 @@ export default function CommoditiesPage() {
     <AppShell>
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <Gem className="w-5 h-5 text-brand-green" /> Surowce
+          <Gem className="w-5 h-5 text-brand-green" /> {t('title')}
         </h1>
       </div>
 
       <div className="flex items-start gap-2.5 mb-5 text-xs text-text-lo bg-surface-1 border border-border rounded-xl p-3">
         <Info className="w-4 h-4 text-muted shrink-0 mt-0.5" />
-        <p className="leading-relaxed">
-          Ceny surowców śledzimy przez <strong className="text-text-mid">płynne ETF-y towarowe</strong> (np.
-          GLD dla złota) — stabilniejsze źródło danych niż kontrakty futures. Surowce nie mają fundamentów
-          spółek, więc score opiera się <strong className="text-text-mid">wyłącznie na analizie technicznej</strong>{' '}
-          (trend, momentum, zmienność).
-        </p>
+        <p className="leading-relaxed">{t('intro')}</p>
       </div>
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Spinner size="lg" />
-          <span className="text-sm text-muted">Analizuję surowce…</span>
+          <span className="text-sm text-muted">{t('loading')}</span>
         </div>
       ) : !data || data.stocks.length === 0 ? (
         <div className="text-center py-16 text-muted">
-          Nie udało się pobrać danych. Spróbuj odświeżyć stronę.
+          {t('empty')}
         </div>
       ) : (
         <>
@@ -88,7 +86,7 @@ export default function CommoditiesPage() {
                 color:       activeCat === 'all' ? '#22C55E' : '#64748B',
                 borderColor: activeCat === 'all' ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.06)',
               }}>
-              Wszystkie <span className="opacity-60">({data.stocks.length})</span>
+              {t('all')} <span className="opacity-60">({data.stocks.length})</span>
             </button>
             {data.categories.map(cat => {
               const count = data.stocks.filter(s => s.category === cat).length
