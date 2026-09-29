@@ -29,13 +29,17 @@ if _ROOT not in sys.path:
 
 from stock_analyzer import analyze_ticker
 from tickers import ETF_LIST
+from tickers_i18n import describe
+from backend.core.lang import RequestLang
 from backend.core.security import OptionalCurrentUser
 
 log = logging.getLogger("stockflow.etf")
 
 etf_router = APIRouter(prefix="/etf", tags=["etf"])
 
-_cache: tuple[float, dict] | None = None
+# Cache kluczowany JĘZYKIEM: bez tego użytkownik EN dostałby polską
+# treść z cache'a zapełnionego przez użytkownika PL (i odwrotnie).
+_cache: dict[str, tuple[float, dict]] = {}
 _CACHE_TTL_S = 15 * 60
 
 # Kategorie do filtrów w UI. UCITS wydzielone jako osobna, najważniejsza
@@ -56,16 +60,16 @@ _CATEGORIES = {
 _UCITS = {"VWCE.DE", "SXR8.DE", "IWDA.AS", "EUNL.DE", "VUSA.AS", "ETFW20L.WA"}
 
 
-def _analyze_one(name: str, ticker: str, opis: str) -> dict | None:
+def _analyze_one(name: str, ticker: str, opis: str, lang: str = "pl") -> dict | None:
     try:
-        res = analyze_ticker(ticker)
+        res = analyze_ticker(ticker, lang)
         if "error" in res or res.get("price") is None or res["price"] <= 0:
             return None
         return {
             "ticker":       ticker,
             "name":         res.get("name", name),
             "display_name": name,
-            "description":  opis,
+            "description":  describe(ticker, opis, lang),
             "category":     _CATEGORIES.get(ticker, "Inne"),
             "ucits":        ticker in _UCITS,
             "price":        res["price"],
@@ -84,16 +88,16 @@ def _analyze_one(name: str, ticker: str, opis: str) -> dict | None:
     summary="ETF panel",
     description="Analiza popularnych ETF-ów (w tym UCITS dostępnych dla polskich inwestorów). Posortowane wg score.",
 )
-def get_etfs(_user: OptionalCurrentUser = None) -> dict:
-    global _cache
+def get_etfs(lang: RequestLang, _user: OptionalCurrentUser = None) -> dict:
     now = time.time()
-    if _cache and (now - _cache[0]) < _CACHE_TTL_S:
-        return _cache[1]
+    cached = _cache.get(lang)
+    if cached and (now - cached[0]) < _CACHE_TTL_S:
+        return cached[1]
 
     results = []
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = {
-            executor.submit(_analyze_one, name, tckr, opis): tckr
+            executor.submit(_analyze_one, name, tckr, opis, lang): tckr
             for name, (tckr, opis) in ETF_LIST.items()
         }
         for future in as_completed(futures):
@@ -106,5 +110,5 @@ def get_etfs(_user: OptionalCurrentUser = None) -> dict:
 
     payload = {"stocks": results, "categories": categories, "count": len(results)}
     if results:
-        _cache = (now, payload)
+        _cache[lang] = (now, payload)
     return payload

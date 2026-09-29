@@ -26,6 +26,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
+from i18n import t, DEFAULT_LANG
+
 log = logging.getLogger("stockflow.dividends")
 
 PODATEK_BELKI = 0.19   # 19% podatek od zysków kapitałowych (dywidend) w PL
@@ -42,7 +44,7 @@ def _roczne_dywidendy(dividends) -> dict[int, float]:
 
 
 def analyze_dividend(ticker: str, dividends, current_price: float | None,
-                     currency: str = "PLN") -> dict:
+                     currency: str = "PLN", lang: str = DEFAULT_LANG) -> dict:
     """
     Główna funkcja: analizuje profil dywidendowy spółki z historii wypłat.
 
@@ -64,7 +66,7 @@ def analyze_dividend(ticker: str, dividends, current_price: float | None,
             "score": None, "yield_brutto": None, "yield_netto": None,
             "lata_ciaglosci": 0, "ostatnia_wyplata": None,
             "payout_ratio": None, "flagi": [],
-            "opis": "Spółka nie wypłaca dywidendy",
+            "opis": t("div.not_paying", lang),
         }
 
     roczne = _roczne_dywidendy(dividends)
@@ -79,7 +81,7 @@ def analyze_dividend(ticker: str, dividends, current_price: float | None,
             "score": None, "yield_brutto": None, "yield_netto": None,
             "lata_ciaglosci": 0, "ostatnia_wyplata": None,
             "payout_ratio": None, "flagi": [],
-            "opis": "Spółka nie wypłaca dywidendy",
+            "opis": t("div.not_paying", lang),
         }
 
     # Ostatnia znacząca dywidenda roczna (pomijamy bieżący rok jeśli niepełny)
@@ -95,12 +97,17 @@ def analyze_dividend(ticker: str, dividends, current_price: float | None,
     flagi: list[str] = []
 
     # ── FILAR 1: Bezpieczeństwo (0-100, waga 40%) ──
-    # Bazujemy na payout ratio jeśli dostępny (z info, przekazany osobno),
-    # ale głównie oceniamy przez pryzmat stabilności wypłat.
-    # Tu payout przyjdzie z zewnątrz (info) — ale nie ufamy mu bezkrytycznie.
-    bezpieczenstwo = 60.0  # bazowa wartość neutralna
+    # Liczone ze STABILNOŚCI HISTORYCZNYCH WYPŁAT — danych, które mamy
+    # zawsze. Wcześniej startowało od sztywnej wartości 60 i ruszało się
+    # tylko gdy udało się pobrać payout ratio z .info (notorycznie zawodne)
+    # — czyli najważniejszy filar bywał w praktyce zmyślony.
+    # Payout ratio, jeśli dostępny, nakłada się później jako KOREKTA
+    # (zastosuj_payout), a nie jako fundament.
+    bezpieczenstwo, flagi_bezp = _ocen_bezpieczenstwo(roczne, biezacy_rok, lang)
 
     # ── FILAR 2: Ciągłość i wzrost (0-100, waga 35%) ──
+    flagi.extend(flagi_bezp)
+
     lata_ciaglosci = _policz_ciaglosc(roczne, biezacy_rok)
     ciaglosc_score = min(100, 40 + lata_ciaglosci * 6)  # 10 lat -> 100
 
@@ -108,13 +115,13 @@ def analyze_dividend(ticker: str, dividends, current_price: float | None,
     trend = _ocen_trend(roczne, biezacy_rok)
     if trend == "rosnacy":
         ciaglosc_score = min(100, ciaglosc_score + 10)
-        flagi.append(("pozytyw", "Rosnąca dywidenda"))
+        flagi.append(("pozytyw", t("div.rising", lang)))
     elif trend == "malejacy":
         ciaglosc_score = max(0, ciaglosc_score - 15)
-        flagi.append(("ostrzezenie", "Malejąca dywidenda"))
+        flagi.append(("ostrzezenie", t("div.falling", lang)))
 
     if lata_ciaglosci >= 10:
-        flagi.append(("pozytyw", f"{lata_ciaglosci} lat nieprzerwanych wypłat"))
+        flagi.append(("pozytyw", t("div.streak", lang, years=lata_ciaglosci)))
 
     # ── FILAR 3: Atrakcyjność (0-100, waga 25%) ──
     yield_brutto = None
@@ -130,10 +137,10 @@ def analyze_dividend(ticker: str, dividends, current_price: float | None,
             atrakcyjnosc = 60  # niska ale bezpieczna
         elif 7 < yield_brutto <= 10:
             atrakcyjnosc = 65
-            flagi.append(("ostrzezenie", "Bardzo wysoka stopa — sprawdź trwałość"))
+            flagi.append(("ostrzezenie", t("div.yield_very_high", lang)))
         elif yield_brutto > 10:
             atrakcyjnosc = 40
-            flagi.append(("ostrzezenie", "Ekstremalnie wysoka stopa — ryzyko cięcia"))
+            flagi.append(("ostrzezenie", t("div.yield_extreme", lang)))
         else:
             atrakcyjnosc = 45
 
@@ -157,7 +164,7 @@ def analyze_dividend(ticker: str, dividends, current_price: float | None,
         "trend": trend,
         "payout_ratio": None,   # uzupełniane z info na poziomie routera
         "flagi": flagi,
-        "opis": _opis_slowny(score, lata_ciaglosci, trend),
+        "opis": _opis_slowny(score, lata_ciaglosci, trend, lang),
         "_filary": {
             "bezpieczenstwo": round(bezpieczenstwo, 0),
             "ciaglosc": round(ciaglosc_score, 0),
@@ -166,7 +173,7 @@ def analyze_dividend(ticker: str, dividends, current_price: float | None,
     }
 
 
-def zastosuj_payout(profil: dict, payout_ratio: float | None) -> dict:
+def zastosuj_payout(profil: dict, payout_ratio: float | None, lang: str = DEFAULT_LANG) -> dict:
     """Nakłada payout ratio (z info) na profil — koryguje filar bezpieczeństwa.
     Wywoływane osobno, bo payout pochodzi z .info które bywa zawodne,
     więc traktujemy je jako korektę, nie fundament."""
@@ -176,18 +183,23 @@ def zastosuj_payout(profil: dict, payout_ratio: float | None) -> dict:
     profil["payout_ratio"] = round(payout_ratio, 3)
     bezp = profil["_filary"]["bezpieczenstwo"]
 
+    # KOREKTA, nie nadpisanie: bezpieczeństwo policzone z historii wypłat
+    # zostaje fundamentem, payout je tylko modyfikuje. Dzięki temu spółka
+    # z 20-letnią nieprzerwaną historią nie spada nagle na 25 punktów przez
+    # jeden słaby rok, ale niepokryta dywidenda nadal mocno waży.
     if payout_ratio > 1.0:
-        bezp = 25
-        profil["flagi"].insert(0, ("ostrzezenie", "Dywidenda niepokryta zyskiem (payout >100%)"))
+        bezp = bezp * 0.45          # niepokryta zyskiem — poważny sygnał
+        profil["flagi"].insert(0, ("ostrzezenie", t("div.payout_uncovered", lang)))
     elif payout_ratio > 0.8:
-        bezp = 55
-        profil["flagi"].append(("neutralny", "Wysoki payout ratio"))
+        bezp = bezp * 0.8
+        profil["flagi"].append(("neutralny", t("div.payout_high", lang)))
     elif payout_ratio > 0.4:
-        bezp = 80
-        profil["flagi"].append(("pozytyw", "Zdrowy payout ratio"))
+        bezp = min(100.0, bezp * 1.08)
+        profil["flagi"].append(("pozytyw", t("div.payout_healthy", lang)))
     elif payout_ratio > 0:
-        bezp = 70
+        bezp = min(100.0, bezp * 1.03)
 
+    bezp = round(max(10.0, min(100.0, bezp)), 1)
     profil["_filary"]["bezpieczenstwo"] = bezp
     # Przelicz score z nowym bezpieczeństwem
     profil["score"] = round(
@@ -197,6 +209,50 @@ def zastosuj_payout(profil: dict, payout_ratio: float | None) -> dict:
         1
     )
     return profil
+
+
+def _ocen_bezpieczenstwo(roczne: dict[int, float], biezacy_rok: int, lang: str = DEFAULT_LANG) -> tuple[float, list]:
+    """Ocena bezpieczeństwa dywidendy ZE STABILNOŚCI WYPŁAT (0-100).
+
+    Pyta o to, co realnie zagraża inwestorowi dywidendowemu: czy ta spółka
+    kiedykolwiek ścięła dywidendę i jak mocno. Spółka płacąca równo od 15
+    lat jest bezpieczniejsza niż taka, która dwa razy obcięła wypłatę o
+    połowę — niezależnie od tego, co mówi payout ratio w danym kwartale.
+
+    Zwraca (score, flagi)."""
+    lata = sorted([r for r in roczne if roczne[r] > 0])
+    flagi: list = []
+
+    if len(lata) < 2:
+        # Za mało historii na ocenę stabilności — neutralnie, bez udawania wiedzy
+        return 50.0, flagi
+
+    # Analizujemy ostatnie ~10 lat (starsze cięcia są mniej istotne dziś)
+    ostatnie = [r for r in lata if r >= biezacy_rok - 10]
+    if len(ostatnie) < 2:
+        ostatnie = lata[-5:]
+
+    spadki = []          # względne cięcia rok do roku
+    for prev, cur in zip(ostatnie, ostatnie[1:]):
+        # tylko kolejne lata wypłat (przerwa jest liczona osobno w ciągłości)
+        a, b = roczne[prev], roczne[cur]
+        if a > 0 and b < a:
+            spadki.append((a - b) / a)
+
+    if not spadki:
+        score = 92.0        # nigdy nie obcięła w badanym okresie
+        flagi.append(("pozytyw", t("div.never_cut", lang)))
+    else:
+        najglebszy = max(spadki)
+        # Kara rośnie z głębokością NAJGŁĘBSZEGO cięcia i ich liczbą
+        score = 85.0 - (najglebszy * 90.0) - (len(spadki) - 1) * 6.0
+        score = max(15.0, min(92.0, score))
+        if najglebszy >= 0.5:
+            flagi.append(("ostrzezenie", t("div.cut_deep", lang, pct=najglebszy)))
+        elif najglebszy >= 0.25:
+            flagi.append(("neutralny", t("div.cut_mild", lang, pct=najglebszy)))
+
+    return round(score, 1), flagi
 
 
 def _policz_ciaglosc(roczne: dict[int, float], biezacy_rok: int) -> int:
@@ -235,22 +291,22 @@ def _ocen_trend(roczne: dict[int, float], biezacy_rok: int) -> str:
     return "stabilny"
 
 
-def _opis_slowny(score: float, lata: int, trend: str) -> str:
+def _opis_slowny(score: float, lata: int, trend: str, lang: str = DEFAULT_LANG) -> str:
     """Krótki, ludzki opis profilu dywidendowego."""
     if score >= 75:
-        baza = "Solidny profil dywidendowy"
+        baza = t("div.profile_solid", lang)
     elif score >= 55:
-        baza = "Przyzwoity profil dywidendowy"
+        baza = t("div.profile_decent", lang)
     else:
-        baza = "Profil dywidendowy z zastrzeżeniami"
+        baza = t("div.profile_concerns", lang)
 
     dodatki = []
     if lata >= 10:
-        dodatki.append("długa historia wypłat")
+        dodatki.append(t("div.long_history", lang))
     if trend == "rosnacy":
-        dodatki.append("dywidenda rośnie")
+        dodatki.append(t("div.desc_rising", lang))
     elif trend == "malejacy":
-        dodatki.append("dywidenda maleje")
+        dodatki.append(t("div.desc_falling", lang))
 
     if dodatki:
         return f"{baza} — {', '.join(dodatki)}"

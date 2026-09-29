@@ -23,12 +23,14 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from stock_analyzer import analyze_ticker
+from i18n import t, DEFAULT_LANG
 from backend.core.security import OptionalCurrentUser
+from backend.core.lang import RequestLang
 
 router = APIRouter(prefix="/pdf", tags=["reports"])
 
 
-def _build_pdf(ticker: str, result: dict) -> bytes:
+def _build_pdf(ticker: str, result: dict, lang: str = DEFAULT_LANG) -> bytes:
     """Generuje PDF z wynikami analizy. Zwraca bytes."""
     try:
         from fpdf import FPDF
@@ -46,7 +48,8 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
     now      = datetime.now().strftime("%d.%m.%Y %H:%M")
 
     def score_label(s: float) -> str:
-        return "Pozytywny" if s >= 60 else "Neutralny" if s >= 40 else "Negatywny"
+        key = "pdf.positive" if s >= 60 else "pdf.neutral" if s >= 40 else "pdf.negative"
+        return t(key, lang)
 
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -78,7 +81,7 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
 
     pdf.set_font(FONT, "", 10)
     pdf.set_text_color(100, 116, 139)    # muted
-    pdf.cell(0, 5, f"Raport analizy  ·  {now}", ln=True)
+    pdf.cell(0, 5, f'{t("pdf.report_header", lang)}  ·  {now}', ln=True)
     pdf.ln(4)
 
     # ── Tytuł instrumentu ─────────────────────────────────────────────
@@ -93,7 +96,7 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
 
     pdf.set_font(FONT, "", 10)
     pdf.set_text_color(100, 116, 139)
-    pdf.cell(0, 5, f"Sektor: {sector}  ·  Cena: {price:.2f} {currency}", ln=True)
+    pdf.cell(0, 5, t("pdf.sector_price", lang, sector=sector, price=price, currency=currency), ln=True)
     pdf.ln(5)
 
     # ── Score boxy ────────────────────────────────────────────────────
@@ -128,14 +131,15 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
     # ── Składowe ──────────────────────────────────────────────────────
     pdf.set_font(FONT, "B", 12)
     pdf.set_text_color(248, 250, 252)
-    pdf.cell(0, 8, "Składowe wyniku DT", ln=True)
+    pdf.cell(0, 8, t("pdf.components_dt", lang), ln=True)
     pdf.set_draw_color(34, 197, 94)
     pdf.set_line_width(0.4)
     pdf.line(20, pdf.get_y(), 190, pdf.get_y())
     pdf.ln(3)
 
     col_widths = [80, 25, 25, 40]
-    headers    = ["Wskaźnik", "Wynik", "Waga", "Sygnał"]
+    headers    = [t("pdf.col_indicator", lang), t("pdf.col_result", lang),
+                  t("pdf.col_weight", lang), t("pdf.col_signal", lang)]
 
     pdf.set_font(FONT, "B", 9)
     pdf.set_text_color(100, 116, 139)
@@ -175,7 +179,7 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
     if flags:
         pdf.set_font(FONT, "B", 12)
         pdf.set_text_color(248, 250, 252)
-        pdf.cell(0, 8, "Ostrzeżenia (Red Flags)", ln=True)
+        pdf.cell(0, 8, t("pdf.red_flags_header", lang), ln=True)
         pdf.set_draw_color(239, 68, 68)
         pdf.line(20, pdf.get_y(), 190, pdf.get_y())
         pdf.ln(3)
@@ -195,8 +199,8 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
     pdf.line(20, pdf.get_y(), 190, pdf.get_y())
     pdf.set_font(FONT, "", 7)
     pdf.set_text_color(100, 116, 139)
-    pdf.cell(0, 5, "StockFlow  ·  Narzędzie edukacyjne  ·  Nie stanowi porady inwestycyjnej", ln=True, align="C")
-    pdf.cell(0, 5, f"Wygenerowano: {now}", align="C")
+    pdf.cell(0, 5, t("pdf.footer_tagline", lang), ln=True, align="C")
+    pdf.cell(0, 5, t("pdf.generated_at", lang, now=now), align="C")
 
     return pdf.output()
 
@@ -209,6 +213,7 @@ def _build_pdf(ticker: str, result: dict) -> bytes:
 )
 async def generate_pdf(
     ticker: str,
+    lang:   RequestLang,
     _user:  OptionalCurrentUser = None,
 ) -> StreamingResponse:
     """
@@ -218,7 +223,7 @@ async def generate_pdf(
     ticker = ticker.strip().upper()
 
     try:
-        result = analyze_ticker(ticker)
+        result = analyze_ticker(ticker, lang)
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Analysis failed: {e}")
 
@@ -226,7 +231,7 @@ async def generate_pdf(
         raise HTTPException(status_code=404, detail=f"No data for {ticker}")
 
     try:
-        pdf_bytes = _build_pdf(ticker, result)
+        pdf_bytes = _build_pdf(ticker, result, lang)
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:

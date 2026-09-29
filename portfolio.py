@@ -24,6 +24,7 @@ import yfinance as yf
 import database as db
 from stock_analyzer import fetch_history, _fetch_index_history_cached
 import currency as fx
+from i18n import t, DEFAULT_LANG
 
 
 CONCENTRATION_WARNING_POSITION = 0.30  # > 30% portfela w jednej spółce
@@ -32,7 +33,7 @@ PORTFOLIO_BASE_CURRENCY = "PLN"        # waluta w której pokazujemy łączną w
 HIGH_CORRELATION_THRESHOLD = 0.75      # od tego poziomu uznajemy korelację za "wysoką"
 
 
-def analyze_portfolio(user_id: str, analyze_fn) -> dict:
+def analyze_portfolio(user_id: str, analyze_fn, lang: str = DEFAULT_LANG) -> dict:
     """
     Pobiera pozycje użytkownika z bazy, dolicza aktualne ceny i score
     (przez analyze_fn = stock_analyzer.analyze_ticker), i liczy podsumowanie.
@@ -132,27 +133,16 @@ def analyze_portfolio(user_id: str, analyze_fn) -> dict:
 
     warnings = []
     if not conversion_ok:
-        warnings.append(
-            "⚠️ Nie udało się pobrać kursów walut dla części pozycji — "
-            "łączna wartość może być niedokładna."
-        )
+        warnings.append(t("portfolio.fx_failed", lang))
     for p in positions:
         share = p["value_base"] / total_value if total_value else 0
         if share > CONCENTRATION_WARNING_POSITION:
-            warnings.append(
-                f"⚠️ {p['ticker']} stanowi {share:.0%} portfela - "
-                f"jedna spółka ma duży wpływ na cały wynik."
-            )
+            warnings.append(t("portfolio.concentration_position", lang, ticker=p["ticker"], share=share))
     for sector, pct in allocation_by_sector.items():
         if pct / 100 > CONCENTRATION_WARNING_SECTOR:
-            warnings.append(
-                f"⚠️ Sektor '{sector}' stanowi {pct:.0f}% portfela - "
-                f"słaba dywersyfikacja branżowa."
-            )
+            warnings.append(t("portfolio.concentration_sector", lang, sector=sector, pct=pct))
     if len(positions) == 1:
-        warnings.append(
-            "⚠️ Portfel składa się z jednej spółki - brak dywersyfikacji."
-        )
+        warnings.append(t("portfolio.single_position", lang))
 
 
     # ── Benchmark: portfel vs S&P 500 ──

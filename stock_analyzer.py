@@ -25,6 +25,8 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+from i18n import t, DEFAULT_LANG
+
 import database as db
 from rate_limiter import rate_limited, with_backoff
 import external_data
@@ -588,18 +590,42 @@ def bollinger_bands(
 # ----------------------------------------------------------------------
 # SKŁADOWE SCORE (każda zwraca wartość 0-100, gdzie 100 = najbardziej "bullish")
 # ----------------------------------------------------------------------
-def score_rsi(df: pd.DataFrame) -> tuple[float, str]:
+def score_rsi(df: pd.DataFrame, lang: str = DEFAULT_LANG) -> tuple[float, str]:
     val = df["RSI"].dropna()
     if val.empty:
-        return 50, "brak danych RSI"
+        return 50, t("rsi.no_data", lang)
     val = float(val.iloc[-1])
-    # RSI < 30 = wyprzedanie (potencjalnie pozytywne), > 70 = przegrzanie
-    if val <= 30:
-        return 80, f"RSI={val:.1f} (wyprzedanie)"
-    if val >= 70:
-        return 20, f"RSI={val:.1f} (przegrzanie)"
-    # liniowo między 30-70, środek (50) = neutralny score 50
-    return float(100 - val), f"RSI={val:.1f} (neutralnie)"
+
+    # Progi wyprzedania/przegrzania SKALOWANE ZMIENNOŚCIĄ instrumentu.
+    # Sztywne 30/70 traktuje bitcoina i spółkę dywidendową tak samo, choć
+    # przy dużej zmienności RSI rutynowo dotyka skrajności bez realnego
+    # sygnału, a przy niskiej — 35 może już oznaczać głębokie wyprzedanie.
+    lo, hi = 30.0, 70.0
+    opis_prog = ""
+    try:
+        returns = df["Close"].pct_change().dropna()
+        if len(returns) >= 30:
+            ann_vol = float(returns.tail(120).std() * np.sqrt(252))
+            if ann_vol > 0.60:        # bardzo zmienny (krypto, spółki spekulacyjne)
+                lo, hi = 22.0, 78.0
+                opis_prog = t("rsi.thresholds_wide", lang)
+            elif ann_vol > 0.35:      # typowa akcja wzrostowa
+                lo, hi = 27.0, 73.0
+            elif ann_vol < 0.18:      # spokojny instrument (blue chip, ETF obligacji)
+                lo, hi = 35.0, 65.0
+                opis_prog = t("rsi.thresholds_narrow", lang)
+    except Exception:
+        pass
+
+    if val <= lo:
+        return 80, t("rsi.oversold", lang, value=val, threshold=lo, note=opis_prog)
+    if val >= hi:
+        return 20, t("rsi.overbought", lang, value=val, threshold=hi, note=opis_prog)
+    # liniowo w paśmie neutralnym, środek pasma = 50
+    srodek = (lo + hi) / 2
+    nachylenie = 30.0 / max(1.0, (hi - srodek))
+    score = 50.0 - (val - srodek) * nachylenie
+    return float(max(20.0, min(80.0, score))), t("rsi.neutral", lang, value=val, note=opis_prog)
 
 
 def score_trend_ma(df: pd.DataFrame) -> tuple[float, str]:
@@ -943,31 +969,78 @@ def score_seasonality(ticker: str) -> tuple[float, str]:
     return score, note
 
 
-def score_valuation(info: dict) -> tuple[float, str]:
+# ── Referencyjne mediany C/Z per sektor ───────────────────────────────
+# Bank z C/Z 8 i spółka technologiczna z C/Z 35 nie mogą być oceniane tą
+# samą miarą — w swoich sektorach jeden bywa drogi, drugi tani. Wartości
+# to przybliżone, długoterminowe mediany rynkowe (nie dane live): służą
+# jako punkt odniesienia, nie jako prognoza. Sektor nieznany -> fallback
+# na próg ogólnorynkowy (stare zachowanie).
+SECTOR_PE_MEDIAN = {
+    "Technology": 28.0,
+    "Communication Services": 20.0,
+    "Consumer Cyclical": 20.0,
+    "Consumer Defensive": 20.0,
+    "Healthcare": 22.0,
+    "Industrials": 20.0,
+    "Basic Materials": 14.0,
+    "Energy": 12.0,
+    "Financial Services": 11.0,
+    "Utilities": 16.0,
+    "Real Estate": 18.0,
+}
+_PE_MEDIAN_FALLBACK = 18.0
+
+
+def score_valuation(info: dict, lang: str = DEFAULT_LANG) -> tuple[float, str]:
     pe = info.get("trailingPE")
     forward_pe = info.get("forwardPE")
     peg = info.get("pegRatio")
 
     if pe is None:
-        return 50, "brak danych P/E (możliwe straty / brak danych)"
+        return 50, t("valuation.no_pe", lang)
 
     notes = [f"P/E={pe:.1f}"]
     score = 50
 
-    # bardzo prosta heurystyka - edytuj progi według własnej oceny branży
-    if pe < 15:
+    # Ocena RELATYWNA do sektora zamiast sztywnych progów 15/40.
+    # ratio < 1 = taniej niż typowa spółka w tej samej branży.
+    sector = info.get("sector")
+    median = SECTOR_PE_MEDIAN.get(sector) if sector else None
+    ref = median if median else _PE_MEDIAN_FALLBACK
+    ratio = pe / ref if ref else None
+
+    if ratio is not None and pe > 0:
+        if median:
+            notes.append(t("valuation.sector_median", lang, median=ref))
+        wzgl = t("valuation.ref_sector" if median else "valuation.ref_market", lang)
+        wzgl_gen = t("valuation.ref_sector_gen" if median else "valuation.ref_market_gen", lang)
+        if ratio <= 0.6:
+            score += 22
+            notes.append(t("valuation.much_cheaper", lang, ref=wzgl))
+        elif ratio <= 0.85:
+            score += 12
+            notes.append(t("valuation.cheaper", lang, ref=wzgl))
+        elif ratio <= 1.2:
+            notes.append(t("valuation.in_line", lang, ref_gen=wzgl_gen))
+        elif ratio <= 1.8:
+            score -= 12
+            notes.append(t("valuation.pricier", lang, ref=wzgl))
+        else:
+            score -= 22
+            notes.append(t("valuation.much_pricier", lang, ref=wzgl))
+    elif pe < 15:
         score += 20
-        notes.append("niskie P/E")
+        notes.append(t("valuation.low_pe", lang))
     elif pe > 40:
         score -= 20
-        notes.append("wysokie P/E")
+        notes.append(t("valuation.high_pe", lang))
 
     if forward_pe and forward_pe < pe:
         score += 10
-        notes.append(f"forward P/E={forward_pe:.1f} (oczekiwany wzrost zysków)")
+        notes.append(t("valuation.forward_better", lang, fpe=forward_pe))
     elif forward_pe and forward_pe > pe:
         score -= 5
-        notes.append(f"forward P/E={forward_pe:.1f} (oczekiwany spadek zysków)")
+        notes.append(t("valuation.forward_worse", lang, fpe=forward_pe))
 
     if peg:
         notes.append(f"PEG={peg:.2f}")
@@ -1543,7 +1616,7 @@ def compute_score_krotkoterminowy(df: "pd.DataFrame") -> tuple[float, dict]:
 
 # GŁÓWNA ANALIZA
 # ----------------------------------------------------------------------
-def analyze_ticker(ticker: str) -> dict:
+def analyze_ticker(ticker: str, lang: str = DEFAULT_LANG) -> dict:
     ticker = sanitize_ticker(ticker)
     if not ticker:
         return {"ticker": ticker, "error": "Pusty lub nieprawidłowy symbol."}
@@ -1578,12 +1651,12 @@ def analyze_ticker(ticker: str) -> dict:
     weights = get_weights_for_asset_type(asset_type)
 
     all_components = {
-        "rsi": score_rsi(df),
+        "rsi": score_rsi(df, lang),
         "trend_ma": score_trend_ma(df),
         "macd": score_macd(df),
         "volume": score_volume(df),
         "volatility": score_volatility(df),
-        "valuation": score_valuation(info),
+        "valuation": score_valuation(info, lang),
         "momentum": score_momentum(df),
         "dividend": score_dividend(info),
         "sentiment": score_sentiment(news),
@@ -1605,6 +1678,46 @@ def analyze_ticker(ticker: str) -> dict:
 
     total_score = sum(components[k][0] * weights[k] for k in weights)
 
+    # ── Pokrycie danych ──
+    # Score policzony z połowy składowych wygląda identycznie jak policzony
+    # z kompletu — a to zupełnie inna wiarygodność. Składowa bez danych
+    # zwraca neutralne 50 i notatkę "brak danych", więc rozpoznajemy ją po
+    # notatce i raportujemy, ILE WAGI stoi za wynikiem. yfinance regularnie
+    # gubi fundamenty (bug "crumb" w .info), więc to nie przypadek brzegowy.
+    _missing_markers = ("brak danych", "brak informacji", "niedostępn")
+    _brakujace = [
+        k for k in weights
+        if any(m in str(components[k][1]).lower() for m in _missing_markers)
+    ]
+    _waga_brakujaca = sum(weights[k] for k in _brakujace)
+    # ── Narracja score: co najmocniej ciągnie wynik w górę i w dół ──
+    # Liczy się WKŁAD (odchylenie od neutralnych 50 × waga), nie sama
+    # wartość składowej — składowa 70 z wagą 0.02 znaczy mniej niż 60
+    # z wagą 0.15. To zamienia gołą liczbę w zdanie, które coś mówi.
+    _wklady = [
+        (k, (components[k][0] - 50.0) * weights[k], components[k][1])
+        for k in weights
+        if not any(m in str(components[k][1]).lower() for m in ("brak danych", "brak informacji", "niedostępn"))
+    ]
+    _wklady.sort(key=lambda x: x[1], reverse=True)
+    score_drivers = {
+        "top_positive": [
+            {"component": k, "impact": round(v, 2), "note": n}
+            for k, v, n in _wklady[:3] if v > 0.5
+        ],
+        "top_negative": [
+            {"component": k, "impact": round(v, 2), "note": n}
+            for k, v, n in reversed(_wklady[-3:]) if v < -0.5
+        ],
+    }
+
+    data_coverage = {
+        "pct": round(max(0.0, 1.0 - _waga_brakujaca) * 100),
+        "components_total": len(weights),
+        "components_missing": len(_brakujace),
+        "missing": sorted(_brakujace),
+    }
+
     # Zabezpieczenie: jeśli któryś komponent zwrócił NaN (błąd w danych),
     # total_score też będzie NaN. Zamiast propagować błąd, wróć do neutral.
     if np.isnan(total_score):
@@ -1619,13 +1732,13 @@ def analyze_ticker(ticker: str) -> dict:
     sector = info.get("sector") or None
     if not sector:
         if asset_type == "crypto":
-            sector = "Kryptowaluta"
+            sector = t("asset.crypto", lang)
         elif asset_type in ("commodity", "etf_commodity"):
-            sector = ASSET_TYPE_LABELS.get(asset_type, "Surowiec / kontrakt")
+            sector = t("asset.commodity", lang)
         elif asset_type == "etf":
-            sector = info.get("category") or "ETF"
+            sector = info.get("category") or t("asset.etf", lang)
         else:
-            sector = "Nieznany"
+            sector = t("common.unknown", lang)
     pe = info.get("trailingPE")
 
     try:
@@ -1675,6 +1788,8 @@ def analyze_ticker(ticker: str) -> dict:
         "beta_info": beta_info,
         "relative_strength": relative_strength,
         "ma_crossover": ma_crossover,
+        "data_coverage": data_coverage,
+        "score_drivers": score_drivers,
         "vwap": vwap_position(df),
         "red_flags": detect_red_flags(info) if asset_type == "stock" else [],
         "news_list": get_news_list(news),

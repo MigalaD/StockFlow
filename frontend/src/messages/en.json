@@ -1,220 +1,363 @@
 {
   "nav": {
-    "dashboard":   "Dashboard",
-    "analysis":    "Analysis",
-    "comparison":  "Comparison",
-    "watchlist":   "Watchlist",
-    "portfolio":   "Portfolio",
-    "crypto":      "Crypto",
-    "scanner":     "Scanner",
-    "growth":      "Growth",
-    "etf":         "ETFs",
+    "dashboard": "Dashboard",
+    "analysis": "Analysis",
+    "comparison": "Comparison",
+    "watchlist": "Watchlist",
+    "portfolio": "Portfolio",
+    "crypto": "Crypto",
+    "scanner": "Scanner",
+    "growth": "Growth",
+    "etf": "ETFs",
     "commodities": "Commodities",
-    "dividends":   "Dividends",
-    "backtest":    "Backtest",
-    "journal":     "Journal",
-    "settings":    "Settings",
-    "about":       "About"
+    "dividends": "Dividends",
+    "backtest": "Backtest",
+    "journal": "Journal",
+    "settings": "Settings",
+    "about": "About"
   },
-
   "common": {
-    "loading":      "Loading...",
-    "error":        "Error",
-    "retry":        "Try again",
-    "save":         "Save",
-    "cancel":       "Cancel",
-    "delete":       "Delete",
-    "add":          "Add",
-    "search":       "Search",
-    "score":        "Score",
-    "price":        "Price",
-    "change24h":    "24h change",
-    "sector":       "Sector",
-    "currency":     "Currency",
-    "noData":       "No data available",
-    "loginRequired":"Please log in to continue"
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Try again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "add": "Add",
+    "search": "Search",
+    "score": "Score",
+    "price": "Price",
+    "change24h": "24h change",
+    "sector": "Sector",
+    "currency": "Currency",
+    "noData": "No data available",
+    "loginRequired": "Please log in to continue"
   },
-
   "score": {
-    "dt":           "DT Score",
-    "st":           "ST Score",
-    "longTerm":     "Long-term",
-    "shortTerm":    "Short-term (swing)",
-    "positive":     "Positive",
-    "neutral":      "Neutral",
-    "negative":     "Negative",
-    "components":   "Score components",
-    "history":      "Signal history",
-    "disclaimer":   "Score is not a forecast or investment advice."
+    "dt": "DT Score",
+    "st": "ST Score",
+    "longTerm": "Long-term",
+    "shortTerm": "Short-term (swing)",
+    "positive": "Positive",
+    "neutral": "Neutral",
+    "negative": "Negative",
+    "components": "Score components",
+    "history": "Signal history",
+    "disclaimer": "Score is not a forecast or investment advice."
   },
-
   "auth": {
-    "login":        "Log in",
-    "logout":       "Log out",
-    "register":     "Register",
-    "username":     "Username",
-    "password":     "Password",
-    "email":        "Email (optional)",
+    "login": "Log in",
+    "logout": "Log out",
+    "register": "Register",
+    "username": "Username",
+    "password": "Password",
+    "email": "Email (optional)",
     "loginSuccess": "Logged in successfully",
-    "logoutSuccess":"Logged out",
+    "logoutSuccess": "Logged out",
     "invalidCreds": "Invalid username or password",
-    "usernameTaken":"This username is already taken",
-    "welcome":      "Welcome, {name}!",
-    "passwordMin":  "Password must be at least 8 characters"
+    "usernameTaken": "This username is already taken",
+    "welcome": "Welcome, {name}!",
+    "passwordMin": "Password must be at least 8 characters"
   },
-
   "dashboard": {
     "greeting": {
-      "morning":    "Good morning",
-      "afternoon":  "Hello",
-      "evening":    "Good evening"
+      "morning": "Good morning",
+      "afternoon": "Hello",
+      "evening": "Good evening"
     },
     "vix": {
-      "label":      "VIX – Fear Index",
-      "calm":       "Market calm",
-      "normal":     "Normal volatility",
-      "elevated":   "Elevated uncertainty",
-      "fear":       "High fear / panic"
+      "label": "VIX – Fear Index",
+      "calm": "Market calm",
+      "normal": "Normal volatility",
+      "elevated": "Elevated uncertainty",
+      "fear": "High fear / panic"
     },
-    "watchlist":    "Watchlist",
-    "lastScan":     "Latest scan",
-    "top5":         "Top 5",
-    "bottom5":      "Bottom 5",
-    "noWatchlist":  "Watchlist is empty",
-    "addFirst":     "Add your first instrument",
-    "noScan":       "No scan has been run yet",
-    "runScan":      "Run market scan"
+    "watchlist": "Watchlist",
+    "lastScan": "Latest scan",
+    "top5": "Top 5",
+    "bottom5": "Bottom 5",
+    "noWatchlist": "Watchlist is empty",
+    "addFirst": "Add your first instrument",
+    "noScan": "No scan has been run yet",
+    "runScan": "Run market scan"
   },
-
   "analysis": {
-    "title":        "Instrument Analysis",
+    "title": "Instrument Analysis",
     "searchPlaceholder": "Enter symbol or name (e.g. AAPL, Apple)",
-    "searchHint":   "Press Enter to search",
+    "searchHint": "Press Enter to search",
     "recentlyViewed": "Recently viewed",
     "addToWatchlist": "Add to watchlist",
     "tabs": {
-      "chart":      "Chart",
-      "signals":    "ST Signals",
-      "details":    "Analysis",
-      "scenarios":  "Scenarios",
+      "chart": "Chart",
+      "signals": "ST Signals",
+      "details": "Analysis",
+      "scenarios": "Scenarios",
       "strategies": "Strategies",
-      "pdf":        "PDF"
+      "pdf": "PDF"
     },
     "interval": {
-      "1m":   "1 minute",
-      "5m":   "5 minutes",
-      "15m":  "15 minutes",
-      "30m":  "30 minutes",
-      "1h":   "1 hour",
-      "1d":   "1 day"
+      "1m": "1 minute",
+      "5m": "5 minutes",
+      "15m": "15 minutes",
+      "30m": "30 minutes",
+      "1h": "1 hour",
+      "1d": "1 day"
     },
     "source": {
-      "binance":  "Binance (live)",
-      "yahoo":    "Yahoo Finance (~15 min delay)"
+      "binance": "Binance (live)",
+      "yahoo": "Yahoo Finance (~15 min delay)"
     },
     "signals": {
-      "title":      "Short-term signals",
-      "atr":        "ATR – price range",
+      "title": "Short-term signals",
+      "atr": "ATR – price range",
       "stochastic": "Stochastic %K/%D",
-      "obv":        "OBV – volume",
-      "levels":     "Support & resistance",
-      "stopLoss":   "Suggested stop-loss",
-      "tight":      "Tight (1× ATR)",
-      "wide":       "Wide (1.5× ATR)",
-      "swingNote":  "Daily data – swing trading tool (days/weeks)"
+      "obv": "OBV – volume",
+      "levels": "Support & resistance",
+      "stopLoss": "Suggested stop-loss",
+      "tight": "Tight (1× ATR)",
+      "wide": "Wide (1.5× ATR)",
+      "swingNote": "Daily data – swing trading tool (days/weeks)"
     },
-    "redFlags":     "Red flags",
-    "noRedFlags":   "No warnings",
-    "keyData":      "Key data",
-    "downloadPdf":  "Download PDF report"
+    "redFlags": "Red flags",
+    "noRedFlags": "No warnings",
+    "keyData": "Key data",
+    "downloadPdf": "Download PDF report"
   },
-
   "watchlist": {
-    "title":        "Watchlist",
-    "add":          "Add symbol",
-    "empty":        "Watchlist is empty",
-    "emptyHint":    "Add instruments you want to monitor",
-    "alerts":       "Alerts",
-    "alertHigh":    "Alert when score >",
-    "alertLow":     "Alert when score <",
+    "title": "Watchlist",
+    "add": "Add symbol",
+    "empty": "Watchlist is empty",
+    "emptyHint": "Add instruments you want to monitor",
+    "alerts": "Alerts",
+    "alertHigh": "Alert when score >",
+    "alertLow": "Alert when score <",
     "alertCrossover": "MA crossover alert",
-    "saveAlerts":   "Save alerts",
-    "remove":       "Remove from watchlist",
+    "saveAlerts": "Save alerts",
+    "remove": "Remove from watchlist",
     "addedSuccess": "{ticker} added to watchlist",
     "removedSuccess": "{ticker} removed from watchlist",
-    "scoreChange":  "Score change"
+    "scoreChange": "Score change"
   },
-
   "portfolio": {
-    "title":        "Portfolio",
-    "addPosition":  "Add position",
-    "ticker":       "Symbol",
-    "shares":       "Shares / units",
-    "buyPrice":     "Buy price",
-    "buyDate":      "Buy date",
-    "notes":        "Notes",
-    "pnl":          "P&L",
+    "title": "Portfolio",
+    "addPosition": "Add position",
+    "ticker": "Symbol",
+    "shares": "Shares",
+    "buyPrice": "Purchase price",
+    "buyDate": "Purchase date",
+    "notes": "Notes",
+    "pnl": "P&L",
     "currentValue": "Current value",
-    "allocation":   "Sector allocation",
-    "correlation":  "Correlation matrix",
-    "empty":        "Portfolio is empty",
-    "emptyHint":    "Add your first position to track performance",
+    "allocation": "Sector allocation",
+    "correlation": "Correlation matrix",
+    "empty": "Your portfolio is empty",
+    "emptyHint": "Add your first position to start tracking performance",
     "removePosition": "Remove position",
-    "totalPnl":     "Total P&L"
+    "totalPnl": "Total P&L",
+    "positions": "Positions",
+    "sectorAllocation": "Sector allocation",
+    "symbol": "Symbol",
+    "reasonPlaceholder": "Reason for buying...",
+    "add": "Add",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "analyze": "Analyse →",
+    "yourPortfolio": "Your portfolio",
+    "difference": "Difference",
+    "importNoPositions": "No positions recognised in the file.",
+    "totalValue": "Total value",
+    "benchmarkNote": "Each position compared with the index return from its own purchase date, weighted by cost.",
+    "benchmarkTitle": "Portfolio vs",
+    "inSamePeriod": "over the same period",
+    "noteOptional": "Note (optional)"
   },
-
   "scanner": {
-    "title":        "Market Scanner",
-    "run":          "Run scan",
-    "running":      "Scanning...",
-    "done":         "Scan complete",
+    "title": "Market Scanner",
+    "run": "Run scan",
+    "running": "Scanning...",
+    "done": "Scan complete",
     "market": {
-      "usa":    "USA (53 stocks)",
-      "gpw":    "WSE/GPW (24 stocks)",
+      "usa": "USA (53 stocks)",
+      "gpw": "WSE/GPW (24 stocks)",
       "europa": "Western Europe (33 stocks)",
       "krypto": "Crypto (8 tokens)",
-      "all":    "All (110)"
+      "all": "All (110)"
     },
     "mode": {
       "dt": "Long-term",
       "st": "Swing (ST)"
     },
-    "sectors":      "Sector strength",
-    "results":      "Scan results",
-    "disclaimer":   "High score does not mean 'buy' – it's a starting point for analysis."
+    "sectors": "Sector strength",
+    "results": "Scan results",
+    "disclaimer": "High score does not mean 'buy' – it's a starting point for analysis.",
+    "runScan": "Run scan",
+    "scanning": "Scanning…",
+    "noResults": "No scan results",
+    "runToSeeRanking": "Run a scan to see the instrument ranking",
+    "runToSeeSectors": "Run a scan to see sector strength",
+    "scoreDistribution": "Score distribution",
+    "sectorStrength": "Sector strength",
+    "ticker": "Ticker",
+    "sector": "Sector",
+    "login": "Sign in",
+    "loginAgain": "Sign in again",
+    "loginPrompt": "Sign in",
+    "loginAgainPrompt": "Sign in again",
+    "filterPlaceholder": "Filter by ticker, name or sector…"
   },
-
   "crypto": {
-    "title":          "Cryptocurrencies",
-    "dominance":      "Dominance",
-    "marketCap":      "Market cap",
-    "disclaimer":     "Crypto score is purely technical. Crypto assets are very high risk.",
-    "binanceLive":    "Live prices from Binance"
+    "title": "Cryptocurrencies",
+    "dominance": "Dominance",
+    "marketCap": "Market cap",
+    "disclaimer": "Crypto score is purely technical. Crypto assets are very high risk.",
+    "binanceLive": "Live prices from Binance"
   },
-
   "settings": {
-    "title":          "Settings",
-    "telegram":       "Telegram alerts",
-    "email":          "Email alerts",
-    "appearance":     "Appearance",
-    "diagnostics":    "Diagnostics",
-    "language":       "Language",
+    "title": "Settings",
+    "telegram": "Telegram alerts",
+    "email": "Email alerts",
+    "appearance": "Appearance",
+    "diagnostics": "Diagnostics",
+    "language": "Language / Język",
     "theme": {
-      "dark":   "Dark mode",
-      "light":  "Light mode"
+      "dark": "Dark mode",
+      "light": "Light mode"
     },
     "cache": {
-      "title":  "Data cache",
-      "clear":  "Clear cache",
-      "cleared":"Cache cleared"
-    }
+      "title": "Data cache",
+      "clear": "Clear cache",
+      "cleared": "Cache cleared"
+    },
+    "loggedUser": "Signed in as",
+    "logout": "Sign out",
+    "save": "Save",
+    "sendTest": "Send test",
+    "alertsTitle": "Email alerts",
+    "alertsDesc": "Email notifications when a price crosses the thresholds set in your watchlist"
   },
-
   "errors": {
-    "notFound":       "No data found for {ticker}",
-    "networkError":   "Network error – check your connection",
-    "analysisError":  "Analysis failed – please try again shortly",
-    "invalidTicker":  "Invalid symbol. For WSE stocks use .WA suffix (e.g. CDR.WA)",
-    "rateLimited":    "Too many requests – please wait a moment"
+    "notFound": "No data found for {ticker}",
+    "networkError": "Network error – check your connection",
+    "analysisError": "Analysis failed – please try again shortly",
+    "invalidTicker": "Invalid symbol. For WSE stocks use .WA suffix (e.g. CDR.WA)",
+    "rateLimited": "Too many requests – please wait a moment"
+  },
+  "growth": {
+    "title": "Growth stocks",
+    "intro": "Companies with high growth potential — typically more volatile and riskier than the broad market. These are not private startups but already-listed companies.",
+    "all": "All",
+    "analyze": "Analyse",
+    "empty": "Could not load data. Try refreshing the page.",
+    "loading": "Analysing growth stocks…"
+  },
+  "etf": {
+    "title": "ETFs",
+    "availableInPl": "available in the EU",
+    "intro": "Important for European investors: US-listed ETFs (SPY, QQQ) usually cannot be bought through an EU broker (PRIIPs rules — no KID document). Funds marked UCITS are the European equivalents, genuinely available in the EU — the rest serve as a market reference.",
+    "all": "All",
+    "analyze": "Analyse",
+    "loading": "Analysing ETFs…",
+    "empty": "Could not load data. Try refreshing the page."
+  },
+  "commodities": {
+    "title": "Commodities",
+    "intro": "We track commodity prices through liquid commodity ETFs (e.g. GLD for gold) — a more stable data source than futures contracts. Commodities have no company fundamentals, so the score rests purely on technical analysis (trend, momentum, volatility).",
+    "all": "All",
+    "analyze": "Analyse",
+    "loading": "Analysing commodities…",
+    "empty": "Could not load data. Try refreshing the page."
+  },
+  "dividends": {
+    "title": "Warsaw Stock Exchange dividends",
+    "avgYield": "Average yield",
+    "intro": "Companies ranked by dividend score — calculated from payout history rather than a single snapshot. The score combines three areas: dividend safety (40%), payout continuity and growth (35%), and yield attractiveness (25%).",
+    "introTax": "Yields are shown gross and net of Polish capital gains tax (19%) — what actually reaches a Polish investor's pocket.",
+    "minYield": "Min. gross yield:",
+    "all": "All",
+    "gross": "gross",
+    "netAfterTax": "net (after 19% tax)",
+    "yearsStreak": "years in a row",
+    "safety": "Safety",
+    "continuity": "Continuity",
+    "attractiveness": "Attractiveness",
+    "annualDividend": "Annual dividend",
+    "payout": "Payout",
+    "lastPayout": "Last payout",
+    "fullAnalysis": "Full analysis",
+    "notPaying": "Not paying a dividend",
+    "notPayingNote": "These companies do not pay dividends — they often reinvest profits into growth. That is not a flaw, just a different strategy.",
+    "noneMatch": "No company meets the selected yield threshold.",
+    "loading": "Analysing payout history…",
+    "disclaimer": "The dividend score is an educational tool, not investment advice. A high dividend yield can signal risk rather than opportunity — which is why safety carries the most weight.",
+    "empty": "Could not load data. Refresh the page to try again."
+  },
+  "backtest": {
+    "equityCurve": "Equity curve",
+    "period": "Period",
+    "winRate": "Win rate",
+    "trades": "Trades",
+    "drawdown": "Drawdown",
+    "strategyReturn": "Strategy return",
+    "perPeriod": "Results per period",
+    "symbol": "Symbol",
+    "configure": "Configure and run a backtest",
+    "stabilityNote": "A test of stability over time.",
+    "overfittingNote": "Beware of overfitting.",
+    "pastResultsNote": "Past results do not guarantee future returns.",
+    "buyHold": "Buy & Hold",
+    "maxDrawdown": "Max drawdown",
+    "vsBuyHold": "Score strategy vs. buy & hold",
+    "heatmapTitle": "Threshold heatmap (buy × sell)",
+    "winsVsBH": "Wins vs B&H",
+    "buyThreshold": "Buy threshold (≥)",
+    "sellThreshold": "Sell threshold (≤)",
+    "configureDesc": "Pick a mode, an instrument and parameters. A single test shows the equity curve, the heatmap finds optimal thresholds, and walk-forward checks whether the rule holds up over time."
+  },
+  "about": {
+    "features": "Features",
+    "techStack": "Tech stack",
+    "howScoreWorks": "How does the Score work?"
+  },
+  "landing": {
+    "features": {
+      "score": {
+        "title": "Score 0–100",
+        "desc": "Every instrument rated across a dozen technical and fundamental indicators — one clear number."
+      },
+      "charts": {
+        "title": "Pro charts",
+        "desc": "Candles, Bollinger bands, moving averages, volume, zoom and live data. Everything you need in one place."
+      },
+      "scanner": {
+        "title": "Market scanner",
+        "desc": "Scan the US, Warsaw, Europe, ETFs, commodities and crypto. Instruments ranked by strength in seconds."
+      },
+      "backtest": {
+        "title": "Backtest",
+        "desc": "See how the score strategy performed historically — equity curve, Sharpe, walk-forward."
+      },
+      "scenarios": {
+        "title": "Scenarios",
+        "desc": "A Monte Carlo simulation shows the range of possible price paths, not one false forecast."
+      },
+      "alerts": {
+        "title": "Email alerts",
+        "desc": "Get an email when an instrument's price crosses a threshold you set."
+      }
+    },
+    "steps": {
+      "s1": {
+        "title": "Enter a symbol",
+        "desc": "AAPL, CD Projekt, Bitcoin — whatever you want to analyse."
+      },
+      "s2": {
+        "title": "See the score",
+        "desc": "An instant rating broken down into components and signals."
+      },
+      "s3": {
+        "title": "Make your decision",
+        "desc": "The full picture: chart, scenarios, strategies — all in one place."
+      }
+    }
   }
 }

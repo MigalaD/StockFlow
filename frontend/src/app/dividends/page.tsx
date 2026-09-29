@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Coins, ArrowRight, TrendingUp, TrendingDown, ShieldCheck } from 'lucide-react'
 import { AppShell } from '../../components/layout/AppShell'
@@ -39,6 +40,7 @@ function FilarBar({ label, value }: { label: string; value: number }) {
 // ── Wiersz rankingu ───────────────────────────────────────────────────
 
 function DividendRow({ stock, rank }: { stock: DividendStock; rank: number }) {
+  const t = useTranslations('dividends')
   const [expanded, setExpanded] = useState(false)
   const trendIcon = stock.trend === 'rosnacy'
     ? <TrendingUp className="w-3.5 h-3.5" style={{ color: '#22C55E' }} />
@@ -77,11 +79,11 @@ function DividendRow({ stock, rank }: { stock: DividendStock; rank: number }) {
               <span className="text-lg font-bold font-mono tabular-nums" style={{ color: '#22C55E' }}>
                 {stock.yield_brutto != null ? `${stock.yield_brutto}%` : '—'}
               </span>
-              <span className="text-2xs text-muted">brutto</span>
+              <span className="text-2xs text-muted">{t('gross')}</span>
             </div>
             {stock.yield_netto != null && (
               <div className="text-2xs text-muted font-mono">
-                {stock.yield_netto}% netto (po Belce)
+                {stock.yield_netto}% {t('netAfterTax')}
               </div>
             )}
           </div>
@@ -89,7 +91,7 @@ function DividendRow({ stock, rank }: { stock: DividendStock; rank: number }) {
           {/* Lata ciągłości */}
           <div className="text-right shrink-0 hidden sm:block w-16">
             <div className="text-sm font-mono font-bold text-text-hi tabular-nums">{stock.lata_ciaglosci}</div>
-            <div className="text-2xs text-muted">lat z rzędu</div>
+            <div className="text-2xs text-muted">{t('yearsStreak')}</div>
           </div>
 
           <span className="text-muted text-xs shrink-0">{expanded ? '▲' : '▼'}</span>
@@ -103,9 +105,9 @@ function DividendRow({ stock, rank }: { stock: DividendStock; rank: number }) {
 
           {/* Trzy filary */}
           <div className="space-y-1.5 max-w-md">
-            <FilarBar label="Bezpieczeństwo" value={stock._filary.bezpieczenstwo} />
-            <FilarBar label="Ciągłość" value={stock._filary.ciaglosc} />
-            <FilarBar label="Atrakcyjność" value={stock._filary.atrakcyjnosc} />
+            <FilarBar label={t('safety')} value={stock._filary.bezpieczenstwo} />
+            <FilarBar label={t('continuity')} value={stock._filary.ciaglosc} />
+            <FilarBar label={t('attractiveness')} value={stock._filary.atrakcyjnosc} />
           </div>
 
           {/* Flagi */}
@@ -126,13 +128,13 @@ function DividendRow({ stock, rank }: { stock: DividendStock; rank: number }) {
           {/* Meta + link */}
           <div className="flex items-center justify-between pt-1 text-2xs text-muted">
             <div className="flex gap-4 flex-wrap">
-              {stock.dywidenda_roczna != null && <span>Dywidenda roczna: <span className="font-mono text-text-lo">{stock.dywidenda_roczna} PLN</span></span>}
-              {stock.payout_ratio != null && <span>Payout: <span className="font-mono text-text-lo">{Math.round(stock.payout_ratio * 100)}%</span></span>}
-              {stock.ostatnia_wyplata && <span>Ostatnia wypłata: <span className="font-mono text-text-lo">{stock.ostatnia_wyplata}</span></span>}
+              {stock.dywidenda_roczna != null && <span>{t('annualDividend')}: <span className="font-mono text-text-lo">{stock.dywidenda_roczna} PLN</span></span>}
+              {stock.payout_ratio != null && <span>{t('payout')}: <span className="font-mono text-text-lo">{Math.round(stock.payout_ratio * 100)}%</span></span>}
+              {stock.ostatnia_wyplata && <span>{t('lastPayout')}: <span className="font-mono text-text-lo">{stock.ostatnia_wyplata}</span></span>}
             </div>
             <Link href={`/analysis?ticker=${stock.ticker}`}
               className="flex items-center gap-1 text-brand-green hover:underline shrink-0">
-              Pełna analiza <ArrowRight className="w-3 h-3" />
+              {t('fullAnalysis')} <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
         </div>
@@ -144,6 +146,7 @@ function DividendRow({ stock, rank }: { stock: DividendStock; rank: number }) {
 // ── Strona ────────────────────────────────────────────────────────────
 
 export default function DividendsPage() {
+  const t = useTranslations('dividends')
   const { data, isLoading } = useSWR('dividends', dividendsApi.get, {
     revalidateOnFocus: false,
   })
@@ -157,11 +160,11 @@ export default function DividendsPage() {
     <AppShell>
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <Coins className="w-5 h-5 text-brand-green" /> Dywidendy GPW
+          <Coins className="w-5 h-5 text-brand-green" /> {t('title')}
         </h1>
         {data?.statystyki.srednia_stopa_brutto != null && (
           <span className="text-sm text-muted">
-            Średnia stopa: <span className="font-mono font-bold" style={{ color: '#22C55E' }}>
+            {t('avgYield')}: <span className="font-mono font-bold" style={{ color: '#22C55E' }}>
               {data.statystyki.srednia_stopa_brutto}%
             </span>
           </span>
@@ -171,31 +174,23 @@ export default function DividendsPage() {
       {/* Wyjaśnienie */}
       <div className="flex items-start gap-2.5 mb-5 text-xs text-text-lo bg-surface-1 border border-border rounded-xl p-3">
         <ShieldCheck className="w-4 h-4 text-muted shrink-0 mt-0.5" />
-        <p className="leading-relaxed">
-          Ranking spółek według <strong className="text-text-mid">score dywidendowego</strong> — liczonego
-          z historii wypłat, nie z pojedynczej migawki. Score łączy trzy obszary:
-          <strong className="text-text-mid"> bezpieczeństwo</strong> dywidendy (40%),
-          <strong className="text-text-mid"> ciągłość i wzrost</strong> wypłat (35%) oraz
-          <strong className="text-text-mid"> atrakcyjność</strong> stopy (25%).
-          Stopę pokazujemy brutto oraz <strong className="text-text-mid">netto po podatku Belki (19%)</strong> —
-          czyli to, co realnie trafia do kieszeni.
-        </p>
+        <p className="leading-relaxed">{t('intro')} {t('introTax')}</p>
       </div>
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Spinner size="lg" />
-          <span className="text-sm text-muted">Analizuję historię wypłat spółek…</span>
+          <span className="text-sm text-muted">{t('loading')}</span>
         </div>
       ) : !data ? (
         <div className="text-center py-16 text-muted">
-          Nie udało się pobrać danych. Odśwież stronę, aby spróbować ponownie.
+          {t('empty')}
         </div>
       ) : (
         <>
           {/* Filtr min. stopy */}
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-2xs text-muted uppercase tracking-wider">Min. stopa brutto:</span>
+          <div className="flex items-center gap-3 gap-y-2 mb-4 flex-wrap">
+            <span className="text-2xs text-muted uppercase tracking-wider">{t('minYield')}</span>
             {[0, 3, 5, 7].map(v => (
               <button key={v} onClick={() => setMinStopa(v)}
                 className="px-3 py-1 rounded-lg text-xs font-medium transition-all border"
@@ -204,7 +199,7 @@ export default function DividendsPage() {
                   color:       minStopa === v ? '#22C55E' : '#64748B',
                   borderColor: minStopa === v ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.06)',
                 }}>
-                {v === 0 ? 'Wszystkie' : `${v}%+`}
+                {v === 0 ? t('all') : `${v}%+`}
               </button>
             ))}
           </div>
@@ -218,7 +213,7 @@ export default function DividendsPage() {
 
           {filtrowane.length === 0 && (
             <div className="text-center py-10 text-muted text-sm">
-              Żadna spółka nie spełnia wybranego progu stopy.
+              {t('noneMatch')}
             </div>
           )}
 
@@ -226,7 +221,7 @@ export default function DividendsPage() {
           {data.niewyplacajace.length > 0 && (
             <div className="mt-8">
               <div className="text-2xs text-muted uppercase tracking-widest mb-2">
-                Nie wypłacają dywidendy
+                {t('notPaying')}
               </div>
               <div className="flex flex-wrap gap-2">
                 {data.niewyplacajace.map(s => (
@@ -237,16 +232,11 @@ export default function DividendsPage() {
                   </Link>
                 ))}
               </div>
-              <p className="text-2xs text-muted mt-2">
-                Te spółki nie wypłacają dywidend — często reinwestują zysk we wzrost. To nie jest wada, to inna strategia.
-              </p>
+              <p className="text-2xs text-muted mt-2">{t('notPayingNote')}</p>
             </div>
           )}
 
-          <p className="text-2xs text-muted mt-6 pt-4 border-t border-border">
-            Score dywidendowy to narzędzie edukacyjne, nie rekomendacja inwestycyjna.
-            Wysoka stopa dywidendy bywa sygnałem ryzyka, nie tylko okazji — dlatego bezpieczeństwo waży najwięcej.
-          </p>
+          <p className="text-2xs text-muted mt-6 pt-4 border-t border-border">{t('disclaimer')}</p>
         </>
       )}
     </AppShell>
