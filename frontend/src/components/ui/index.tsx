@@ -204,16 +204,23 @@ export function Skeleton({ className }: { className?: string }) {
 // ═══════════════════════════════════════════════════════════════════════
 
 interface EmptyStateProps {
-  icon:    string
+  icon:    LucideIcon | string
   title:   string
   desc:    string
   action?: ReactNode
 }
 
 export function EmptyState({ icon, title, desc, action }: EmptyStateProps) {
+  // Ikony lucide to obiekty forwardRef, NIE zwykłe funkcje — dlatego rozpoznajemy
+  // komponent negatywnie (nie-string), a nie przez typeof === 'function'.
+  const Icon = icon && typeof icon !== 'string' ? icon : null
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center px-4 animate-fade-in">
-      <div className="text-5xl mb-4 opacity-50 grayscale">{icon}</div>
+      <div className="mb-4 opacity-50 flex justify-center">
+        {Icon
+          ? <Icon className="w-10 h-10 text-muted" />
+          : <span className="text-5xl grayscale">{icon as string}</span>}
+      </div>
       <div className="text-base font-semibold text-text-hi mb-2">{title}</div>
       <div className="text-sm text-text-lo max-w-sm mb-6 leading-relaxed">{desc}</div>
       {action}
@@ -237,14 +244,15 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ title, icon, desc, action }: SectionHeaderProps) {
-  const Icon = typeof icon === 'function' ? icon : null
+  // lucide = forwardRef (obiekt), więc typeof === 'function' byłoby fałszem
+  const Icon = icon && typeof icon !== 'string' ? icon : null
   return (
     <div className="flex items-start justify-between mb-4">
       <div className="border-l-[3px] pl-3" style={{ borderColor: '#22C55E' }}>
         <h2 className="font-semibold text-base text-text-hi tracking-tight flex items-center gap-2">
           {Icon
             ? <Icon className="w-4 h-4 shrink-0" style={{ color: '#22C55E' }} />
-            : icon ? <span>{icon}</span> : null}
+            : icon ? <span>{icon as string}</span> : null}
           {title}
         </h2>
         {desc && <p className="text-xs text-muted mt-0.5">{desc}</p>}
