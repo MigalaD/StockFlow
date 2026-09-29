@@ -1,4 +1,5 @@
 'use client'
+import { AlertTriangle, BarChart3, GitCompare, Network, Star, TrendingUp } from 'lucide-react'
 
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
@@ -67,7 +68,7 @@ function RadarComparison({ results }: { results: AnalysisResult[] }) {
 
   return (
     <div className="bg-surface-1 border border-border rounded-xl2 p-4">
-      <SectionHeader title="Porównanie składowych" icon="🕸" />
+      <SectionHeader title="Porównanie składowych" icon={Network} />
       <ResponsiveContainer width="100%" height={300}>
         <RadarChart data={data}>
           <PolarGrid stroke="rgba(255,255,255,0.07)" />
@@ -143,7 +144,7 @@ function ScoreHistoryComparison({ tickers }: { tickers: string[] }) {
 
   return (
     <div className="bg-surface-1 border border-border rounded-xl2 p-4">
-      <SectionHeader title="Historia score (90 dni)" icon="📈" />
+      <SectionHeader title="Historia score (90 dni)" icon={TrendingUp} />
       {loading ? (
         <div className="flex justify-center py-8"><Spinner /></div>
       ) : (
@@ -184,7 +185,7 @@ function ComponentsTable({ results }: { results: AnalysisResult[] }) {
 
   return (
     <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden p-4">
-      <SectionHeader title="Tabela składowych" icon="📊" />
+      <SectionHeader title="Tabela składowych" icon={BarChart3} />
       <table className="w-full border-collapse">
         <thead>
           <tr style={{ backgroundColor: '#0B1120' }}>
@@ -223,7 +224,7 @@ function ComponentsTable({ results }: { results: AnalysisResult[] }) {
                       >
                         {Math.round(score)}
                         {score === maxScore && validScores.length > 1 && (
-                          <span className="text-[10px] ml-0.5">★</span>
+                          <Star className="w-2.5 h-2.5 ml-0.5 inline" fill="currentColor" />
                         )}
                       </span>
                     ) : (
@@ -246,7 +247,7 @@ function ComponentsTable({ results }: { results: AnalysisResult[] }) {
                     style={{ color: COMPARE_COLORS[i] }}
                   >
                     {Math.round(r.total_score)}
-                    {isTop && results.length > 1 && <span className="text-[10px] ml-0.5">★</span>}
+                    {isTop && results.length > 1 && <Star className="w-2.5 h-2.5 ml-0.5 inline" fill="currentColor" />}
                   </span>
                 </td>
               )
@@ -292,7 +293,7 @@ export default function ComparePage() {
 
   return (
     <AppShell>
-      <h1 className="text-xl font-bold mb-5">🔀 Porównanie instrumentów</h1>
+      <h1 className="text-xl font-bold mb-5 flex items-center gap-2"><GitCompare className="w-5 h-5 text-brand-green" /> Porównanie instrumentów</h1>
 
       {/* Add ticker form */}
       <div className="flex gap-2 mb-5 max-w-lg">
@@ -320,14 +321,14 @@ export default function ComparePage() {
           key={ticker}
           className="mb-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"
         >
-          ⚠ {err}
+          <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />{err}
         </div>
       ))}
 
       {/* Empty state */}
       {results.length === 0 ? (
         <EmptyState
-          icon="🔀"
+          icon={GitCompare}
           title="Wybierz instrumenty do porównania"
           desc="Wpisz symbole w polu powyżej i wciśnij Enter. Możesz porównać do 6 instrumentów naraz — akcje, ETF-y, kryptowaluty i surowce."
           action={
@@ -354,13 +355,13 @@ export default function ComparePage() {
       ) : (
         <div className="space-y-5">
           <CompareHeader results={results} onRemove={removeTicker} />
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <RadarComparison results={results} />
             <ScoreHistoryComparison tickers={tickers} />
           </div>
           <ComponentsTable results={results} />
           <p className="text-xs text-muted text-center">
-            ★ = najwyższy wynik w danej kategorii · Score nie jest prognozą ani poradą inwestycyjną
+            = najwyższy wynik w danej kategorii · Score nie jest prognozą ani poradą inwestycyjną
           </p>
         </div>
       )}

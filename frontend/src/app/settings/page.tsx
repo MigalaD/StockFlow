@@ -1,6 +1,8 @@
 'use client'
+import { Globe, Mail, Palette, Settings2, User, Wrench } from 'lucide-react'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '../../components/layout/AppShell'
 import { SectionHeader, Button, Input } from '../../components/ui'
@@ -29,9 +31,9 @@ function ThemeSection() {
   const { theme, setTheme } = useSettingsStore()
   return (
     <div>
-      <SectionHeader title="Motyw" icon="🎨" />
+      <SectionHeader title="Motyw" icon={Palette} />
       <div className="flex gap-3">
-        {([['dark','🌙 Ciemny'],['light','☀️ Jasny']] as const).map(([mode, label]) => (
+        {([['dark',' Ciemny'],['light',' Jasny']] as const).map(([mode, label]) => (
           <button key={mode} onClick={() => { setTheme(mode); toast.success(`Motyw: ${label}`) }}
             className="flex-1 py-3 rounded-xl border text-sm font-semibold transition-all"
             style={{
@@ -50,10 +52,11 @@ function ThemeSection() {
 // ── Language ──────────────────────────────────────────────────────────
 
 function LanguageSection() {
+  const t = useTranslations('settings')
   const { locale, setLocale } = useSettingsStore()
   return (
     <div>
-      <SectionHeader title="Język / Language" icon="🌍" />
+      <SectionHeader title={t('language')} icon={Globe} />
       <div className="flex gap-3">
         {([['pl','🇵🇱 Polski'],['en','🇬🇧 English']] as const).map(([lang, label]) => (
           <button key={lang} onClick={() => { setLocale(lang); setTimeout(() => window.location.reload(), 200) }}
@@ -74,6 +77,7 @@ function LanguageSection() {
 // ── Telegram ──────────────────────────────────────────────────────────
 
 function TelegramSection() {
+  const t = useTranslations('settings')
   const [token,  setToken]  = useState('')
   const [chatId, setChatId] = useState('')
   const [saving, setSaving] = useState(false)
@@ -108,8 +112,8 @@ function TelegramSection() {
 
   return (
     <div>
-      <SectionHeader title="Alerty Telegram" icon="📨"
-        desc="Powiadomienia gdy score przekroczy progi ustawione w watchliście" />
+      <SectionHeader title={t('alertsTitle')} icon={Mail}
+        desc={t('alertsDesc')} />
       <div className="grid grid-cols-2 gap-3 mb-3">
         <Input label="Bot Token" value={token} onChange={e => setToken(e.target.value)}
           placeholder="123456789:AAHxxxx..."
@@ -120,7 +124,7 @@ function TelegramSection() {
       </div>
       <div className="flex gap-2 items-center">
         <Button onClick={handleSave} loading={saving} size="sm">Zapisz</Button>
-        <Button onClick={handleTest} loading={testing} variant="secondary" size="sm">Wyślij test</Button>
+        <Button onClick={handleTest} loading={testing} variant="secondary" size="sm">{t('sendTest')}</Button>
         <a href="https://t.me/BotFather" target="_blank" rel="noreferrer"
           className="text-xs text-brand-teal hover:underline">
           Utwórz bota →
@@ -133,6 +137,7 @@ function TelegramSection() {
 // ── Account ────────────────────────────────────────────────────────────
 
 function AccountSection() {
+  const t = useTranslations('settings')
   const router = useRouter()
   const { userId, logout } = useAuthStore()
 
@@ -144,13 +149,13 @@ function AccountSection() {
 
   return (
     <div>
-      <SectionHeader title="Konto" icon="👤" />
+      <SectionHeader title="Konto" icon={User} />
       <div className="flex items-center justify-between py-3 border-b border-border mb-3">
         <div>
           <div className="text-sm font-semibold text-white">{userId}</div>
-          <div className="text-xs text-muted">Zalogowany użytkownik</div>
+          <div className="text-xs text-muted">{t('loggedUser')}</div>
         </div>
-        <Button onClick={handleLogout} variant="danger" size="sm">Wyloguj</Button>
+        <Button onClick={handleLogout} variant="danger" size="sm">{t('logout')}</Button>
       </div>
       <p className="text-xs text-muted">
         Wersja beta — usunięcie konta dostępne na życzenie (napisz do nas przez GitHub Issues).
@@ -162,6 +167,7 @@ function AccountSection() {
 // ── Diagnostics ────────────────────────────────────────────────────────
 
 function DiagnosticsSection() {
+  const t = useTranslations('settings')
   const [status,  setStatus]  = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
@@ -179,7 +185,7 @@ function DiagnosticsSection() {
 
   return (
     <div>
-      <SectionHeader title="Diagnostyka" icon="🔧" />
+      <SectionHeader title={t('diagnostics')} icon={Wrench} />
       <div className="flex items-center gap-3 mb-3">
         <Button onClick={checkHealth} loading={loading} variant="secondary" size="sm">
           Sprawdź status API
@@ -218,7 +224,7 @@ function DiagnosticsSection() {
 function SettingsContent() {
   return (
     <AppShell>
-      <h1 className="text-xl font-bold mb-5">⚙️ Ustawienia</h1>
+      <h1 className="text-xl font-bold mb-5 flex items-center gap-2"><Settings2 className="w-5 h-5 text-brand-green" /> Ustawienia</h1>
       <div className="max-w-2xl space-y-4">
         {[
           <ThemeSection    key="theme"    />,
@@ -237,5 +243,6 @@ function SettingsContent() {
 }
 
 export default function SettingsPage() {
+  const t = useTranslations('settings')
   return <SettingsContent />
 }

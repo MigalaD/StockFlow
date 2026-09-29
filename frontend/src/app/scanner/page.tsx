@@ -1,4 +1,5 @@
 'use client'
+import { AlertTriangle, ScanLine, Search } from 'lucide-react'
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
@@ -8,6 +9,7 @@ import { Button, Tag, EmptyState, Spinner, SectionHeader } from '../../component
 import { scannerApi, type ScanResultItem, type Market } from '../../lib/api'
 import { useAuthStore, useScannerStore } from '../../store'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 
 const MARKETS: { value: Market; label: string; count: number }[] = [
   { value: 'usa',     label: 'USA',     count: 71  },
@@ -22,6 +24,7 @@ const MARKETS: { value: Market; label: string; count: number }[] = [
 // ── Sector heatmap ────────────────────────────────────────────────────
 
 function SectorHeatmap({ results, mode }: { results: ScanResultItem[]; mode: 'dt' | 'st' }) {
+  const t = useTranslations('scanner')
   const sectors = results.reduce<Record<string, { scores: number[]; count: number }>>((acc, r) => {
     if (!r.sector) return acc
     const score = mode === 'st' && r.score_st != null ? r.score_st : r.score
@@ -40,7 +43,7 @@ function SectorHeatmap({ results, mode }: { results: ScanResultItem[]; mode: 'dt
     .sort((a, b) => b.avg - a.avg)
 
   if (!averages.length) return (
-    <div className="text-xs text-muted text-center py-6">Uruchom skan aby zobaczyć siłę sektorów</div>
+    <div className="text-xs text-muted text-center py-6">{t('runToSeeSectors')}</div>
   )
 
   return (
@@ -72,6 +75,7 @@ function SectorHeatmap({ results, mode }: { results: ScanResultItem[]; mode: 'dt
 // ── Distribution chart ────────────────────────────────────────────────
 
 function ScoreDistribution({ results }: { results: ScanResultItem[] }) {
+  const t = useTranslations('scanner')
   const buckets = [
     { label: '0–20',  min: 0,  max: 20,  color: '#EF4444' },
     { label: '20–40', min: 20, max: 40,  color: '#F97316' },
@@ -89,7 +93,7 @@ function ScoreDistribution({ results }: { results: ScanResultItem[] }) {
 
   return (
     <div>
-      <div className="text-[10px] text-muted uppercase tracking-widest mb-3">Rozkład score</div>
+      <div className="text-[10px] text-muted uppercase tracking-widest mb-3">{t('scoreDistribution')}</div>
       <div className="space-y-1.5">
         {counts.map(b => (
           <div key={b.label} className="flex items-center gap-2">
@@ -114,6 +118,7 @@ function ScoreDistribution({ results }: { results: ScanResultItem[] }) {
 type SortCol = 'score' | 'score_st' | 'ticker' | 'price'
 
 export default function ScannerPage() {
+  const t = useTranslations('scanner')
   const { isAuth } = useAuthStore()
   const { mode, market, setMode, setMarket } = useScannerStore()
 
@@ -256,7 +261,7 @@ export default function ScannerPage() {
     <AppShell>
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <h1 className="text-xl font-bold mr-1">🔍 Skaner rynku</h1>
+        <h1 className="text-xl font-bold mr-1 flex items-center gap-2"><ScanLine className="w-5 h-5 text-brand-green" /> Skaner rynku</h1>
 
         {/* Mode */}
         <div className="flex bg-surface-2 rounded-lg p-0.5 border border-border">
@@ -268,7 +273,7 @@ export default function ScannerPage() {
                 color:      mode === m ? '#22C55E' : '#64748B',
                 border:     mode === m ? '1px solid rgba(34,197,94,0.4)' : '1px solid transparent',
               }}>
-              {m === 'dt' ? '📈 Długoterminowy' : '⚡ Swing (ST)'}
+              {m === 'dt' ? 'Długoterminowy' : 'Swing (ST)'}
             </button>
           ))}
         </div>
@@ -309,7 +314,7 @@ export default function ScannerPage() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-sm">
               <span className="w-2 h-2 rounded-full bg-brand-green animate-pulse-dot" />
-              <span className="font-semibold text-text-hi">Skanowanie w toku…</span>
+              <span className="font-semibold text-text-hi">{t('scanning')}</span>
             </div>
             <span className="text-xs font-mono text-muted tabular-nums">
               {scanTotal > 0 ? `${scanDone} / ${scanTotal}` : '…'}
@@ -334,10 +339,10 @@ export default function ScannerPage() {
       {/* Scan error */}
       {scanError && (
         <div className="mb-4 flex items-center justify-between text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
-          <span>⚠ {scanError}</span>
+          <span className="flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />{scanError}</span>
           {scanError.includes('Sesja wygasła') && (
             <Link href="/login">
-              <Button size="sm" variant="secondary">Zaloguj ponownie</Button>
+              <Button size="sm" variant="secondary">{t('loginAgainPrompt')}</Button>
             </Link>
           )}
         </div>
@@ -349,7 +354,7 @@ export default function ScannerPage() {
           <input
             value={filterQ}
             onChange={e => setFilterQ(e.target.value)}
-            placeholder="Filtruj po tickerze, nazwie lub sektorze…"
+            placeholder={t('filterPlaceholder')}
             className="input max-w-sm text-sm"
           />
           {filterQ && (
@@ -369,11 +374,11 @@ export default function ScannerPage() {
         <div>
           {!scan || allResults.length === 0 ? (
             <div className="bg-surface-1 border border-border rounded-xl2">
-              <EmptyState icon="🔍" title="Brak wyników skanu"
-                desc="Uruchom skan aby zobaczyć ranking instrumentów"
+              <EmptyState icon={Search} title="{t('noResults')}"
+                desc="{t('runToSeeRanking')}"
                 action={isAuth
-                  ? <Button onClick={startScan} loading={scanning}>Uruchom skan</Button>
-                  : <Link href="/login"><Button variant="secondary">Zaloguj się</Button></Link>
+                  ? <Button onClick={startScan} loading={scanning}>{t('runScan')}</Button>
+                  : <Link href="/login"><Button variant="secondary">{t('loginPrompt')}</Button></Link>
                 } />
             </div>
           ) : (
@@ -391,7 +396,7 @@ export default function ScannerPage() {
                       <span style={{ color: mode === 'dt' ? '#22C55E' : '#94A3B8' }}>DT</span>
                     </Th>
                     <Th col="score_st">
-                      <span style={{ color: mode === 'st' ? '#22C55E' : '#94A3B8' }}>⚡ ST</span>
+                      <span style={{ color: mode === 'st' ? '#22C55E' : '#94A3B8' }}>ST</span>
                     </Th>
                   </tr>
                 </thead>
@@ -440,7 +445,7 @@ export default function ScannerPage() {
         <div className="space-y-4">
           <div className="bg-surface-1 border border-border rounded-xl2 overflow-hidden">
             <div className="px-4 py-3 border-b border-border">
-              <span className="font-semibold text-sm text-white">Siła sektorów</span>
+              <span className="font-semibold text-sm text-white">{t('sectorStrength')}</span>
             </div>
             <div className="p-4">
               <SectorHeatmap results={sorted} mode={mode} />

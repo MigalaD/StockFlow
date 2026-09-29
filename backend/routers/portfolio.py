@@ -23,6 +23,7 @@ if _ROOT not in sys.path:
 import database as db
 import portfolio as portfolio_logic
 from stock_analyzer import analyze_ticker
+from backend.core.lang import RequestLang
 from backend.core.security import CurrentUser
 from backend.models.schemas import (
     PortfolioResponse,
@@ -39,8 +40,8 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
     response_model=PortfolioResponse,
     summary="Get portfolio with P&L",
 )
-async def get_portfolio(user_id: CurrentUser) -> PortfolioResponse:
-    result = portfolio_logic.analyze_portfolio(user_id, analyze_ticker)
+async def get_portfolio(user_id: CurrentUser, lang: RequestLang) -> PortfolioResponse:
+    result = portfolio_logic.analyze_portfolio(user_id, analyze_ticker, lang)
 
     positions = [
         PositionItem(

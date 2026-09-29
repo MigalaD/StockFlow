@@ -1,4 +1,5 @@
 'use client'
+import { AlertTriangle, BarChart3, Calculator, Coins, FileText, LineChart, Newspaper, Ruler, Search, Sigma, Target, Waypoints, Zap } from 'lucide-react'
 
 import { useState, useEffect, useRef, Suspense, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -10,11 +11,12 @@ import {
   Card, SectionHeader, Button, Input,
   Spinner, EmptyState, Tag,
 } from '../../components/ui'
+import { ProbabilityPanel } from '../../components/probability/ProbabilityPanel'
 import { analysisApi, watchlistApi, forecastApi, newsApi, type Interval, type AnalysisResult, type ForecastData, type NewsItem } from '../../lib/api'
 import { AreaChart, Area, Line, ComposedChart, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from 'recharts'
 import { useRecentStore, useAuthStore } from '../../store'
 
-type TabId = 'chart' | 'signals' | 'details' | 'scenarios' | 'strategies' | 'news' | 'pdf'
+type TabId = 'chart' | 'signals' | 'details' | 'scenarios' | 'probability' | 'strategies' | 'news' | 'pdf'
 type ChartMode = 'candles' | 'line' | 'area'
 
 const INTERVALS: { value: Interval; label: string }[] = [
@@ -71,7 +73,7 @@ function TickerSearch({ onSelect }: { onSelect: (ticker: string) => void }) {
           }
         }}
         hint="Wciśnij Enter aby szukać"
-        prefixEl={loading ? <Spinner size="sm" /> : '🔍'}
+        prefixEl={loading ? <Spinner size="sm" /> : <Search className="w-4 h-4 text-muted" />}
       />
       {open && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-surface-1 border border-border rounded-xl shadow-card z-50 overflow-hidden">
@@ -269,7 +271,7 @@ function PriceChart({
 
       // Odczyt OHLC pod kursorem — wykres "do czytania", nie tylko oglądania.
       // Aktualizacja przez ref (bez re-renderów React przy każdym ruchu myszy).
-      const byTime = new Map(data.candles.map(c => [toTime(c.timestamp) as number, c]))
+      const byTime = new Map<number, any>(data.candles.map(c => [toTime(c.timestamp) as number, c] as [number, any]))
       chart.subscribeCrosshairMove((param: any) => {
         const el = readoutRef.current
         if (!el) return
@@ -327,7 +329,7 @@ function PriceChart({
         <span className="flex items-center gap-1">
           {data.is_live
             ? <><span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse-dot" /> LIVE · {data.source}</>
-            : <>📡 {data.source} (~15 min opóźnienia)</>}
+            : <>{data.source} (~15 min opóźnienia)</>}
         </span>
         <span>·</span>
         <span className="font-mono">{data.candles.length} świec</span>
@@ -407,7 +409,7 @@ function ScenariosTab({ ticker, analysis }: { ticker: string; analysis: Analysis
 
       {/* Fan chart */}
       <Card>
-        <SectionHeader title="Wachlarz scenariuszy (Monte Carlo)" icon="📊"
+        <SectionHeader title="Wachlarz scenariuszy (Monte Carlo)" icon={BarChart3}
           desc={`${horizon} dni · percentyle 5–95% z 2000 symulacji`} />
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={fanData}>
@@ -479,9 +481,9 @@ function ScenariosTab({ ticker, analysis }: { ticker: string; analysis: Analysis
               {stats.sigma_annualized_pct.toFixed(1)}%
             </div>
             <div className="text-xs text-muted mt-1">
-              {stats.sigma_annualized_pct > 50 ? '🔴 Bardzo wysoka' :
-               stats.sigma_annualized_pct > 30 ? '🟡 Wysoka' :
-               stats.sigma_annualized_pct > 15 ? '🟢 Umiarkowana' : '🟢 Niska'}
+              {stats.sigma_annualized_pct > 50 ? 'Bardzo wysoka' :
+               stats.sigma_annualized_pct > 30 ? 'Wysoka' :
+               stats.sigma_annualized_pct > 15 ? 'Umiarkowana' : 'Niska'}
             </div>
           </div>
           <div>
@@ -506,7 +508,7 @@ function StrategiesTab({ analysis }: { analysis: AnalysisResult }) {
 
   const strategies = [
     {
-      style:  '📈 Trend Following',
+      style:  'Trend Following',
       match:  score >= 65,
       desc:   'Kup gdy trend wzrostowy potwierdzony (MA50 > MA200, score > 65). Stop-loss poniżej MA50.',
       risk:   'Średnie',
@@ -520,21 +522,21 @@ function StrategiesTab({ analysis }: { analysis: AnalysisResult }) {
       horizon: 'Dni–tygodnie',
     },
     {
-      style:  '⚡ Swing Trading',
+      style:  'Swing Trading',
       match:  analysis.score_st != null && (analysis.score_st ?? 0) >= 60,
       desc:   'Krótkoterminowy ruch na podstawie Score ST. Wejście przy sygnale ST > 60.',
       risk:   'Wysokie',
       horizon: 'Dni',
     },
     {
-      style:  '🏦 Buy & Hold',
+      style:  'Buy & Hold',
       match:  score >= 55,
       desc:   'Długoterminowa inwestycja dla instrumentów z solidnymi fundamentami i score > 55.',
       risk:   'Niskie–Średnie',
       horizon: 'Lata',
     },
     {
-      style:  '🛡️ Defensywna',
+      style:  'Defensywna',
       match:  score >= 40 && score < 60,
       desc:   'Małe pozycje, szeroki stop-loss. Poczekaj na wyraźniejszy sygnał (score > 65 lub < 35).',
       risk:   'Niskie',
@@ -574,7 +576,7 @@ function StrategiesTab({ analysis }: { analysis: AnalysisResult }) {
         </div>
       ))}
       <p className="text-xs text-muted text-center pt-2">
-        ⚠ Dopasowanie strategii jest automatyczne i NIE stanowi porady inwestycyjnej.
+        <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />Dopasowanie strategii jest automatyczne i NIE stanowi porady inwestycyjnej.
       </p>
     </div>
   )
@@ -593,6 +595,64 @@ const COMPONENT_LABELS: Record<string, string> = {
 function componentLabel(key: string): string {
   if (COMPONENT_LABELS[key]) return COMPONENT_LABELS[key]
   return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')
+}
+
+
+// ── Narracja score: pokrycie danych + co ciągnie wynik ────────────────
+
+function ScoreNarrative({ analysis }: { analysis: AnalysisResult }) {
+  const cov = analysis.data_coverage
+  const drv = analysis.score_drivers
+  const pos = drv?.top_positive ?? []
+  const neg = drv?.top_negative ?? []
+  if (!cov && !pos.length && !neg.length) return null
+
+  const covColor = !cov ? '#64748B'
+    : cov.pct >= 90 ? '#22C55E' : cov.pct >= 70 ? '#F59E0B' : '#EF4444'
+
+  return (
+    <div className="bg-surface-1 border border-border rounded-xl2 p-3.5 mb-4">
+      <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+        {(pos.length > 0 || neg.length > 0) && (
+          <div className="min-w-0 flex-1 space-y-1.5">
+            {pos.length > 0 && (
+              <div className="flex items-start gap-2 text-xs">
+                <span className="shrink-0" style={{ color: '#22C55E' }}>▲ Ciągnie w górę:</span>
+                <span className="text-text-lo">
+                  {pos.map(d => componentLabel(d.component)).join(', ')}
+                </span>
+              </div>
+            )}
+            {neg.length > 0 && (
+              <div className="flex items-start gap-2 text-xs">
+                <span className="shrink-0" style={{ color: '#EF4444' }}>▼ Ciągnie w dół:</span>
+                <span className="text-text-lo">
+                  {neg.map(d => componentLabel(d.component)).join(', ')}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {cov && (
+          <div className="shrink-0">
+            <div className="text-2xs text-muted uppercase tracking-wider mb-1">Pokrycie danych</div>
+            <div className="flex items-center gap-2">
+              <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                <div className="h-full rounded-full" style={{ width: `${cov.pct}%`, background: covColor }} />
+              </div>
+              <span className="text-xs font-mono font-bold" style={{ color: covColor }}>{cov.pct}%</span>
+            </div>
+            {cov.components_missing > 0 && (
+              <div className="text-2xs text-muted mt-0.5">
+                brak {cov.components_missing} z {cov.components_total} składowych
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 
@@ -723,7 +783,7 @@ function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
     <div className="space-y-5">
       {/* DT Components */}
       <div>
-        <SectionHeader title="Składowe wyniku DT" icon="🧮"
+        <SectionHeader title="Składowe wyniku DT" icon={Calculator}
           desc="Jak każdy wskaźnik wpłynął na końcowy wynik długoterminowy" />
         <MethodologyPanel />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -752,7 +812,7 @@ function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
       {/* ST Components */}
       {analysis.components_st.length > 0 && (
         <div>
-          <SectionHeader title="Składowe wyniku ST" icon="⚡"
+          <SectionHeader title="Składowe wyniku ST" icon={Zap}
             desc="Wskaźniki krótkoterminowe (swing trading)" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {analysis.components_st.map(comp => (
@@ -778,11 +838,11 @@ function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
       {/* Red flags */}
       {analysis.red_flags.length > 0 && (
         <div>
-          <SectionHeader title="Red Flags" icon="⚠️" />
+          <SectionHeader title="Red Flags" icon={AlertTriangle} />
           {analysis.red_flags.map((flag, i) => (
             <div key={i} className="mb-2 rounded-lg px-3 py-2.5 text-sm"
               style={{ background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}>
-              ⚠ {flag}
+              <AlertTriangle className="w-3.5 h-3.5 inline shrink-0 mr-1" />{flag}
             </div>
           ))}
         </div>
@@ -791,7 +851,7 @@ function DetailsTab({ analysis }: { analysis: AnalysisResult }) {
       {/* MA Crossover */}
       {analysis.ma_crossover && (
         <div>
-          <SectionHeader title="Crossover MA" icon="📐" />
+          <SectionHeader title="Crossover MA" icon={Ruler} />
           <div className="rounded-lg px-3 py-2.5 text-sm"
             style={{
               background: (analysis.ma_crossover as any).state === 'golden' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
@@ -830,7 +890,7 @@ function SignalsTab({ ticker, price, currency }: {
       {/* ATR */}
       {atr && (
         <Card>
-          <SectionHeader title="ATR – zasięg ruchu i stop-loss" icon="📏"
+          <SectionHeader title="ATR – zasięg ruchu i stop-loss" icon={Ruler}
             desc="Average True Range — miara dziennej zmienności" />
           <div className="grid grid-cols-3 gap-3">
             {[
@@ -845,7 +905,7 @@ function SignalsTab({ ticker, price, currency }: {
             ))}
           </div>
           <p className="text-xs text-muted mt-2">
-            💡 Stop-loss ciasniejszy niż 1× ATR bywa wybijany przez zwykły szum rynkowy.
+            Stop-loss ciasniejszy niż 1× ATR bywa wybijany przez zwykły szum rynkowy.
           </p>
         </Card>
       )}
@@ -853,7 +913,7 @@ function SignalsTab({ ticker, price, currency }: {
       {/* Stochastic */}
       {stoch && (
         <Card>
-          <SectionHeader title="Stochastik %K/%D" icon="🎯"
+          <SectionHeader title="Stochastik %K/%D" icon={Target}
             desc="Oscylator momentum — obszary wykupienia i wyprzedania" />
           <div className="flex items-center gap-6 mb-4">
             {[
@@ -888,7 +948,7 @@ function SignalsTab({ ticker, price, currency }: {
       {/* OBV */}
       {signals.obv?.divergence && (
         <Card>
-          <SectionHeader title="OBV – On-Balance Volume" icon="📊"
+          <SectionHeader title="OBV – On-Balance Volume" icon={BarChart3}
             desc="Kumulowany wolumen w kierunku ceny" />
           <div
             className="rounded-lg px-3 py-2.5 text-sm"
@@ -899,7 +959,7 @@ function SignalsTab({ ticker, price, currency }: {
             }}
           >
             {(signals.obv.divergence as any).detected
-              ? `⚠ Dywergencja OBV wykryta: ${(signals.obv.divergence as any).type}`
+              ? `Dywergencja OBV wykryta: ${(signals.obv.divergence as any).type}`
               : '✓ Brak dywergencji OBV — wolumen potwierdza ruch ceny'}
           </div>
         </Card>
@@ -908,11 +968,11 @@ function SignalsTab({ ticker, price, currency }: {
       {/* S/R Levels */}
       {levels && (
         <Card>
-          <SectionHeader title="Wsparcia i opory" icon="📐"
+          <SectionHeader title="Wsparcia i opory" icon={Ruler}
             desc="Historyczne poziomy zatrzymania ceny (ostatnie ~120 dni)" />
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-xs font-medium mb-2" style={{ color: '#22C55E' }}>🟢 Wsparcie</div>
+              <div className="text-xs font-medium mb-2" style={{ color: '#22C55E' }}>Wsparcie</div>
               {(levels.support ?? []).slice().reverse().slice(0, 4).map((lvl: number) => {
                 const dist = ((price - lvl) / price * 100)
                 return (
@@ -924,7 +984,7 @@ function SignalsTab({ ticker, price, currency }: {
               })}
             </div>
             <div>
-              <div className="text-xs font-medium mb-2" style={{ color: '#EF4444' }}>🔴 Opór</div>
+              <div className="text-xs font-medium mb-2" style={{ color: '#EF4444' }}>Opór</div>
               {(levels.resistance ?? []).slice(0, 4).map((lvl: number) => {
                 const dist = ((lvl - price) / price * 100)
                 return (
@@ -937,7 +997,7 @@ function SignalsTab({ ticker, price, currency }: {
             </div>
           </div>
           <p className="text-xs text-muted mt-2">
-            ⚠ Poziomy historyczne — rynek nie musi ich respektować.
+            <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />Poziomy historyczne — rynek nie musi ich respektować.
           </p>
         </Card>
       )}
@@ -950,9 +1010,9 @@ function SignalsTab({ ticker, price, currency }: {
 function UpcomingEvents({ analysis }: { analysis?: AnalysisResult }) {
   const cal = analysis?.calendar_info
   const events = [
-    cal?.earnings_date    ? { label: 'Najbliższe wyniki finansowe', date: cal.earnings_date,    icon: '📊' } : null,
-    cal?.ex_dividend_date ? { label: 'Dzień ex-dividend',           date: cal.ex_dividend_date, icon: '💰' } : null,
-  ].filter(Boolean) as { label: string; date: string; icon: string }[]
+    cal?.earnings_date    ? { label: 'Najbliższe wyniki finansowe', date: cal.earnings_date,    Icon: BarChart3, color: '#22C55E' } : null,
+    cal?.ex_dividend_date ? { label: 'Dzień ex-dividend',           date: cal.ex_dividend_date, Icon: Coins, color: '#F59E0B' } : null,
+  ].filter(Boolean) as { label: string; date: string; Icon: any; color: string }[]
 
   if (events.length === 0) return null
 
@@ -961,7 +1021,7 @@ function UpcomingEvents({ analysis }: { analysis?: AnalysisResult }) {
       {events.map(e => (
         <div key={e.label}
           className="flex items-center gap-3 bg-surface-1 border border-border rounded-xl2 px-4 py-3">
-          <span className="text-lg">{e.icon}</span>
+          <e.Icon className="w-4 h-4 shrink-0" style={{ color: e.color }} />
           <div className="min-w-0">
             <div className="text-2xs text-muted uppercase tracking-wider">{e.label}</div>
             <div className="text-sm font-bold font-mono text-text-hi tabular-nums">{e.date}</div>
@@ -986,7 +1046,7 @@ function NewsTab({ ticker, analysis }: { ticker: string; analysis?: AnalysisResu
   if (!news || news.length === 0) return (
     <div>
       <UpcomingEvents analysis={analysis} />
-      <EmptyState icon="📰" title="Brak newsów"
+      <EmptyState icon={Newspaper} title="Brak newsów"
         desc={`Nie znaleziono najnowszych wiadomości dla ${ticker}.`} />
     </div>
   )
@@ -1001,7 +1061,7 @@ function NewsTab({ ticker, analysis }: { ticker: string; analysis?: AnalysisResu
         <a key={i} href={item.link} target="_blank" rel="noreferrer"
           className="block bg-surface-1 border border-border rounded-xl2 p-4 hover:bg-surface-2 transition-colors group">
           <div className="flex items-start gap-3">
-            <div className="text-2xl shrink-0 opacity-60">📰</div>
+            <Newspaper className="w-6 h-6 shrink-0 text-muted opacity-60" />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-white text-sm group-hover:text-brand-green transition-colors leading-snug">
                 {item.title}
@@ -1018,7 +1078,7 @@ function NewsTab({ ticker, analysis }: { ticker: string; analysis?: AnalysisResu
         </a>
       ))}
       <p className="text-xs text-muted text-center pt-2">
-        ⚠ Wiadomości pochodzą z zewnętrznych źródeł. StockFlow nie odpowiada za ich treść.
+        <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />Wiadomości pochodzą z zewnętrznych źródeł. StockFlow nie odpowiada za ich treść.
       </p>
     </div>
   )
@@ -1065,14 +1125,15 @@ function AnalysisContent() {
     try { await watchlistApi.add(ticker) } catch {}
   }
 
-  const TABS: { id: TabId; label: string }[] = [
-    { id: 'chart',      label: '📈 Wykres'     },
-    { id: 'signals',    label: '⚡ Sygnały ST'  },
-    { id: 'details',    label: '📊 Analiza'     },
-    { id: 'scenarios',  label: '🔮 Scenariusze' },
-    { id: 'strategies', label: '🎯 Strategie'   },
-    { id: 'news',       label: '📰 Newsy'       },
-    { id: 'pdf',        label: '📄 PDF'         },
+  const TABS: { id: TabId; label: string; Icon: any }[] = [
+    { id: 'chart',      label: 'Wykres',      Icon: LineChart    },
+    { id: 'signals',    label: 'Sygnały ST',  Icon: Zap          },
+    { id: 'details',    label: 'Analiza',     Icon: BarChart3    },
+    { id: 'scenarios',  label: 'Scenariusze', Icon: Waypoints    },
+    { id: 'probability', label: 'Prawdopodobieństwa', Icon: Sigma },
+    { id: 'strategies', label: 'Strategie',   Icon: Target       },
+    { id: 'news',       label: 'Newsy',       Icon: Newspaper    },
+    { id: 'pdf',        label: 'PDF',         Icon: FileText     },
   ]
 
   return (
@@ -1084,7 +1145,7 @@ function AnalysisContent() {
       {!ticker ? (
         <div>
           <div className="text-center py-8">
-            <div className="text-4xl mb-3 opacity-50">📈</div>
+            <LineChart className="w-10 h-10 mb-3 mx-auto text-muted opacity-50" />
             <h2 className="text-lg font-semibold text-text-hi mb-1">Analiza instrumentu</h2>
             <p className="text-sm text-text-lo">
               Wpisz symbol powyżej, albo wybierz jeden z popularnych instrumentów:
@@ -1139,7 +1200,7 @@ function AnalysisContent() {
         <div className="flex items-center justify-center h-48"><Spinner size="lg" /></div>
       ) : error || !analysis ? (
         <EmptyState
-          icon="⚠️"
+          icon={AlertTriangle}
           title={error && (error as any).status >= 500 || (error as any)?.status === 0
             ? 'Problem z połączeniem'
             : 'Nie znaleziono danych'}
@@ -1190,14 +1251,16 @@ function AnalysisContent() {
                 {analysis.score_st != null && (
                   <div className="text-center">
                     <ScoreBadge score={analysis.score_st} size="md" />
-                    <div className="text-[10px] text-muted uppercase tracking-widest mt-1">⚡ ST</div>
+                    <div className="text-[10px] text-muted uppercase tracking-widest mt-1">ST</div>
                   </div>
                 )}
                 <Button onClick={handleAddToWatchlist} variant="secondary" size="sm">
-                  ★ Watchlist
+                  Watchlist
                 </Button>
               </div>
             </div>
+
+            <ScoreNarrative analysis={analysis} />
 
             {/* Tabs */}
             <div className="flex border-b border-border mb-4 overflow-x-auto">
@@ -1212,7 +1275,7 @@ function AnalysisContent() {
                     fontWeight:  activeTab === tab.id ? 600 : 400,
                   }}
                 >
-                  {tab.label}
+                  <span className="flex items-center gap-1.5"><tab.Icon className="w-3.5 h-3.5" />{tab.label}</span>
                 </button>
               ))}
             </div>
@@ -1252,7 +1315,7 @@ function AnalysisContent() {
                         border:      `1px solid ${chartMode === m ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.06)'}`,
                       }}
                     >
-                      {m === 'candles' ? '🕯 Świece' : m === 'line' ? '📈 Linia' : '🌊 Obszar'}
+                      {m === 'candles' ? 'Świece' : m === 'line' ? 'Linia' : 'Obszar'}
                     </button>
                   ))}
 
@@ -1346,12 +1409,13 @@ function AnalysisContent() {
             {activeTab === 'signals'    && <SignalsTab   ticker={ticker} price={analysis.price} currency={analysis.currency} />}
             {activeTab === 'details'    && <DetailsTab   analysis={analysis} />}
             {activeTab === 'scenarios'  && <ScenariosTab ticker={ticker} analysis={analysis} />}
+            {activeTab === 'probability' && <ProbabilityPanel ticker={ticker} />}
             {activeTab === 'strategies' && <StrategiesTab analysis={analysis} />}
             {activeTab === 'news'       && <NewsTab ticker={ticker} analysis={analysis} />}
 
             {activeTab === 'pdf' && (
               <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <div className="text-5xl">📄</div>
+                <FileText className="w-12 h-12 text-muted opacity-60" />
                 <div className="font-semibold text-white">Raport PDF</div>
                 <div className="text-sm text-muted max-w-sm text-center">
                   Pobierz pełny raport analizy z wynikiem score, składowymi i ostrzeżeniami.
@@ -1393,7 +1457,7 @@ function AnalysisContent() {
                 {analysis.red_flags.slice(0, 3).map((flag, i) => (
                   <div key={i} className="text-xs rounded-lg px-2.5 py-2 mb-1.5"
                     style={{ background: 'rgba(245,158,11,0.1)', color: '#F59E0B' }}>
-                    ⚠ {flag}
+                    <AlertTriangle className="w-3.5 h-3.5 inline shrink-0 mr-1" />{flag}
                   </div>
                 ))}
               </div>

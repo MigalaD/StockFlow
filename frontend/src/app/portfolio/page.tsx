@@ -1,7 +1,9 @@
 'use client'
+import { AlertTriangle, BarChart3, Briefcase, CalendarDays, ClipboardList, Download, PieChart as PieChartIcon, Plus, StickyNote } from 'lucide-react'
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
@@ -20,6 +22,7 @@ const SECTOR_COLORS = [
 // ── Add position form ─────────────────────────────────────────────────
 
 function AddPositionForm({ onAdded, onToggleImport }: { onAdded: () => void; onToggleImport: () => void }) {
+  const t = useTranslations('portfolio')
   const [open, setOpen] = useState(false)
   const [fields, setFields] = useState({ ticker:'', shares:'', price:'', date:'', notes:'' })
   const [loading, setLoading] = useState(false)
@@ -50,10 +53,10 @@ function AddPositionForm({ onAdded, onToggleImport }: { onAdded: () => void; onT
   if (!open) return (
     <div className="flex gap-2 mb-4">
       <Button onClick={() => setOpen(true)} size="sm">
-        ➕ Dodaj pozycję
+        Dodaj pozycję
       </Button>
       <Button onClick={onToggleImport} size="sm" variant="secondary">
-        📥 Import z XTB
+        Import z XTB
       </Button>
     </div>
   )
@@ -61,23 +64,23 @@ function AddPositionForm({ onAdded, onToggleImport }: { onAdded: () => void; onT
   return (
     <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="font-semibold text-sm text-white">➕ Nowa pozycja</div>
+        <div className="font-semibold text-sm text-white flex items-center gap-2"><Plus className="w-4 h-4 text-brand-green" /> Nowa pozycja</div>
         <button onClick={() => setOpen(false)} className="text-muted hover:text-white text-sm">✕</button>
       </div>
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-          <Input label="Symbol"     value={fields.ticker} onChange={set('ticker')} placeholder="AAPL" hint="GPW: .WA" />
-          <Input label="Liczba szt." type="number" value={fields.shares} onChange={set('shares')} placeholder="10" min="0.001" step="any" />
-          <Input label="Cena zakupu" type="number" value={fields.price}  onChange={set('price')}  placeholder="185.50" min="0.001" step="any" />
-          <Input label="Data zakupu" type="date"   value={fields.date}   onChange={set('date')} />
+          <Input label={t('symbol')}     value={fields.ticker} onChange={set('ticker')} placeholder="AAPL" hint="GPW: .WA" />
+          <Input label={t('shares')} type="number" value={fields.shares} onChange={set('shares')} placeholder="10" min="0.001" step="any" />
+          <Input label={t('buyPrice')} type="number" value={fields.price}  onChange={set('price')}  placeholder="185.50" min="0.001" step="any" />
+          <Input label={t('buyDate')} type="date"   value={fields.date}   onChange={set('date')} />
         </div>
         <div className="mb-3">
-          <Input label="Notatka (opcjonalna)" value={fields.notes} onChange={set('notes')} placeholder="Powód zakupu..." />
+          <Input label={t('noteOptional')} value={fields.notes} onChange={set('notes')} placeholder={t('reasonPlaceholder')} />
         </div>
         {error && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-3">{error}</div>}
         <div className="flex gap-2">
           <Button type="submit" loading={loading} size="sm">Dodaj</Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>Anuluj</Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>{t('cancel')}</Button>
         </div>
       </form>
     </div>
@@ -87,6 +90,7 @@ function AddPositionForm({ onAdded, onToggleImport }: { onAdded: () => void; onT
 // ── Position card ─────────────────────────────────────────────────────
 
 function PositionCard({ pos, onRemove }: { pos: PositionItem; onRemove: () => void }) {
+  const t = useTranslations('portfolio')
   const [confirm, setConfirm] = useState(false)
   const pnlPos  = pos.pnl >= 0
   const pnlColor = pnlPos ? '#22C55E' : '#EF4444'
@@ -152,19 +156,19 @@ function PositionCard({ pos, onRemove }: { pos: PositionItem; onRemove: () => vo
 
       {(pos.buy_date || pos.notes) && (
         <div className="text-xs text-muted flex gap-3 mb-2">
-          {pos.buy_date && <span>📅 {pos.buy_date}</span>}
-          {pos.notes    && <span className="truncate">📝 {pos.notes}</span>}
+          {pos.buy_date && <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{pos.buy_date}</span>}
+          {pos.notes    && <span className="truncate flex items-center gap-1"><StickyNote className="w-3 h-3 shrink-0" />{pos.notes}</span>}
         </div>
       )}
 
       <div className="flex items-center justify-between">
         <Link href={`/analysis?ticker=${pos.ticker}`}>
-          <Button variant="ghost" size="sm">Analizuj →</Button>
+          <Button variant="ghost" size="sm">{t('analyze')}</Button>
         </Link>
         {confirm ? (
           <div className="flex gap-2">
-            <button onClick={onRemove} className="text-xs text-red-400 hover:text-red-300">Potwierdź</button>
-            <button onClick={() => setConfirm(false)} className="text-xs text-muted hover:text-white">Anuluj</button>
+            <button onClick={onRemove} className="text-xs text-red-400 hover:text-red-300">{t('confirm')}</button>
+            <button onClick={() => setConfirm(false)} className="text-xs text-muted hover:text-white">{t('cancel')}</button>
           </div>
         ) : (
           <button onClick={() => setConfirm(true)} className="text-xs text-muted hover:text-red-400 transition-colors">
@@ -182,57 +186,121 @@ function PositionCard({ pos, onRemove }: { pos: PositionItem; onRemove: () => vo
 
 type ParsedPos = { ticker: string; shares: number; buy_price: number; buy_date?: string }
 
-/** Normalizuje symbol XTB do formatu yfinance: PKN.PL→PKN.WA, AAPL.US→AAPL. */
+/**
+ * Normalizuje symbol XTB do formatu yfinance.
+ * Zweryfikowane na realnym eksporcie: .PL→.WA, .US→(brak), .UK→.L (Londyn),
+ * .NO→.OL (Oslo), .DE zostaje bez zmian (Xetra — te same tickery co Yahoo).
+ * Nieznany sufiks zostaje bez zmian — widoczny w podglądzie do ręcznej korekty.
+ */
 function normalizeXtbSymbol(sym: string): string {
   const s = sym.trim().toUpperCase()
   if (s.endsWith('.PL')) return s.replace(/\.PL$/, '.WA')
   if (s.endsWith('.US')) return s.replace(/\.US$/, '')
+  if (s.endsWith('.UK')) return s.replace(/\.UK$/, '.L')
+  if (s.endsWith('.NO')) return s.replace(/\.NO$/, '.OL')
   return s
 }
 
-/** Parsuje CSV z XTB (otwarte pozycje). Toleruje ; , i tab oraz nagłówki PL/EN. */
-function parseXtbCsv(text: string): { positions: ParsedPos[]; skipped: string[] } {
-  const lines = text.split(/\r?\n/).filter(l => l.trim())
-  if (lines.length < 2) return { positions: [], skipped: [] }
+/**
+ * Parsuje CSV z XTB — eksport "Open positions" (otwarte pozycje).
+ *
+ * Realny plik XTB (zweryfikowany na przykładowym eksporcie) ma ok. 10-13
+ * linii "śmieci" przed właściwym nagłówkiem: puste wiersze, dane konta,
+ * blok Balance/Equity/Margin, tytuł sekcji, zakres dat. Separator to
+ * średnik, liczby z przecinkiem dziesiętnym, plik z BOM UTF-8.
+ *
+ * Nagłówek szukany DYNAMICZNIE (nie zakładamy stałej liczby wierszy
+ * śmieci) — skanujemy linie aż znajdziemy taką, która zawiera zarówno
+ * "symbol" jak i "volume". To też odróżnia format otwartych pozycji
+ * (Open time/Open price/Market price) od historii zamkniętych transakcji
+ * (Open time+Close time+Close price) — jeśli w nagłówku jest "close
+ * price"/"close time", zwracamy ostrzeżenie zamiast cichego zaimportowania
+ * dawno zamkniętych transakcji jako aktywnych pozycji.
+ */
+function parseXtbCsv(text: string): { positions: ParsedPos[]; skipped: string[]; warning?: string } {
+  // Usuń BOM, jeśli obecny
+  const clean = text.replace(/^\uFEFF/, '')
+  const rawLines = clean.split(/\r?\n/)
 
-  // Wykryj separator po nagłówku
-  const sep = [';', '\t', ','].find(d => lines[0].split(d).length >= 3) ?? ';'
-  const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/"/g, ''))
+  const splitLine = (line: string, sep: string) =>
+    line.split(sep).map(c => c.trim().replace(/"/g, ''))
+
+  // Znajdź linię nagłówka — pierwszą zawierającą "symbol" ORAZ "volume"
+  // (niezależnie od separatora — sprawdzamy każdy kandydat na tej linii)
+  let headerIdx = -1
+  let sep = ';'
+  let headers: string[] = []
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i]
+    if (!line.trim()) continue
+    for (const candidateSep of [';', '\t', ',']) {
+      const cols = splitLine(line, candidateSep).map(c => c.toLowerCase())
+      if (cols.some(c => c.includes('symbol')) && cols.some(c => c.includes('volume') || c.includes('wolumen'))) {
+        headerIdx = i
+        sep = candidateSep
+        headers = cols
+        break
+      }
+    }
+    if (headerIdx >= 0) break
+  }
+
+  if (headerIdx < 0) {
+    return { positions: [], skipped: [], warning: 'Nie znaleziono nagłówka z kolumnami Symbol/Volume w pliku. Upewnij się, że to eksport CSV z XTB (raport "Open positions").' }
+  }
 
   const findCol = (...names: string[]) =>
     headers.findIndex(h => names.some(n => h.includes(n)))
 
   const iSym   = findCol('symbol', 'instrument')
   const iVol   = findCol('volume', 'wolumen', 'ilość', 'ilosc')
-  const iPrice = findCol('open price', 'cena otwarcia', 'purchase', 'cena zakupu')
-  const iDate  = findCol('open time', 'czas otwarcia', 'data')
+  const iPrice = findCol('open price', 'cena otwarcia')
+  const iDate  = findCol('open time', 'czas otwarcia')
+  const hasClose = headers.some(h => h.includes('close price') || h.includes('close time'))
 
-  if (iSym < 0 || iVol < 0 || iPrice < 0) return { positions: [], skipped: ['Nie rozpoznano kolumn (potrzebne: Symbol, Volume, Open price)'] }
+  if (iSym < 0 || iVol < 0 || iPrice < 0) {
+    return { positions: [], skipped: [], warning: 'Rozpoznano nagłówek, ale brakuje kolumn Symbol/Volume/Open price.' }
+  }
+
+  const warning = hasClose
+    ? 'Ten plik wygląda na historię ZAMKNIĘTYCH pozycji (ma kolumny Close price/Close time), nie aktualny portfel. ' +
+      'W xStation wybierz raport "Open positions" (otwarte pozycje), żeby zaimportować to, co faktycznie posiadasz.'
+    : undefined
 
   const positions: ParsedPos[] = []
   const skipped: string[] = []
+  const num = (v?: string) => v ? parseFloat(v.replace(/\s/g, '').replace(',', '.')) : NaN
 
-  for (const line of lines.slice(1)) {
-    const cols = line.split(sep).map(c => c.trim().replace(/"/g, ''))
+  for (const line of rawLines.slice(headerIdx + 1)) {
+    if (!line.trim()) continue
+    const cols = splitLine(line, sep)
     const rawSym = cols[iSym]
-    if (!rawSym) continue
-    // XTB używa przecinka dziesiętnego w PL eksportach
-    const num = (v?: string) => v ? parseFloat(v.replace(/\s/g, '').replace(',', '.')) : NaN
+    // Wiersz podsumowania ("Total") albo pusty symbol — koniec danych
+    if (!rawSym || /^total$/i.test(rawSym)) continue
+
     const shares = num(cols[iVol])
     const price  = num(cols[iPrice])
     if (!shares || !price || shares <= 0 || price <= 0) {
       skipped.push(rawSym)
       continue
     }
+    // Format XTB: "30.04.2026 10:03:04" (DD.MM.RRRR GG:MM:SS) -> ISO RRRR-MM-DD
     const dateRaw = iDate >= 0 ? cols[iDate] : undefined
-    const buy_date = dateRaw ? dateRaw.slice(0, 10).replace(/\./g, '-') : undefined
+    let buy_date: string | undefined
+    if (dateRaw) {
+      const datePart = dateRaw.split(' ')[0]
+      const m = datePart.match(/^(\d{2})\.(\d{2})\.(\d{4})$/)
+      buy_date = m ? `${m[3]}-${m[2]}-${m[1]}` : undefined
+    }
     positions.push({ ticker: normalizeXtbSymbol(rawSym), shares, buy_price: price, buy_date })
   }
-  return { positions, skipped }
+  return { positions, skipped, warning }
 }
 
 function XtbImport({ onDone }: { onDone: () => void }) {
-  const [parsed, setParsed]   = useState<{ positions: ParsedPos[]; skipped: string[] } | null>(null)
+  const t = useTranslations('portfolio')
+  const [parsed, setParsed]   = useState<{ positions: ParsedPos[]; skipped: string[]; warning?: string } | null>(null)
   const [busy, setBusy]       = useState(false)
   const [result, setResult]   = useState('')
 
@@ -257,16 +325,22 @@ function XtbImport({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-4 animate-fade-in">
-      <div className="font-semibold text-sm text-text-hi mb-1">📥 Import z XTB</div>
+      <div className="font-semibold text-sm text-text-hi mb-1 flex items-center gap-2"><Download className="w-4 h-4 text-brand-green" /> Import z XTB</div>
       <p className="text-xs text-text-lo mb-3 leading-relaxed">
-        W xStation: Portfel → otwarte pozycje → eksport do CSV, a plik wgraj tutaj.
-        Symbole zostaną automatycznie dopasowane (np. PKN.PL → PKN.WA, AAPL.US → AAPL).
+        W xStation: Historia → Sprawozdania → wybierz raport <strong className="text-text-mid">„Open positions"</strong> (otwarte pozycje) →
+        eksport do CSV, a plik wgraj tutaj. Nie „Closed position history" — to zamknięte, już nieaktualne transakcje.
+        Symbole dopasujemy automatycznie (PKN.PL→PKN.WA, IGLN.UK→IGLN.L, KMAR.NO→KMAR.OL).
       </p>
       <input type="file" accept=".csv,.txt" className="text-xs text-text-lo mb-3 block"
         onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
 
       {parsed && (
         <div className="space-y-2">
+          {parsed.warning && (
+            <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 leading-relaxed">
+              <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />{parsed.warning}
+            </div>
+          )}
           {parsed.positions.length > 0 ? (
             <>
               <div className="text-xs text-text-lo">
@@ -287,7 +361,7 @@ function XtbImport({ onDone }: { onDone: () => void }) {
               </Button>
             </>
           ) : (
-            <div className="text-xs text-red-400">Nie rozpoznano żadnych pozycji w pliku.</div>
+            <div className="text-xs text-red-400">{t('importNoPositions')}</div>
           )}
           {parsed.skipped.length > 0 && (
             <div className="text-2xs text-muted">Pominięte wiersze: {parsed.skipped.join(', ')}</div>
@@ -300,6 +374,7 @@ function XtbImport({ onDone }: { onDone: () => void }) {
 }
 
 function PortfolioContent() {
+  const t = useTranslations('portfolio')
   const { data: portfolio, isLoading, mutate } = useSWR('portfolio', portfolioApi.get)
   const [showImport, setShowImport] = useState(false)
 
@@ -324,11 +399,11 @@ function PortfolioContent() {
     <AppShell>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">💼 Portfolio</h1>
+        <h1 className="text-xl font-bold flex items-center gap-2"><Briefcase className="w-5 h-5 text-brand-green" /> Portfolio</h1>
         {portfolio && positions.length > 0 && (
           <div className="flex gap-5">
             <div className="text-right">
-              <div className="text-[10px] text-muted uppercase tracking-wider">Łączna wartość</div>
+              <div className="text-[10px] text-muted uppercase tracking-wider">{t('totalValue')}</div>
               <div className="text-lg font-bold tabular-nums font-mono text-text-hi">
                 {portfolio.total_value.toFixed(2)}
                 <span className="text-sm text-muted ml-1">{portfolio.base_currency}</span>
@@ -350,7 +425,7 @@ function PortfolioContent() {
       {portfolio?.warnings.map((w, i) => (
         <div key={i} className="mb-3 rounded-lg px-4 py-2.5 text-sm"
           style={{ background:'rgba(245,158,11,0.1)', color:'#F59E0B', border:'1px solid rgba(245,158,11,0.2)' }}>
-          ⚠ {w}
+          <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />{w}
         </div>
       ))}
 
@@ -358,19 +433,19 @@ function PortfolioContent() {
       {/* Portfel vs S&P 500 */}
       {portfolio?.benchmark && (
         <div className="bg-surface-1 border border-border rounded-xl2 p-4 mb-4 animate-fade-in">
-          <div className="text-2xs text-muted uppercase tracking-widest mb-2">⚖️ Portfel vs {portfolio.benchmark.symbol}</div>
+          <div className="text-2xs text-muted uppercase tracking-widest mb-2">{t('benchmarkTitle')} {portfolio.benchmark.symbol}</div>
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-            <div><span className="text-2xs text-muted mr-1.5">Twój portfel</span>
+            <div><span className="text-2xs text-muted mr-1.5">{t('yourPortfolio')}</span>
               <span className="font-mono font-bold text-sm" style={{ color: portfolio.benchmark.portfolio_pnl_pct >= 0 ? '#22C55E' : '#EF4444' }}>
                 {portfolio.benchmark.portfolio_pnl_pct >= 0 ? '+' : ''}{portfolio.benchmark.portfolio_pnl_pct}%</span></div>
-            <div><span className="text-2xs text-muted mr-1.5">{portfolio.benchmark.symbol} w tym samym okresie</span>
+            <div><span className="text-2xs text-muted mr-1.5">{portfolio.benchmark.symbol} {t('inSamePeriod')}</span>
               <span className="font-mono font-bold text-sm text-text-lo">
                 {portfolio.benchmark.benchmark_pnl_pct >= 0 ? '+' : ''}{portfolio.benchmark.benchmark_pnl_pct}%</span></div>
-            <div><span className="text-2xs text-muted mr-1.5">Różnica</span>
+            <div><span className="text-2xs text-muted mr-1.5">{t('difference')}</span>
               <span className="font-mono font-bold text-sm" style={{ color: portfolio.benchmark.alpha >= 0 ? '#22C55E' : '#EF4444' }}>
                 {portfolio.benchmark.alpha >= 0 ? '+' : ''}{portfolio.benchmark.alpha} p.p.</span></div>
           </div>
-          <p className="text-2xs text-muted mt-1.5">Każda pozycja porównana ze zwrotem indeksu od jej daty zakupu, ważona kosztem.</p>
+          <p className="text-2xs text-muted mt-1.5">{t('benchmarkNote')}</p>
         </div>
       )}
 
@@ -380,13 +455,13 @@ function PortfolioContent() {
       {isLoading ? (
         <div className="flex justify-center py-12"><Spinner size="lg" /></div>
       ) : !portfolio || positions.length === 0 ? (
-        <EmptyState icon="💼" title="Portfolio jest puste"
-          desc="Dodaj pierwszą pozycję aby śledzić swoje wyniki" />
+        <EmptyState icon={Briefcase} title={t('empty')}
+          desc={t('emptyHint')} />
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
           {/* Positions */}
           <div>
-            <SectionHeader title="Pozycje" icon="📋" />
+            <SectionHeader title={t('positions')} icon={ClipboardList} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {positions.map(pos => (
                 <PositionCard key={pos.id} pos={pos}
@@ -400,7 +475,7 @@ function PortfolioContent() {
             {/* Alokacja pie */}
             {allocationData.length > 0 && (
               <div className="bg-surface-1 border border-border rounded-xl2 p-4">
-                <SectionHeader title="Alokacja sektorowa" icon="🥧" />
+                <SectionHeader title={t('sectorAllocation')} icon={PieChartIcon} />
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
                     <Pie data={allocationData} cx="50%" cy="50%"
@@ -422,7 +497,7 @@ function PortfolioContent() {
             {/* P&L bar chart */}
             {pnlChartData.length > 0 && (
               <div className="bg-surface-1 border border-border rounded-xl2 p-4">
-                <SectionHeader title="P&L per pozycja" icon="📊" />
+                <SectionHeader title="P&L per pozycja" icon={BarChart3} />
                 <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={pnlChartData} margin={{ top:4, right:4, bottom:4, left:4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />

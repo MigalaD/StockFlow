@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
-import { Settings2, ArrowRight, Plus, Trash2, Check, X } from 'lucide-react'
+import { ArrowRight, Check, Plus, Settings2, Star, Trash2, X } from 'lucide-react'
 import { AppShell } from '../../components/layout/AppShell'
 import { ScoreBar, scoreColor } from '../../components/ui/ScoreBadge'
 import { SectionHeader, Button, Input, EmptyState, Spinner, Price } from '../../components/ui'
@@ -214,7 +214,7 @@ function WatchlistContent() {
     <AppShell>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold">★ Watchlista</h1>
+          <h1 className="text-xl font-bold flex items-center gap-2"><Star className="w-5 h-5 text-brand-green" /> Watchlista</h1>
           {watchlist.length > 0 && (
             <p className="text-sm text-muted mt-0.5">
               {watchlist.length} {watchlist.length === 1 ? 'instrument' : 'instrumentów'}
@@ -241,7 +241,7 @@ function WatchlistContent() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : watchlist.length === 0 ? (
-        <EmptyState icon="★" title="Watchlista jest pusta"
+        <EmptyState icon={Star} title="Watchlista jest pusta"
           desc="Dodaj instrumenty które chcesz obserwować — będziesz widzieć ich score, ceny i zmiany w jednym miejscu."
           action={<Link href="/analysis"><Button>Przejdź do Analizy</Button></Link>} />
       ) : (
