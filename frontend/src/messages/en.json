@@ -121,7 +121,58 @@
     "redFlags": "Red flags",
     "noRedFlags": "No warnings",
     "keyData": "Key data",
-    "downloadPdf": "Download PDF report"
+    "downloadPdf": "Download PDF report",
+    "side": {
+      "market": {
+        "title": "Against the market",
+        "period": "Last 12 months",
+        "better": "Beat the index by {pp} pp",
+        "worse": "Trailed the index by {pp} pp",
+        "same": "In line with the index",
+        "beta": "Beta",
+        "betaLow": "moves less than the market",
+        "betaMid": "moves in line with the market",
+        "betaHigh": "moves more than the market",
+        "weakLink": "weak link to the index, treat beta with caution"
+      },
+      "price": {
+        "title": "Price position",
+        "vwap": "VWAP (20 days)",
+        "above": "{pct}% above",
+        "below": "{pct}% below",
+        "trend": "MA trend",
+        "golden": "MA50 above MA200",
+        "death": "MA50 below MA200",
+        "bull": "bullish",
+        "bear": "bearish"
+      },
+      "events": {
+        "title": "Upcoming events",
+        "earnings": "Earnings",
+        "exDiv": "Ex-dividend date",
+        "today": "today",
+        "tomorrow": "tomorrow",
+        "inDays": "in {n} days"
+      },
+      "profile": {
+        "title": "Profile",
+        "sector": "Sector",
+        "industry": "Industry",
+        "currency": "Currency",
+        "type": "Type"
+      },
+      "types": {
+        "stock": "Stock",
+        "etf": "ETF",
+        "etf_commodity": "Commodity ETF",
+        "commodity": "Commodity",
+        "crypto": "Cryptocurrency",
+        "other": "Other instrument"
+      },
+      "flags": {
+        "title": "Watch out for"
+      }
+    }
   },
   "watchlist": {
     "title": "Watchlist",

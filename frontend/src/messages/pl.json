@@ -121,7 +121,58 @@
     "redFlags": "Red flags",
     "noRedFlags": "Brak ostrzeżeń",
     "keyData": "Kluczowe dane",
-    "downloadPdf": "Pobierz raport PDF"
+    "downloadPdf": "Pobierz raport PDF",
+    "side": {
+      "market": {
+        "title": "Na tle rynku",
+        "period": "Ostatnie 12 miesięcy",
+        "better": "Lepiej od indeksu o {pp} p.p.",
+        "worse": "Słabiej od indeksu o {pp} p.p.",
+        "same": "Tak samo jak indeks",
+        "beta": "Beta",
+        "betaLow": "porusza się słabiej niż rynek",
+        "betaMid": "porusza się podobnie do rynku",
+        "betaHigh": "porusza się mocniej niż rynek",
+        "weakLink": "słaby związek z indeksem, betę traktuj ostrożnie"
+      },
+      "price": {
+        "title": "Pozycja ceny",
+        "vwap": "VWAP (20 dni)",
+        "above": "{pct}% powyżej",
+        "below": "{pct}% poniżej",
+        "trend": "Trend MA",
+        "golden": "MA50 powyżej MA200",
+        "death": "MA50 poniżej MA200",
+        "bull": "byczy",
+        "bear": "niedźwiedzi"
+      },
+      "events": {
+        "title": "Najbliższe wydarzenia",
+        "earnings": "Wyniki finansowe",
+        "exDiv": "Dzień ex-dividend",
+        "today": "dziś",
+        "tomorrow": "jutro",
+        "inDays": "za {n} dni"
+      },
+      "profile": {
+        "title": "Profil",
+        "sector": "Sektor",
+        "industry": "Branża",
+        "currency": "Waluta",
+        "type": "Typ"
+      },
+      "types": {
+        "stock": "Akcja",
+        "etf": "ETF",
+        "etf_commodity": "ETF towarowy",
+        "commodity": "Surowiec",
+        "crypto": "Kryptowaluta",
+        "other": "Inny instrument"
+      },
+      "flags": {
+        "title": "Na co uważać"
+      }
+    }
   },
   "watchlist": {
     "title": "Watchlista",
