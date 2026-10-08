@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import { Logo, wordmarkWidth, WORDMARK_TEXT_OFFSET } from '../brand/Logo'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { clsx } from 'clsx'
 import {
-  LayoutDashboard, TrendingUp, GitCompare, Star, Briefcase,
-  Bitcoin, ScanLine, FlaskConical, BookText, Settings, Info, LogOut, Rocket, Coins, Layers, Gem, type LucideIcon,
+  TrendingUp, LayoutDashboard, GitCompare, Star, Briefcase, Bitcoin, ScanLine, FlaskConical, BookText, Settings, Info, LogOut, Rocket, Coins, Layers, Gem, type LucideIcon,
 } from 'lucide-react'
 import { useAuthStore } from '../../store'
 
@@ -100,14 +100,9 @@ export function Sidebar({ mobileOpen = false, onClose }: { mobileOpen?: boolean;
         {/* Logo */}
         <div className="px-5 py-[18px] border-b border-border">
           <Link href="/" onClick={onClose} className="block group">
-            <div className="font-bold text-xl tracking-tight flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, #22C55E, #14B8A6)' }}>
-                <TrendingUp className="w-4 h-4 text-white" strokeWidth={2.5} />
-              </div>
-              <span className="text-logo">StockFlow</span>
-            </div>
-            <div className="text-2xs text-muted tracking-[0.14em] uppercase mt-1 ml-9">
+            <Logo height={26} priority />
+            <div className="text-2xs text-muted tracking-[0.14em] uppercase mt-1.5"
+              style={{ marginLeft: Math.round(wordmarkWidth(26) * WORDMARK_TEXT_OFFSET) }}>
               Market Analytics
             </div>
           </Link>

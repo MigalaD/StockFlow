@@ -6,11 +6,11 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import {
-  TrendingUp, ArrowRight, Check, Pause, Play, Plus,
-  LineChart as LineChartIcon, Gauge, ScanLine, Sigma,
+  ArrowRight, Check, Pause, Play, Plus, LineChart as LineChartIcon, Gauge, ScanLine, Sigma,
 } from 'lucide-react'
 import { useAuthStore } from '../../store'
 import { LanguageSwitcher } from '../../components/shared/LanguageSwitcher'
+import { Logo } from '../../components/brand/Logo'
 
 // ── Ograniczenie ruchu ────────────────────────────────────────────────
 
@@ -375,12 +375,8 @@ export default function WelcomePage() {
       <nav className="sticky top-0 z-50 border-b border-border"
         style={{ background: 'rgba(8,12,22,0.8)', backdropFilter: 'blur(12px)' }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          <Link href="/welcome" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #22C55E, #14B8A6)' }}>
-              <TrendingUp className="w-5 h-5 text-white" strokeWidth={2.5} />
-            </div>
-            <span className="font-bold text-lg text-logo">StockFlow</span>
+          <Link href="/welcome" className="flex items-center shrink-0">
+            <Logo height={26} priority />
           </Link>
           <div className="hidden md:flex items-center gap-6 text-sm text-text-lo">
             <a href="#features" className="hover:text-text-hi transition-colors">{t('nav.features')}</a>
@@ -496,10 +492,9 @@ export default function WelcomePage() {
       {/* Stopka */}
       <footer className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-brand-green" />
-            <span className="font-semibold text-text-mid text-sm">StockFlow</span>
-            <span className="text-2xs text-muted ml-2">© {new Date().getFullYear()} {t('footer.rights')}</span>
+          <div className="flex items-center gap-3">
+            <Logo height={20} />
+            <span className="text-2xs text-muted">© {new Date().getFullYear()} {t('footer.rights')}</span>
           </div>
           <p className="text-2xs text-muted text-center md:text-right max-w-md leading-relaxed">
             {t('footer.disclaimer')}
