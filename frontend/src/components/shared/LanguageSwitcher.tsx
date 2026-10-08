@@ -1,11 +1,13 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useSettingsStore } from '../../store'
 
 export function LanguageSwitcher() {
   const t         = useTranslations('settings')
-  const { locale, setLocale } = useSettingsStore()
+  const { setLocale } = useSettingsStore()
+  // Język faktycznie wyrenderowany (z ciasteczka albo z preferencji przeglądarki)
+  const locale    = useLocale()
 
   return (
     <div className="flex items-center gap-1 bg-surface-hi rounded-lg p-0.5">

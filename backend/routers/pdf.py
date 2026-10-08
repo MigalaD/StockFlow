@@ -74,10 +74,21 @@ def _build_pdf(ticker: str, result: dict, lang: str = DEFAULT_LANG) -> bytes:
         # ze "ogonkiem" zostaną wtedy obcięte/zniekształcone przez fpdf2.
         FONT = "Helvetica"
 
-    # ── Nagłówek ──────────────────────────────────────────────────────
-    pdf.set_font(FONT, "B", 22)
-    pdf.set_text_color(34, 197, 94)      # brand green
-    pdf.cell(0, 10, "StockFlow", ln=True)
+    # ── Nagłówek: logo (wariant na jasne tło, strona PDF jest biała) ──
+    _logo = os.path.join(_ROOT, "backend", "assets", "stockflow-logo-primary.png")
+    _logo_ok = False
+    if os.path.exists(_logo):
+        try:
+            # wysokość 9 mm; szerokość wynika z proporcji pliku (~6,15:1)
+            pdf.image(_logo, x=pdf.l_margin, y=pdf.get_y(), h=9)
+            pdf.ln(12)
+            _logo_ok = True
+        except Exception:
+            _logo_ok = False
+    if not _logo_ok:
+        pdf.set_font(FONT, "B", 22)
+        pdf.set_text_color(34, 197, 94)  # awaryjnie: nazwa tekstem
+        pdf.cell(0, 10, "Stockflow", ln=True)
 
     pdf.set_font(FONT, "", 10)
     pdf.set_text_color(100, 116, 139)    # muted

@@ -7,6 +7,7 @@ import { TrendingUp, ShieldCheck, BarChart3, Bell } from 'lucide-react'
 import { useAuthStore } from '../../store'
 import { Input, Button } from '../../components/ui'
 import { ApiError } from '../../lib/api'
+import { Logo, wordmarkWidth, WORDMARK_TEXT_OFFSET } from '../../components/brand/Logo'
 
 type Mode = 'login' | 'register'
 
@@ -66,14 +67,9 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="relative">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #22C55E, #14B8A6)' }}>
-              <TrendingUp className="w-6 h-6 text-white" strokeWidth={2.5} />
-            </div>
-            <span className="font-bold text-2xl text-logo">StockFlow</span>
-          </div>
-          <div className="text-2xs text-muted tracking-[0.16em] uppercase mt-2 ml-[52px]">
+          <Logo height={36} priority />
+          <div className="text-2xs text-muted tracking-[0.16em] uppercase mt-2"
+            style={{ marginLeft: Math.round(wordmarkWidth(36) * WORDMARK_TEXT_OFFSET) }}>
             Market Analytics
           </div>
         </div>
@@ -111,7 +107,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm animate-slide-up">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="font-bold text-3xl tracking-tight text-logo">StockFlow</div>
+            <Logo height={32} priority className="mx-auto" />
           </div>
 
           <div className="mb-6">

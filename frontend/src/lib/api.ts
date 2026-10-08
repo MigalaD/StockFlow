@@ -191,10 +191,13 @@ function createApiClient(): AxiosInstance {
         config.headers['Authorization'] = `Bearer ${token}`
       }
       // Przekaż język do backendu
+      // Ciasteczko to świadomy wybór użytkownika. Bez niego bierzemy język,
+      // w którym serwer faktycznie wyrenderował stronę (<html lang>, ustalany
+      // także z preferencji przeglądarki), żeby treści z API zgadzały się z UI.
       const locale = document.cookie
         .split(';')
         .find(c => c.trim().startsWith('locale='))
-        ?.split('=')?.[1] ?? 'pl'
+        ?.split('=')?.[1] ?? (document.documentElement.lang || 'pl')
       config.headers['Accept-Language'] = locale
     }
     return config

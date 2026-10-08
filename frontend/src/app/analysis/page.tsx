@@ -12,6 +12,7 @@ import {
   Spinner, EmptyState, Tag,
 } from '../../components/ui'
 import { ProbabilityPanel } from '../../components/probability/ProbabilityPanel'
+import { AnalysisSidePanel } from '../../components/analysis/SidePanel'
 import { analysisApi, watchlistApi, forecastApi, newsApi, type Interval, type AnalysisResult, type ForecastData, type NewsItem } from '../../lib/api'
 import { AreaChart, Area, Line, ComposedChart, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from 'recharts'
 import { useRecentStore, useAuthStore } from '../../store'
@@ -1432,52 +1433,11 @@ function AnalysisContent() {
             )}
           </div>
 
-          {/* Right panel */}
-          <div className="w-52 shrink-0 flex flex-col gap-3">
-            <div className="bg-surface-1 border border-border rounded-xl2 p-4">
-              <div className="text-[10px] text-muted uppercase tracking-widest mb-3">Kluczowe dane</div>
-              {[
-                { label: 'Beta',     value: (analysis.beta_info as any)?.beta?.toFixed(2) ?? '—' },
-                { label: 'VWAP',     value: analysis.vwap ? `${(analysis.vwap as any).vwap?.toFixed(2)}` : '—' },
-                { label: 'Sektor',   value: analysis.sector ?? '—' },
-                { label: 'Branża',   value: (analysis.industry ?? '—').substring(0, 18) },
-                { label: 'Waluta',   value: analysis.currency },
-                { label: 'Typ',      value: analysis.asset_type },
-              ].map(row => (
-                <div key={row.label} className="flex justify-between py-1.5 border-b border-border">
-                  <span className="text-xs text-muted">{row.label}</span>
-                  <span className="text-xs font-semibold text-white tabular-nums">{row.value}</span>
-                </div>
-              ))}
-            </div>
-
-            {analysis.red_flags.length > 0 && (
-              <div className="bg-surface-1 border border-border rounded-xl2 p-4">
-                <div className="text-[10px] text-muted uppercase tracking-widest mb-2">Red Flags</div>
-                {analysis.red_flags.slice(0, 3).map((flag, i) => (
-                  <div key={i} className="text-xs rounded-lg px-2.5 py-2 mb-1.5"
-                    style={{ background: 'rgba(245,158,11,0.1)', color: '#F59E0B' }}>
-                    <AlertTriangle className="w-3.5 h-3.5 inline shrink-0 mr-1" />{flag}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {analysis.ma_crossover && (
-              <div className="bg-surface-1 border border-border rounded-xl2 p-4">
-                <div className="text-[10px] text-muted uppercase tracking-widest mb-2">Trend MA</div>
-                <div
-                  className="text-xs rounded-lg px-2.5 py-2"
-                  style={{
-                    background: (analysis.ma_crossover as any).state === 'golden' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                    color:      (analysis.ma_crossover as any).state === 'golden' ? '#22C55E' : '#EF4444',
-                  }}
-                >
-                  {(analysis.ma_crossover as any).state === 'golden' ? '✓ MA50 > MA200 (byczy)' : '✗ MA50 < MA200 (niedźwiedzi)'}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Panel boczny: przyklejony przy przewijaniu na desktopie, pełna szerokość na telefonie */}
+          <aside className="w-full lg:w-72 shrink-0 lg:self-start lg:sticky lg:top-16
+                            lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+            <AnalysisSidePanel analysis={analysis} />
+          </aside>
         </div>
       )}
     </AppShell>
