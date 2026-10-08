@@ -44,6 +44,8 @@ log = logging.getLogger("stockflow.alerts")
 alerts_router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 _RESEND_URL = "https://api.resend.com/emails"
+# Publiczny adres frontendu: link w mailu i logo (obraz musi być dostępny z internetu).
+APP_URL = os.getenv("PUBLIC_APP_URL", "https://stockflowx.com").rstrip("/")
 
 
 def _get_price(ticker: str) -> float | None:
@@ -77,7 +79,9 @@ def _build_email_html(username: str, alerts: list[dict]) -> str:
     )
     return f"""
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a">
-      <h2 style="color:#16a34a">📈 StockFlow — alerty cenowe</h2>
+      <img src="{APP_URL}/brand/stockflow-logo-primary.png" alt="Stockflow" width="184" height="30"
+           style="display:block;border:0;margin:0 0 16px 0">
+      <h2 style="color:#16a34a;margin:0 0 8px 0">Alerty cenowe</h2>
       <p>Cześć {username}, Twoje progi cenowe zostały osiągnięte:</p>
       <table style="border-collapse:collapse;width:100%;background:#f8fafc;border-radius:8px">
         <tr style="text-align:left;border-bottom:1px solid #e2e8f0">
@@ -88,7 +92,7 @@ def _build_email_html(username: str, alerts: list[dict]) -> str:
         {rows}
       </table>
       <p style="margin-top:16px">
-        <a href="https://stockflowx.com/watchlist" style="color:#16a34a">Otwórz watchlistę →</a>
+        <a href="{APP_URL}/watchlist" style="color:#16a34a">Otwórz watchlistę</a>
       </p>
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
       <p style="font-size:12px;color:#64748b">
