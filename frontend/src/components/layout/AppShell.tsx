@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import Link from 'next/link'
 import { Menu } from 'lucide-react'
+import { Logo } from '../brand/Logo'
 import { Sidebar }    from './Sidebar'
 import { TickerTape } from './TickerTape'
 import { LanguageSwitcher } from '../shared/LanguageSwitcher'
@@ -40,6 +42,11 @@ export function AppShell({ children }: AppShellProps) {
               >
                 <Menu className="w-5 h-5" />
               </button>
+
+              {/* Logo — tylko mobile; na desktopie jest w Sidebarze obok */}
+              <Link href="/" className="lg:hidden flex items-center">
+                <Logo height={22} priority />
+              </Link>
 
               <div className="flex-1" />
 
