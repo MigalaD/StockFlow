@@ -319,32 +319,143 @@
     "howScoreWorks": "Jak działa Score?"
   },
   "landing": {
-    "features": {
-      "score": {
-        "title": "Score 0–100",
-        "desc": "Każdy instrument oceniony przez kilkanaście wskaźników technicznych i fundamentalnych — jeden czytelny wynik."
-      },
-      "charts": {
-        "title": "Wykresy pro",
-        "desc": "Świece, Bollinger, średnie kroczące, wolumen, zoom i dane live. To czego potrzebujesz do analizy w jednym miejscu."
-      },
-      "scanner": {
-        "title": "Skaner rynku",
-        "desc": "Przeskanuj USA, GPW, Europę, ETF-y, surowce i krypto. Ranking instrumentów po sile w sekundy."
-      },
-      "backtest": {
-        "title": "Backtest",
-        "desc": "Sprawdź jak strategia score zachowywała się historycznie — equity curve, Sharpe, walk-forward."
-      },
-      "scenarios": {
-        "title": "Scenariusze",
-        "desc": "Symulacja Monte Carlo pokazuje zakres możliwych ścieżek ceny, nie jedną fałszywą prognozę."
-      },
-      "alerts": {
-        "title": "Alerty e-mail",
-        "desc": "Dostań powiadomienie e-mail, gdy cena instrumentu przekroczy ustawiony przez Ciebie próg."
+    "nav": {
+      "features": "Funkcje",
+      "markets": "Rynki",
+      "faq": "Pytania",
+      "login": "Zaloguj się",
+      "start": "Zacznij za darmo"
+    },
+    "hero": {
+      "badge": "Analiza rynku po polsku",
+      "title1": "Analizuj rynki",
+      "title2": "bez chaosu danych.",
+      "lead": "StockFlow zamienia dziesiątki wskaźników w jeden czytelny wynik. Akcje, ETF-y, kryptowaluty i surowce, wyjaśnione prostym językiem.",
+      "ctaPrimary": "Rozpocznij analizę",
+      "ctaSecondary": "Mam już konto",
+      "trust1": "Bez karty",
+      "trust2": "Bez reklam",
+      "trust3": "Hasła szyfrowane",
+      "cardTrend": "Trend",
+      "cardMomentum": "Momentum",
+      "cardValue": "Wycena"
+    },
+    "film": {
+      "title": "Analiza rynku. Bez szumu.",
+      "lead": "Zobacz w 25 sekund, jak StockFlow prowadzi od wykresu do decyzji.",
+      "play": "Odtwórz film",
+      "pause": "Zatrzymaj film",
+      "label": "Film promocyjny StockFlow"
+    },
+    "explorer": {
+      "title": "Co dostajesz w aplikacji",
+      "lead": "Cztery narzędzia, z których korzystasz najczęściej. Wybierz jedno, żeby zobaczyć, jak wygląda.",
+      "tabs": {
+        "chart": {
+          "name": "Wykres",
+          "short": "Świece, średnie i wolumen",
+          "title": "Wykres, który się czyta, a nie tylko ogląda",
+          "body": "Świece, średnie MA 20/50/200, wstęgi Bollingera i wolumen na jednym wykresie. Najedź na świecę, żeby zobaczyć jej ceny i zmianę.",
+          "p1": "Interwały od 1 minuty do 1 dnia",
+          "p2": "Kryptowaluty na żywo z Binance",
+          "p3": "Twoje progi alertów widoczne na wykresie",
+          "alt": "Wykres świecowy Apple ze średnią kroczącą w StockFlow"
+        },
+        "score": {
+          "name": "Score",
+          "short": "Ocena 0–100 z uzasadnieniem",
+          "title": "Jedna ocena od 0 do 100, z uzasadnieniem",
+          "body": "Kilkanaście wskaźników fundamentalnych i technicznych składa się na jeden wynik. Obok widzisz, co podnosi ocenę, a co ją obniża.",
+          "p1": "Osobny wynik długo- i krótkoterminowy",
+          "p2": "Wycena porównywana z medianą sektora",
+          "p3": "Widzisz, ile wskaźników miało dane",
+          "alt": "Score 68 z listą czynników, które podnoszą ocenę"
+        },
+        "scanner": {
+          "name": "Skaner",
+          "short": "Ranking całego rynku",
+          "title": "Ranking rynku w jednym widoku",
+          "body": "Skaner ocenia 150 spółek z USA, GPW i Europy, a także ETF-y, surowce i kryptowaluty, i układa je od najmocniejszych.",
+          "p1": "Siła sektorów obok rankingu",
+          "p2": "Filtrowanie i sortowanie wyników",
+          "p3": "Wyniki się zapisują: wracasz bez ponownego skanu",
+          "alt": "Ranking spółek w skanerze rynku z siłą sektorów"
+        },
+        "probability": {
+          "name": "Probability Engine",
+          "short": "Zakres cen i jego szanse",
+          "title": "Zakres możliwych cen zamiast zgadywania",
+          "body": "Zamiast jednej prognozy dostajesz rozkład: w jakim przedziale cena może się znaleźć i z jakim prawdopodobieństwem.",
+          "p1": "10 000 symulacji uwzględniających zmienność",
+          "p2": "Szansa dotknięcia wybranego poziomu",
+          "p3": "Każda prognoza jest sprawdzana po fakcie",
+          "alt": "Wachlarz możliwych cen w Probability Engine"
+        }
       }
     },
+    "markets": {
+      "title": "Rynki, które obejmuje skaner",
+      "lead": "Każdy inny instrument notowany w Yahoo Finance przeanalizujesz, wpisując jego symbol.",
+      "usa": "Akcje USA",
+      "gpw": "Akcje GPW",
+      "europe": "Akcje europejskie",
+      "etf": "ETF-y, w tym UCITS",
+      "commodities": "Surowce",
+      "crypto": "Kryptowaluty"
+    },
+    "more": {
+      "title": "A do tego",
+      "items": {
+        "portfolio": {
+          "t": "Portfel",
+          "d": "Import pozycji z XTB, wartość w złotówkach i porównanie wyniku z S&P 500."
+        },
+        "dividends": {
+          "t": "Dywidendy GPW",
+          "d": "Ranking spółek dywidendowych ze stopą brutto i netto po podatku Belki."
+        },
+        "watchlist": {
+          "t": "Watchlista i alerty",
+          "d": "Obserwowane instrumenty i e-mail, gdy cena przekroczy Twój próg."
+        },
+        "calendar": {
+          "t": "Kalendarz",
+          "d": "Terminy wyników finansowych i dni ex-dividend dla Twoich spółek."
+        },
+        "backtest": {
+          "t": "Backtest",
+          "d": "Sprawdź, jak strategia oparta na score zachowywała się w przeszłości."
+        },
+        "compare": {
+          "t": "Porównanie",
+          "d": "Kilka instrumentów obok siebie, wskaźnik po wskaźniku."
+        },
+        "pdf": {
+          "t": "Raport PDF",
+          "d": "Pełna analiza instrumentu do pobrania i zachowania."
+        },
+        "lang": {
+          "t": "Polski i angielski",
+          "d": "Interfejs i opisy w obu językach."
+        }
+      }
+    },
+    "honest": {
+      "title": "Co warto wiedzieć, zanim zaczniesz",
+      "advice": {
+        "t": "Score to nie rekomendacja",
+        "d": "StockFlow porządkuje dane i pokazuje, z czego wynika ocena. Decyzję o kupnie lub sprzedaży podejmujesz sam."
+      },
+      "data": {
+        "t": "Wiesz, jak świeże są dane",
+        "d": "Kryptowaluty są na żywo. Akcje, ETF-y i surowce mają opóźnienie do ok. 15 minut, a aplikacja zawsze pokazuje źródło."
+      },
+      "method": {
+        "t": "Metodologia jest jawna",
+        "d": "Wagi wskaźników i ich uzasadnienie opisujemy w aplikacji. Zakresy cen z Probability Engine weryfikujemy po fakcie."
+      }
+    },
+    "stepsTitle": "Od symbolu do decyzji w trzech krokach",
     "steps": {
       "s1": {
         "title": "Wpisz symbol",
@@ -358,6 +469,68 @@
         "title": "Podejmij decyzję",
         "desc": "Pełen obraz: wykres, scenariusze, strategie — w jednym miejscu."
       }
+    },
+    "faq": {
+      "title": "Pytania i odpowiedzi",
+      "items": [
+        {
+          "q": "Czym jest StockFlow?",
+          "a": "To aplikacja do analizy akcji, ETF-ów, surowców i kryptowalut. Zamienia wskaźniki fundamentalne i techniczne w ocenę od 0 do 100 i pokazuje, z czego ta ocena wynika."
+        },
+        {
+          "q": "Czy StockFlow jest darmowy?",
+          "a": "Tak, obecnie korzystasz bez opłat i bez podawania karty. W przyszłości część zaawansowanych narzędzi może trafić do płatnego planu."
+        },
+        {
+          "q": "Czy StockFlow mówi mi, co kupić?",
+          "a": "Nie. Score, zakresy cen i rankingi to narzędzia analityczne o charakterze edukacyjnym, a nie rekomendacje inwestycyjne. Decyzje podejmujesz samodzielnie i na własne ryzyko."
+        },
+        {
+          "q": "Skąd pochodzą dane i jak są aktualne?",
+          "a": "Kryptowaluty pobieramy na żywo z Binance. Akcje, ETF-y i surowce pochodzą głównie z Yahoo Finance, z opóźnieniem do ok. 15 minut. Kursy walut pochodzą z Europejskiego Banku Centralnego."
+        },
+        {
+          "q": "Jakie rynki mogę analizować?",
+          "a": "Akcje z USA, GPW i największych giełd europejskich, ETF-y (w tym fundusze UCITS dostępne dla inwestorów z UE), surowce i kryptowaluty. Inny instrument notowany w Yahoo Finance sprawdzisz, wpisując jego symbol."
+        },
+        {
+          "q": "Jak powstaje score?",
+          "a": "Łączymy kilkanaście wskaźników: wycenę na tle sektora, trend, momentum, wolumen i zmienność. Każdy ma swoją wagę. W aplikacji widzisz, które wskaźniki podnoszą, a które obniżają wynik, oraz ile danych było dostępnych."
+        },
+        {
+          "q": "Czym jest Probability Engine?",
+          "a": "To narzędzie, które pokazuje, w jakim zakresie cena może się znaleźć w ciągu od 1 do 60 dni, oraz szansę dotknięcia wybranego poziomu. Nie przewiduje jednej ceny, tylko rozkład możliwych scenariuszy. Każda prognoza jest zapisywana i sprawdzana po fakcie."
+        },
+        {
+          "q": "Czy mogę zaimportować portfel z XTB?",
+          "a": "Tak. W xStation wyeksportuj raport otwartych pozycji do pliku CSV i wgraj go w zakładce Portfel. Przed zapisem zobaczysz podgląd rozpoznanych pozycji."
+        },
+        {
+          "q": "Jak działają alerty cenowe?",
+          "a": "Przy instrumencie w watchliście ustawiasz próg górny lub dolny. Gdy cena go przekroczy, dostajesz e-mail, najwyżej jeden alert danego typu dziennie. Do alertów potrzebny jest adres e-mail w koncie."
+        },
+        {
+          "q": "Czy moje dane są bezpieczne?",
+          "a": "Hasła przechowujemy wyłącznie w postaci zaszyfrowanej, a połączenie z aplikacją jest szyfrowane. Nie wyświetlamy reklam i nie używamy skryptów śledzących."
+        },
+        {
+          "q": "Czy aplikacja działa na telefonie?",
+          "a": "Tak. StockFlow działa w przeglądarce na telefonie i komputerze, bez instalacji."
+        },
+        {
+          "q": "Czy StockFlow jest dostępny po angielsku?",
+          "a": "Tak. Interfejs i opisy są dostępne po polsku i angielsku. Język zmienisz w ustawieniach."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Sprawdź pierwszą spółkę jeszcze dziś",
+      "lead": "Załóż konto w minutę. Bez karty i bez reklam.",
+      "button": "Zacznij za darmo"
+    },
+    "footer": {
+      "disclaimer": "StockFlow dostarcza informacji i analiz o charakterze edukacyjnym. Nie stanowi rekomendacji inwestycyjnej. Inwestowanie wiąże się z ryzykiem utraty kapitału.",
+      "rights": "Wszelkie prawa zastrzeżone."
     }
   }
 }

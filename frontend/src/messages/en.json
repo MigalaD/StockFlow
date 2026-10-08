@@ -319,32 +319,143 @@
     "howScoreWorks": "How does the Score work?"
   },
   "landing": {
-    "features": {
-      "score": {
-        "title": "Score 0–100",
-        "desc": "Every instrument rated across a dozen technical and fundamental indicators — one clear number."
-      },
-      "charts": {
-        "title": "Pro charts",
-        "desc": "Candles, Bollinger bands, moving averages, volume, zoom and live data. Everything you need in one place."
-      },
-      "scanner": {
-        "title": "Market scanner",
-        "desc": "Scan the US, Warsaw, Europe, ETFs, commodities and crypto. Instruments ranked by strength in seconds."
-      },
-      "backtest": {
-        "title": "Backtest",
-        "desc": "See how the score strategy performed historically — equity curve, Sharpe, walk-forward."
-      },
-      "scenarios": {
-        "title": "Scenarios",
-        "desc": "A Monte Carlo simulation shows the range of possible price paths, not one false forecast."
-      },
-      "alerts": {
-        "title": "Email alerts",
-        "desc": "Get an email when an instrument's price crosses a threshold you set."
+    "nav": {
+      "features": "Features",
+      "markets": "Markets",
+      "faq": "FAQ",
+      "login": "Sign in",
+      "start": "Start for free"
+    },
+    "hero": {
+      "badge": "Market analysis made readable",
+      "title1": "Analyse markets",
+      "title2": "without the data chaos.",
+      "lead": "StockFlow turns dozens of indicators into one clear score. Stocks, ETFs, crypto and commodities, explained in plain language.",
+      "ctaPrimary": "Start analysing",
+      "ctaSecondary": "I have an account",
+      "trust1": "No card needed",
+      "trust2": "No ads",
+      "trust3": "Encrypted passwords",
+      "cardTrend": "Trend",
+      "cardMomentum": "Momentum",
+      "cardValue": "Valuation"
+    },
+    "film": {
+      "title": "Market analysis. Without the noise.",
+      "lead": "See in 25 seconds how StockFlow takes you from a chart to a decision.",
+      "play": "Play video",
+      "pause": "Pause video",
+      "label": "StockFlow promotional video"
+    },
+    "explorer": {
+      "title": "What you get",
+      "lead": "The four tools you will use most. Pick one to see what it looks like.",
+      "tabs": {
+        "chart": {
+          "name": "Chart",
+          "short": "Candles, averages and volume",
+          "title": "A chart you read, not just look at",
+          "body": "Candles, MA 20/50/200, Bollinger bands and volume on one chart. Hover over a candle to see its prices and change.",
+          "p1": "Intervals from 1 minute to 1 day",
+          "p2": "Live crypto prices from Binance",
+          "p3": "Your alert levels drawn on the chart",
+          "alt": "Apple candlestick chart with a moving average in StockFlow"
+        },
+        "score": {
+          "name": "Score",
+          "short": "A 0–100 rating, explained",
+          "title": "One rating from 0 to 100, with the reasons",
+          "body": "A dozen fundamental and technical indicators add up to a single score. Next to it you see what lifts the rating and what pulls it down.",
+          "p1": "Separate long-term and short-term scores",
+          "p2": "Valuation compared with the sector median",
+          "p3": "See how many indicators had data",
+          "alt": "Score of 68 with the factors lifting the rating"
+        },
+        "scanner": {
+          "name": "Scanner",
+          "short": "The whole market, ranked",
+          "title": "The market ranked in one view",
+          "body": "The scanner rates 150 stocks from the US, Warsaw and Europe, plus ETFs, commodities and crypto, and orders them from strongest to weakest.",
+          "p1": "Sector strength next to the ranking",
+          "p2": "Filter and sort the results",
+          "p3": "Results are saved, so you can come back without rescanning",
+          "alt": "Stock ranking in the market scanner with sector strength"
+        },
+        "probability": {
+          "name": "Probability Engine",
+          "short": "A price range and its odds",
+          "title": "A range of possible prices instead of guesswork",
+          "body": "Instead of a single forecast you get a distribution: the range the price could reach and how likely each part of it is.",
+          "p1": "10,000 simulations that account for volatility",
+          "p2": "The chance of touching a level you pick",
+          "p3": "Every forecast is checked after the fact",
+          "alt": "Fan chart of possible prices in the Probability Engine"
+        }
       }
     },
+    "markets": {
+      "title": "Markets covered by the scanner",
+      "lead": "Any other instrument listed on Yahoo Finance can be analysed by entering its symbol.",
+      "usa": "US stocks",
+      "gpw": "Warsaw stocks",
+      "europe": "European stocks",
+      "etf": "ETFs, including UCITS",
+      "commodities": "Commodities",
+      "crypto": "Crypto"
+    },
+    "more": {
+      "title": "Also included",
+      "items": {
+        "portfolio": {
+          "t": "Portfolio",
+          "d": "Import positions from XTB, see the value in your base currency and compare with the S&P 500."
+        },
+        "dividends": {
+          "t": "Warsaw dividends",
+          "d": "Dividend stock ranking with gross yield and yield net of the 19% Polish tax."
+        },
+        "watchlist": {
+          "t": "Watchlist and alerts",
+          "d": "Instruments you follow and an email when the price crosses your level."
+        },
+        "calendar": {
+          "t": "Calendar",
+          "d": "Earnings dates and ex-dividend days for your stocks."
+        },
+        "backtest": {
+          "t": "Backtest",
+          "d": "See how a score-based strategy would have performed in the past."
+        },
+        "compare": {
+          "t": "Compare",
+          "d": "Several instruments side by side, indicator by indicator."
+        },
+        "pdf": {
+          "t": "PDF report",
+          "d": "A full instrument analysis to download and keep."
+        },
+        "lang": {
+          "t": "English and Polish",
+          "d": "Interface and descriptions in both languages."
+        }
+      }
+    },
+    "honest": {
+      "title": "Worth knowing before you start",
+      "advice": {
+        "t": "The score is not a recommendation",
+        "d": "StockFlow organises the data and shows what drives the rating. Buy and sell decisions are yours."
+      },
+      "data": {
+        "t": "You know how fresh the data is",
+        "d": "Crypto is live. Stocks, ETFs and commodities are delayed by up to about 15 minutes, and the app always shows the source."
+      },
+      "method": {
+        "t": "The methodology is open",
+        "d": "Indicator weights and their rationale are described in the app. Probability Engine ranges are checked after the fact."
+      }
+    },
+    "stepsTitle": "From symbol to decision in three steps",
     "steps": {
       "s1": {
         "title": "Enter a symbol",
@@ -358,6 +469,68 @@
         "title": "Make your decision",
         "desc": "The full picture: chart, scenarios, strategies — all in one place."
       }
+    },
+    "faq": {
+      "title": "Questions and answers",
+      "items": [
+        {
+          "q": "What is StockFlow?",
+          "a": "An app for analysing stocks, ETFs, commodities and crypto. It turns fundamental and technical indicators into a rating from 0 to 100 and shows what that rating is based on."
+        },
+        {
+          "q": "Is StockFlow free?",
+          "a": "Yes. You can currently use it free of charge, with no card required. Some advanced tools may move to a paid plan in the future."
+        },
+        {
+          "q": "Does StockFlow tell me what to buy?",
+          "a": "No. Scores, price ranges and rankings are educational analysis tools, not investment recommendations. You make your own decisions at your own risk."
+        },
+        {
+          "q": "Where does the data come from, and how current is it?",
+          "a": "Crypto prices come live from Binance. Stocks, ETFs and commodities come mainly from Yahoo Finance, delayed by up to about 15 minutes. Exchange rates come from the European Central Bank."
+        },
+        {
+          "q": "Which markets can I analyse?",
+          "a": "Stocks from the US, the Warsaw Stock Exchange and major European exchanges, ETFs (including UCITS funds available to EU investors), commodities and crypto. Any other instrument listed on Yahoo Finance can be checked by entering its symbol."
+        },
+        {
+          "q": "How is the score calculated?",
+          "a": "We combine a dozen indicators: valuation relative to the sector, trend, momentum, volume and volatility. Each has its own weight. In the app you see which indicators raise or lower the result, and how much data was available."
+        },
+        {
+          "q": "What is the Probability Engine?",
+          "a": "A tool that shows the range the price could reach over 1 to 60 days and the chance of touching a level you choose. It does not predict a single price; it shows a distribution of possible scenarios. Every forecast is recorded and checked after the fact."
+        },
+        {
+          "q": "Can I import my portfolio from XTB?",
+          "a": "Yes. In xStation, export the open positions report to a CSV file and upload it in the Portfolio tab. You will see a preview of the recognised positions before anything is saved."
+        },
+        {
+          "q": "How do price alerts work?",
+          "a": "For any instrument on your watchlist you set an upper or lower level. When the price crosses it, you get an email, at most one alert of each type per day. Alerts need an email address on your account."
+        },
+        {
+          "q": "Is my data safe?",
+          "a": "Passwords are stored only in encrypted form, and your connection to the app is encrypted. We show no ads and use no tracking scripts."
+        },
+        {
+          "q": "Does it work on my phone?",
+          "a": "Yes. StockFlow runs in the browser on phones and computers, with nothing to install."
+        },
+        {
+          "q": "Is StockFlow available in Polish?",
+          "a": "Yes. The interface and descriptions are available in English and Polish. You can switch the language in settings."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Check your first stock today",
+      "lead": "Create an account in a minute. No card, no ads.",
+      "button": "Start for free"
+    },
+    "footer": {
+      "disclaimer": "StockFlow provides information and analysis for educational purposes. It is not investment advice. Investing involves the risk of losing capital.",
+      "rights": "All rights reserved."
     }
   }
 }
